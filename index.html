@@ -34,6 +34,8 @@
                 <a href="error.html" class="nav-item">SYNCHRO</a>
                 <a href="error.html" class="nav-item">PILOTS</a>
             </nav>
+            <!-- gear icon opens settings -->
+            <button id="settings-btn" class="gear-btn" title="Settings">&#9881;</button>
         </header>
 
         <main class="text-archive-grid">
@@ -53,7 +55,7 @@
             </div>
             
             <aside class="social-card">
-                <div class="social-header">SYNCHRO TARGETS</div>
+                <div class="social-header">SOCIAL</div>
                 <a href="https://x.com/Alice_mow" target="_blank" class="social-item">
                     <div class="diag-bar"></div>
                     <div class="social-content">
@@ -79,6 +81,27 @@
             
         </main>
     </div>
+
+    <!-- SETTINGS SCREEN -->
+    <div id="settings-screen" class="screen hidden">
+        <header class="settings-header">
+            <button id="close-settings" class="gear-btn" title="Close">&#10006;</button>
+            <h2>SETTINGS</h2>
+        </header>
+        <div class="settings-content">
+            <p>Type commands below to adjust settings:</p>
+            <div class="settings-terminal">
+                <div id="settings-log" class="settings-log"></div>
+                <div class="input-wrapper">
+                    <span class="prompt">config@system:~$</span>
+                    <span id="settings-suggest" class="suggestion"></span>
+                    <input type="text" id="settings-input" autocomplete="off" spellcheck="false">
+                </div>
+            </div>
+            <!-- additional controls can be added later -->
+        </div>
+    </div>
+
     <div id="system-clock" class="system-clock">
         <span>05:59</span><span class="meridian">AM</span>
     </div>

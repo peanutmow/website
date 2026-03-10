@@ -10,11 +10,15 @@
     --magi-orange: #ff6600;
     --magi-red: #ff0000;
     --grid-color: rgba(255, 102, 0, 0.2);
+    --theme-text: var(--magi-orange);
+    --theme-ui: var(--magi-orange);
+    --theme-clock: var(--magi-orange);
+    --theme-bg: var(--bg-color);
 }
 
 body {
-    background-color: var(--bg-color);
-    color: var(--magi-orange);
+    background-color: var(--theme-bg);
+    color: var(--theme-text);
     font-family: 'Share Tech Mono', monospace;
     overflow-x: hidden;
     /* CRT color bleed & slight blur, reduced offsets */
@@ -88,8 +92,8 @@ body {
     height: 70vh;
     max-width: none;
     max-height: none;
-    color: var(--magi-orange);
-    text-shadow: 1px 0px 2px rgba(255, 0, 0, 0.6), -1px 0px 2px rgba(0, 255, 255, 0.6), 0 0 8px var(--magi-orange);
+    color: var(--theme-text);
+    text-shadow: 1px 0px 2px rgba(255, 0, 0, 0.6), -1px 0px 2px rgba(0, 255, 255, 0.6), 0 0 8px var(--theme-text);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -115,13 +119,13 @@ body {
 #cmd-input {
     background: transparent;
     border: none;
-    color: var(--magi-orange);
+    color: var(--theme-text);
     font-family: 'Share Tech Mono', monospace;
     font-size: 2rem;
     width: 100%;
     outline: none;
     text-transform: uppercase;
-    text-shadow: 1px 0px 2px rgba(255, 0, 0, 0.6), -1px 0px 2px rgba(0, 255, 255, 0.6), 0 0 8px var(--magi-orange);
+    text-shadow: 1px 0px 2px rgba(255, 0, 0, 0.6), -1px 0px 2px rgba(0, 255, 255, 0.6), 0 0 8px var(--theme-text);
 }
 
 /* --- HOMEPAGE SCREEN --- */
@@ -140,9 +144,9 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border: 3px solid var(--magi-orange);
+    border: 3px solid var(--theme-ui);
     padding: 1rem 2rem;
-    background-color: rgba(255, 102, 0, 0.1);
+    background-color: color-mix(in srgb, var(--theme-ui) 10%, transparent);
     margin-bottom: 2rem;
 }
 
@@ -166,19 +170,121 @@ body {
 .top-nav {
     display: flex;
     gap: 2rem;
+    margin-left: auto;
+}
+
+.gear-btn {
+    background: transparent;
+    color: var(--theme-text);
+    font-size: 1.2rem;
+    cursor: pointer;
+    width: 2.4rem;
+    height: 2.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--theme-ui);
+    transition: all 0.3s;
+    margin-left: 2rem;
+    border-radius: 3px;
+    line-height: 1;
+    padding: 0;
+}
+
+.gear-btn:hover {
+    background-color: var(--theme-ui);
+    color: var(--bg-color);
+}
+
+/* settings screen elements */
+.settings-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-bottom: 2px solid var(--theme-ui);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.settings-content {
+    padding: 1rem;
+}
+
+/* settings console mimics terminal look */
+.settings-terminal {
+    background-color: rgba(0,0,0,0.5);
+    padding: 0.5rem;
+    border: 1px solid var(--theme-ui);
+    margin-top: 1rem;
+    font-family: 'Share Tech Mono', monospace;
+    color: var(--theme-text);
+    height: 200px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+}
+
+.settings-log {
+    overflow-y: auto;
+    flex: 1;
+    margin-bottom: 0.5rem;
+}
+
+.settings-log .entry {
+    margin-bottom: 0.3rem;
+}
+
+.settings-terminal .input-wrapper {
+    display: flex;
+    align-items: center;
+    position: relative;
+}
+
+.settings-terminal .prompt {
+    font-size: 1rem;
+    margin-right: 0.5rem;
+}
+
+.suggestion {
+    position: absolute;
+    left: calc(1ch * 0 + 0);
+    pointer-events: none;
+    color: var(--theme-text);
+    opacity: 0.4;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1rem;
+    white-space: pre;
+    z-index: 0;
+}
+
+.suggestion .current {
+    text-decoration: underline;
+    opacity: 1;
+    color: var(--neon-green);
+}
+#settings-input {
+    background: transparent;
+    border: none;
+    color: var(--theme-text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 1rem;
+    width: 100%;
+    outline: none;
+    text-transform: lowercase;
+    z-index: 1;
 }
 
 .nav-item {
-    color: var(--magi-orange);
+    color: var(--theme-text);
     text-decoration: none;
     font-size: 1.2rem;
-    border: 1px solid var(--magi-orange);
+    border: 1px solid var(--theme-ui);
     padding: 0.5rem 1rem;
     transition: all 0.3s;
 }
 
 .nav-item:hover {
-    background-color: var(--magi-orange);
+    background-color: var(--theme-ui);
     color: var(--bg-color);
 }
 
@@ -205,7 +311,7 @@ body {
     flex-direction: column;
     gap: 1.5rem;
     font-weight: bold;
-    text-shadow: 0 0 5px var(--magi-orange);
+    text-shadow: 0 0 5px var(--theme-text);
 }
 
 .archive-column p {
@@ -230,14 +336,14 @@ body {
     border: none; 
     border-radius: 5px;
     padding: 10px 15px;
-    color: #00ff00; 
+    color: var(--theme-clock); 
     font-size: 2.5rem;
     font-weight: 900;
     display: flex;
     align-items: baseline;
     gap: 5px;
-    box-shadow: 0 0 15px rgba(0, 255, 0, 0.4), inset 0 0 10px rgba(0, 255, 0, 0.3);
-    text-shadow: 0 0 8px rgba(0, 255, 0, 0.8);
+    box-shadow: 0 0 15px var(--theme-clock), inset 0 0 10px var(--theme-clock);
+    text-shadow: 0 0 8px var(--theme-clock);
     transform: none;
 }
 
@@ -251,7 +357,7 @@ body {
     top: 2rem;
     min-width: 280px;
     height: max-content;
-    border: 2px solid var(--magi-orange);
+    border: 2px solid var(--theme-ui);
     background-color: rgba(11, 8, 17, 0.9);
     display: flex;
     flex-direction: column;
@@ -260,7 +366,7 @@ body {
 }
 
 .social-header {
-    background-color: var(--magi-orange);
+    background-color: var(--theme-ui);
     color: #000;
     padding: 0.5rem 1rem;
     font-weight: 900;
@@ -271,9 +377,9 @@ body {
 .social-item {
     display: flex;
     padding: 1rem;
-    border-bottom: 1px solid rgba(255, 102, 0, 0.3);
+    border-bottom: 1px solid var(--theme-ui);
     text-decoration: none;
-    color: var(--magi-orange);
+    color: var(--theme-text);
     transition: all 0.2s;
     cursor: pointer;
 }
@@ -287,7 +393,7 @@ body {
 }
 
 .social-item:hover:not(.non-link) {
-    background-color: var(--magi-orange);
+    background-color: var(--theme-ui);
     color: #000;
 }
 
@@ -298,9 +404,9 @@ body {
 
 .diag-bar {
     width: 6px;
-    background-color: var(--magi-orange);
+    background-color: var(--theme-ui);
     margin-right: 15px;
-    box-shadow: 0 0 5px var(--magi-orange);
+    box-shadow: 0 0 5px var(--theme-ui);
 }
 
 .diag-bar.warning {
