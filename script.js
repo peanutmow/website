@@ -22,6 +22,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 homeScreen.classList.remove("hidden");
                 homeScreen.classList.add("active");
                 
+                // Show ASCII bunny
+                const asciiBunny = document.getElementById("ascii-bunny");
+                if (asciiBunny) {
+                    asciiBunny.style.display = "block";
+                }
+
                 // Play a sound effect or do a transition here
             }
         }
@@ -62,6 +68,11 @@ document.addEventListener("DOMContentLoaded", () => {
             homeScreen.classList.remove("active");
             settingsScreen.classList.remove("hidden");
             settingsScreen.classList.add("active");
+            
+            const asciiBunny = document.getElementById("ascii-bunny");
+            if (asciiBunny) {
+                asciiBunny.style.display = "none";
+            }
         });
     }
 
@@ -71,6 +82,11 @@ document.addEventListener("DOMContentLoaded", () => {
             settingsScreen.classList.remove("active");
             homeScreen.classList.remove("hidden");
             homeScreen.classList.add("active");
+            
+            const asciiBunny = document.getElementById("ascii-bunny");
+            if (asciiBunny) {
+                asciiBunny.style.display = "block";
+            }
         });
     }
 

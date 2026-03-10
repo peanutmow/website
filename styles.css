@@ -27,6 +27,32 @@ body {
     filter: contrast(1.2) brightness(1.1) saturate(1.2) blur(0.5px);
 }
 
+/* ASCII Bunny element (centered) */
+#ascii-bunny {
+    color: var(--theme-ui);
+      font-size: clamp(10px, 1.5vw, 16px);
+      line-height: 1.18;
+      letter-spacing: .05em;
+      white-space: pre;
+      text-shadow: 0 0 8px var(--theme-ui);
+      user-select: none;
+      cursor: grab;
+      font-family: 'Share Tech Mono', 'Courier New', monospace;
+      z-index: 20;
+      display: none; 
+      overflow: visible; 
+    padding: 1rem; 
+}
+
+#bunny-container {
+    flex: 1 1 auto; 
+    display: flex;
+    justify-content: center;
+    position: sticky;
+    top: 2rem; 
+    height: max-content; 
+}
+
 /* CRT Scanlines Effect */
 .scanlines {
     position: fixed;
@@ -295,7 +321,8 @@ body {
 .text-archive-grid {
     display: flex;
     flex-direction: row;
-    gap: 4rem;
+    flex-wrap: nowrap; /* keep them in the same row */
+    gap: 2rem;
     flex-grow: 1;
     padding: 0 4rem 4rem 4rem; 
     font-size: 1.1rem;
@@ -306,7 +333,7 @@ body {
 }
 
 .archive-column {
-    flex: 1;
+    flex: 0 1 50%; /* take up 50% max so others fit */
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
@@ -353,6 +380,7 @@ body {
 
 /* Social Links Card */
 .social-card {
+    flex: 0 0 280px; /* fixed width column on the right */
     position: sticky;
     top: 2rem;
     min-width: 280px;
