@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYSTEM ERROR</title>
+    <link rel="stylesheet" href="error.css">
+    <link rel="stylesheet" href="crt.css">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="scanlines"></div>
+    <div class="crt-overlay"></div>
+    
+    <div class="error-bg-container" id="error-bg">
+        <div class="error-marquee"></div>
+    </div>
+    
+    <div class="eep-rom-container">
+        <div class="eep-rom-box">[ NOT FOUND ]</div>
+    </div>
+
+    <button class="return-btn" style="position: absolute; bottom: 20px; right: 20px; z-index: 999;" onclick="window.location.href='index.html'">RETURN</button>
+
+    <script>
+        const errorMarquee = document.querySelector('.error-marquee');
+        const lines = 300;
+        const hexDigits = '0123456789ABCDEF';
+        const prefixes = ['[SYSCALL]', '[KERNEL]', '[PANIC]', '[MEMORY]', '[MAGI-1]', '[MAGI-2]', '[MAGI-3]', '[NET]'];
+        const actions = ['Dump physical memory', 'Segmentation fault at', 'Null pointer dereference', 'Uncaught exception in module', 'Killed process', 'Buffer overflow detected', 'Failed to mount volume'];
+        const pseudoCode = [
+            'void* ptr = malloc(sizeof(char) * 0); // ERROR!!',
+            'if (target == NULL) { abort(); }',
+            'sys_read(fd, buffer, count);',
+            'std::bad_alloc: memory allocation failed!!',
+            'while(true) { fork(); } // WARNING: FORK BOMB',
+            'Registers: EAX=00000000 EBX=00000000 ECX=00000000 ERROR!!',
+            'Call Trace:',
+            '__builtin_trap();',
+            'asm volatile ("ud2");',
+            'return 0x00007FFFFFFFFFFF;',
+            'rm -rf /sys/class/cros_ec/ // ERROR!!'
+        ];
+
+        function randomHex(len) {
+            let s = '';
+            for (let i = 0; i < len; i++) s += hexDigits[Math.floor(Math.random() * 16)];
+            return s;
+        }
+
+        function randomCodeLine() {
+            const type = Math.random();
+            let line = '';
+            
+            // Random indentation for code structure feel
+            if (Math.random() > 0.6) {
+                line += '    '.repeat(Math.floor(Math.random() * 4) + 1);
+            }
+
+            if (type < 0.3) {
+                // Kernel panic / system log format
+                const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
+                const action = actions[Math.floor(Math.random() * actions.length)];
+                line += `${prefix} ${action} : 0x${randomHex(8)} - ERROR!!`;
+            } else if (type < 0.6) {
+                // Fake source code snippets
+                const code = pseudoCode[Math.floor(Math.random() * pseudoCode.length)];
+                line += code;
+            } else if (type < 0.8) {
+                // Register / memory dump format
+                line += `ADDR: 0x${randomHex(16)}  VAL: 0x${randomHex(8)} [ERROR!!]`;
+            } else {
+                // Glitchy repeating error chunk
+                const chunks = Math.floor(Math.random() * 6) + 2; 
+                for(let i=0; i< chunks; i++) {
+                    line += `ERROR!! `;
+                }
+            }
+            
+            // Randomly append junk hex data to vary the line lengths even more
+            if (Math.random() > 0.7) {
+                const extra = Math.floor(Math.random() * 8) + 1;
+                for(let i=0; i<extra; i++) {
+                    line += (Math.random() > 0.6 ? ' ERROR!!' : ` 0x${randomHex(4)}`);
+                }
+            }
+            
+            return line;
+        }
+
+        let errorText = '';
+        for (let l = 0; l < lines; l++) {
+            errorText += randomCodeLine();
+            if (l < lines - 1) errorText += '\n';
+        }
+        // duplicate content to allow seamless looping
+        errorMarquee.innerText = errorText + '\n' + errorText;
+
+    </script>
+</body>
+</html>
