@@ -1,0 +1,38 @@
+name: Deploy via SFTP
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+
+      - name: Get changed files
+        id: changed
+        run: |
+          git diff --name-only HEAD~1 HEAD > changed_files.txt
+          cat changed_files.txt
+
+      - name: Install lftp
+        run: sudo apt-get install -y lftp
+
+      - name: Upload changed files via SFTP
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_USER: ${{ secrets.SFTP_USERNAME }}
+          SFTP_PASS: ${{ secrets.SFTP_PASSWORD }}
+        run: |
+          while IFS= read -r file; do
+            if [ -f "$file" ]; then
+              printf 'set sftp:auto-confirm yes\nset net:max-retries 3\nput %s -o /var/www/virtual/%s/html/%s\nbye\n' \
+                "$file" "$SFTP_USER" "$file" \
+              | lftp -u "$SFTP_USER","$SFTP_PASS" sftp://$SFTP_HOST
+            fi
+          done < changed_files.txt
