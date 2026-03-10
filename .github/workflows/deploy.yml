@@ -3,7 +3,7 @@ name: Deploy via SFTP
 on:
   push:
     branches:
-      - main
+      - main  # or whichever branch you deploy from
 
 jobs:
   deploy:
@@ -11,53 +11,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Deploy to Uberspace via SFTP
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
-          fetch-depth: 0
-
-      - name: Install lftp
-        run: sudo apt-get install -y lftp
-
-      - name: Get last deployed commit
-        env:
-          SFTP_HOST: ${{ secrets.SFTP_HOST }}
-          SFTP_USER: ${{ secrets.SFTP_USERNAME }}
-          SFTP_PASS: ${{ secrets.SFTP_PASSWORD }}
-        run: |
-          printf 'set sftp:auto-confirm yes\nget /var/www/virtual/%s/html/.last_deploy -o .last_deploy\nbye\n' \
-            "$SFTP_USER" \
-          | lftp -u "$SFTP_USER","$SFTP_PASS" sftp://$SFTP_HOST || true
-          if [ -f .last_deploy ]; then
-            echo "LAST_DEPLOY=$(cat .last_deploy)" >> $GITHUB_ENV
-          else
-            echo "LAST_DEPLOY=$(git rev-list --max-parents=0 HEAD)" >> $GITHUB_ENV
-          fi
-
-      - name: Get changed files
-        run: |
-          git diff --name-only $LAST_DEPLOY HEAD > changed_files.txt
-          cat changed_files.txt
-
-      - name: Upload changed files via SFTP
-        env:
-          SFTP_HOST: ${{ secrets.SFTP_HOST }}
-          SFTP_USER: ${{ secrets.SFTP_USERNAME }}
-          SFTP_PASS: ${{ secrets.SFTP_PASSWORD }}
-        run: |
-          while IFS= read -r file; do
-            if [ -f "$file" ]; then
-              printf 'set sftp:auto-confirm yes\nset net:max-retries 3\nput %s -o /var/www/virtual/%s/html/%s\nbye\n' \
-                "$file" "$SFTP_USER" "$file" \
-              | lftp -u "$SFTP_USER","$SFTP_PASS" sftp://$SFTP_HOST
-            fi
-          done < changed_files.txt
-
-      - name: Save current commit as last deployed
-        env:
-          SFTP_HOST: ${{ secrets.SFTP_HOST }}
-          SFTP_USER: ${{ secrets.SFTP_USERNAME }}
-          SFTP_PASS: ${{ secrets.SFTP_PASSWORD }}
-        run: |
-          echo "${{ github.sha }}" > .last_deploy
-          printf 'set sftp:auto-confirm yes\nput .last_deploy -o /var/www/virtual/%s/html/.last_deploy\nbye\n' \
-            "$SFTP_USER" \
-          | lftp -u "$SFTP_USER","$SFTP_PASS" sftp://$SFTP_HOST
+          server: ${{ secrets.SFTP_HOST }}   # e.g. yourhost.uberspace.de
+          port: ${{ secrets.SFTP_PORT }}     # 22
+          username: ${{ secrets.SFTP_USERNAME }}
+          password: ${{ secrets.SFTP_PASSWORD }}
+          local_path: ./
+          remote_path: /var/www/virtual/${{ secrets.SFTP_USERNAME }}/html/
+          sftp_only: true
