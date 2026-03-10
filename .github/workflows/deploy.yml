@@ -3,7 +3,7 @@ name: Deploy via SFTP
 on:
   push:
     branches:
-      - main  # or whichever branch you deploy from
+      - main
 
 jobs:
   deploy:
@@ -11,14 +11,32 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-
-      - name: Deploy to Uberspace via SFTP
-        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
         with:
-          server: ${{ secrets.SFTP_HOST }}   # e.g. yourhost.uberspace.de
-          port: ${{ secrets.SFTP_PORT }}     # 22
-          username: ${{ secrets.SFTP_USERNAME }}
-          password: ${{ secrets.SFTP_PASSWORD }}
-          local_path: ./
-          remote_path: /var/www/virtual/${{ secrets.SFTP_USERNAME }}/html/
-          sftp_only: true
+          fetch-depth: 2 
+
+      - name: Get changed files
+        id: changed
+        run: |
+          git diff --name-only HEAD~1 HEAD > changed_files.txt
+          cat changed_files.txt
+
+      - name: Install lftp
+        run: sudo apt-get install -y lftp
+
+      - name: Upload changed files via SFTP
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_USER: ${{ secrets.SFTP_USERNAME }}
+          SFTP_PASS: ${{ secrets.SFTP_PASSWORD }}
+        run: |
+          while IFS= read -r file; do
+            if [ -f "$file" ]; then
+              lftp -e "
+                set sftp:auto-confirm yes;
+                set net:max-retries 3;
+                open sftp://$SFTP_USER:$SFTP_PASS@$SFTP_HOST;
+                put $file -o /var/www/virtual/$SFTP_USER/html/$file;
+                bye
+              "
+            fi
+          done < changed_files.txt
