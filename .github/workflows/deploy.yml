@@ -32,7 +32,7 @@ jobs:
           while IFS= read -r file; do
             if [ -f "$file" ]; then
               printf 'set sftp:auto-confirm yes\nset net:max-retries 3\nput %s -o /var/www/virtual/%s/html/%s\nbye\n' \
-                "$file" "$SFTP_USER" "$file" > /tmp/lftp_commands.txt
-              lftp -u "$SFTP_USER","$SFTP_PASS" sftp://$SFTP_HOST -f /tmp/lftp_commands.txt
+                "$file" "$SFTP_USER" "$file" \
+              | lftp -u "$SFTP_USER","$SFTP_PASS" sftp://$SFTP_HOST
             fi
           done < changed_files.txt
