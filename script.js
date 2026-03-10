@@ -2,7 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const cmdInput = document.getElementById("cmd-input");
     const terminalScreen = document.getElementById("terminal-screen");
     const homeScreen = document.getElementById("home-screen");
-
+    //TEST LINE
     // Re-focus the terminal input if the user clicks anywhere on the terminal screen
     terminalScreen.addEventListener("click", () => {
         cmdInput.focus();
