@@ -1,0 +1,24 @@
+name: Deploy via SFTP
+
+on:
+  push:
+    branches:
+      - main  # or whichever branch you deploy from
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Deploy to Uberspace via SFTP
+        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+        with:
+          server: ${{ secrets.SFTP_HOST }}   # e.g. yourhost.uberspace.de
+          port: ${{ secrets.SFTP_PORT }}     # 22
+          username: ${{ secrets.SFTP_USERNAME }}
+          password: ${{ secrets.SFTP_PASSWORD }}
+          local_path: ./
+          remote_path: /var/www/virtual/${{ secrets.SFTP_USERNAME }}/html/
+          sftp_only: true
