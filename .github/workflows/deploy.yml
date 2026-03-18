@@ -22,7 +22,9 @@ jobs:
         run: |
           lftp -u "$SFTP_USERNAME,$SFTP_PASSWORD" sftp://$SFTP_HOST:$SFTP_PORT <<EOF
           set sftp:auto-confirm yes
+          set cmd:fail-exit yes
           set net:max-retries 3
+          ls /var/www/virtual/$SFTP_USERNAME/
           mirror --reverse --delete --verbose \
             --exclude=.git/ \
             --exclude=.github/ \
@@ -30,5 +32,6 @@ jobs:
             --exclude-glob=*.md \
             --exclude-glob=*.yml \
             ./ /var/www/virtual/$SFTP_USERNAME/html/
+          ls /var/www/virtual/$SFTP_USERNAME/html/
           bye
           EOF
