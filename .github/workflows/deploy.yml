@@ -9,24 +9,26 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      
-      - name: Deploy to Uberspace
+
+      - name: Install lftp
+        run: sudo apt-get install -y lftp
+
+      - name: Deploy to Uberspace via SFTP
         env:
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
           SFTP_PORT: ${{ secrets.SFTP_PORT }}
           SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
-          DEPLOY_KEY: ${{ secrets.SFTP_PRIVATE_KEY }}
+          SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
         run: |
-          mkdir -p ~/.ssh
-          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p $SFTP_PORT -H $SFTP_HOST >> ~/.ssh/known_hosts 2>/dev/null || true
-          
-          rsync -avz -e "ssh -i ~/.ssh/deploy_key -p $SFTP_PORT -o IdentitiesOnly=yes -o StrictHostKeyChecking=no" \
-            --exclude='.git*' \
-            --exclude='.github' \
-            --exclude='node_modules' \
-            --exclude='*.md' \
-            --exclude='*.yml' \
-            --delete \
-            ./ $SFTP_USERNAME@$SFTP_HOST:/var/www/virtual/$SFTP_USERNAME/html/
+          lftp -u "$SFTP_USERNAME,$SFTP_PASSWORD" sftp://$SFTP_HOST:$SFTP_PORT <<EOF
+          set sftp:auto-confirm yes
+          set net:max-retries 3
+          mirror --reverse --delete --verbose \
+            --exclude=.git/ \
+            --exclude=.github/ \
+            --exclude=node_modules/ \
+            --exclude-glob=*.md \
+            --exclude-glob=*.yml \
+            ./ /var/www/virtual/$SFTP_USERNAME/html/
+          bye
+          EOF
