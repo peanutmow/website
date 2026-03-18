@@ -8,15 +8,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+      
       - name: Deploy to Uberspace via SFTP
-        uses: wlixcc/SFTP-Deploy-Action@v1.2.4
+        uses: pressable/action-scp@v2
         with:
-          server: ${{ secrets.SFTP_HOST }}
+          host: ${{ secrets.SFTP_HOST }}
           port: ${{ secrets.SFTP_PORT }}
           username: ${{ secrets.SFTP_USERNAME }}
-          password: ${{ secrets.SFTP_PASSWORD }}
-          local_path: ./
-          remote_path: /var/www/virtual/${{ secrets.SFTP_USERNAME }}/html/
-          sftp_only: true
-          exclude: '.git*,.github,node_modules,*.md,*.yml'
+          privateKey: ${{ secrets.SFTP_PRIVATE_KEY }}
+          source: "./"
+          target: "/var/www/virtual/${{ secrets.SFTP_USERNAME }}/html/"
+          recurse: true
+          delete: true
+          exclude: |
+            .git/*
+            .github/*
+            node_modules/*
+            *.md
+            *.yml
+            .gitignore
