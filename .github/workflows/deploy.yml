@@ -18,13 +18,11 @@ jobs:
           DEPLOY_KEY: ${{ secrets.SFTP_PRIVATE_KEY }}
         run: |
           mkdir -p ~/.ssh
-          cat > ~/.ssh/deploy_key << 'EOF'
-          ${{ secrets.SFTP_PRIVATE_KEY }}
-          EOF
+          echo "$DEPLOY_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -p $SFTP_PORT -H $SFTP_HOST >> ~/.ssh/known_hosts 2>/dev/null || true
           
-          rsync -avz -e "ssh -i ~/.ssh/deploy_key -p $SFTP_PORT -o StrictHostKeyChecking=no" \
+          rsync -avz -e "ssh -i ~/.ssh/deploy_key -p $SFTP_PORT -o IdentitiesOnly=yes -o StrictHostKeyChecking=no" \
             --exclude='.git*' \
             --exclude='.github' \
             --exclude='node_modules' \
