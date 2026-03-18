@@ -11,7 +11,7 @@ const W=72,H=48;
 const zbuf=new Float32Array(W*H);
 const NB=new Float32Array(W*H*3);
 
-let angY=0.3,angX=0.05,zoom=0.9,autoRot=true,drag=false,lmx=0,lmy=0; // slightly smaller zoom
+let angY=0.3,angX=0.05,zoom=0.9,autoRot=true,drag=false,lmx=0,lmy=0,mouseX=0,mouseY=0; // slightly smaller zoom
 
 function normalize(v){const l=Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2]);return[v[0]/l,v[1]/l,v[2]/l];}
 const L0=normalize([0.6,0.8,0.5]);
@@ -111,15 +111,35 @@ function render(){
 }
 
 function loop(){
-  if(autoRot) angY=(angY+0.005)%(Math.PI*2); // slower auto‑rotation
+  angY = -((mouseX / window.innerWidth) - 0.5) * Math.PI;
+  angX = -((mouseY / window.innerHeight) - 0.5) * Math.PI * 0.8;
+  angX = Math.max(-1.5, Math.min(1.5, angX));
   render();
   requestAnimationFrame(loop);
 }
 loop();
 
+let lastHeartTime = 0;
+function spawnHeart(x, y) {
+  const now = Date.now();
+  if (now - lastHeartTime < 80) return;
+  lastHeartTime = now;
+  const heart = document.createElement("div");
+  heart.className = "ascii-heart";
+  heart.textContent = "<3";
+  const offsetX = (Math.random() - 0.5) * 30;
+  const offsetY = (Math.random() - 0.5) * 30;
+  heart.style.left = (x + offsetX - 10) + "px";
+  heart.style.top = (y + offsetY - 10) + "px";
+  document.body.appendChild(heart);
+  setTimeout(() => heart.remove(), 1200);
+}
+
 el.addEventListener('mousedown',e=>{drag=true;autoRot=false;lmx=e.clientX;lmy=e.clientY;});
 window.addEventListener('mousemove',e=>{
+  mouseX=e.clientX;mouseY=e.clientY;
   if(!drag)return;
+  if(e.target === el) spawnHeart(e.clientX, e.clientY);
   angY+=(e.clientX-lmx)*0.012;angX+=(e.clientY-lmy)*0.012;
   angX=Math.max(-1.5,Math.min(1.5,angX));lmx=e.clientX;lmy=e.clientY;
 });
@@ -127,6 +147,7 @@ window.addEventListener('mouseup',()=>drag=false);
 el.addEventListener('dblclick',()=>autoRot=true);
 el.addEventListener('touchstart',e=>{autoRot=false;lmx=e.touches[0].clientX;lmy=e.touches[0].clientY;},{passive:true});
 el.addEventListener('touchmove',e=>{
+  if (e.target === el) spawnHeart(e.touches[0].clientX, e.touches[0].clientY);
   angY+=(e.touches[0].clientX-lmx)*0.013;angX+=(e.touches[0].clientY-lmy)*0.013;
   angX=Math.max(-1.5,Math.min(1.5,angX));lmx=e.touches[0].clientX;lmy=e.touches[0].clientY;
 },{passive:true});

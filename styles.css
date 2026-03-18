@@ -106,6 +106,24 @@ body {
     display: none;
 }
 
+/* Petting */
+.ascii-heart {
+    position: fixed;
+    color: var(--magi-red, #ff0000);
+    font-size: 1.2rem;
+    pointer-events: none;
+    z-index: 1000;
+    user-select: none;
+    animation: floatHeart 1.2s ease-out forwards;
+    text-shadow: 0 0 8px var(--magi-red, #ff0000);
+}
+
+@keyframes floatHeart {
+    0% { transform: translateY(0) scale(0.5); opacity: 1; }
+    50% { opacity: 1; }
+    100% { transform: translateY(-80px) scale(1.5); opacity: 0; }
+}
+
 /* --- TERMINAL SCREEN --- */
 #terminal-screen {
     justify-content: center;
@@ -379,10 +397,16 @@ body {
 }
 
 /* Social Links Card */
-.social-card {
+.sidebar-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
     flex: 0 0 280px; /* fixed width column on the right */
     position: sticky;
     top: 2rem;
+}
+
+.social-card {
     min-width: 280px;
     height: max-content;
     border: 2px solid var(--theme-ui);
