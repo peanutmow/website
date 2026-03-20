@@ -107,7 +107,99 @@ function render(){
     }
     out+='\n';
   }
-  el.textContent=out;
+  const lines = out.replace(/\n+$/,'').split('\n');
+  let minLead = Infinity;
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const lead = line.length - line.trimStart().length;
+    if (lead < minLead) minLead = lead;
+  }
+  const normalized = lines
+    .map(line => line.slice(Number.isFinite(minLead) ? minLead : 0).replace(/\s+$/,''))
+    .join('\n');
+  el.textContent=normalized;
+
+  requestAnimationFrame(() => {
+    const lcEl   = document.querySelector('.archive-column--left');
+    const rcEl   = document.querySelector('.archive-column--right');
+    const floatR = document.querySelector('.bunny-shape-float--right'); // in left col
+    const floatL = document.querySelector('.bunny-shape-float--left');  // in right col
+    if (!lcEl || !rcEl || !floatR || !floatL) return;
+
+    const preRect = el.getBoundingClientRect();
+    const lcRect  = lcEl.getBoundingClientRect();
+    const rcRect  = rcEl.getBoundingClientRect();
+    if (preRect.width <= 0) return;
+
+    const allLines  = normalized.split('\n');
+    const nLines    = allLines.length;
+    const maxLineLen = Math.max(1, ...allLines.map(l => l.length));
+    const charW     = preRect.width / maxLineLen;
+    const charH    = preRect.height / nLines;
+    const bh       = preRect.height;
+    const lcW      = lcRect.width;
+    const rcW      = rcRect.width;
+
+    const lEdgePre = [];
+    const rEdgePre = [];
+    for (let r = 0; r < nLines; r++) {
+      const row = allLines[r];
+      let l = 0, ri = row.length - 1;
+      while (l  <= ri && row[l]  === ' ') l++;
+      while (ri >= l  && row[ri] === ' ') ri--;
+      if (l > ri) {
+
+        lEdgePre.push(lcW);
+        rEdgePre.push(-rcW);
+      } else {
+        lEdgePre.push(l  * charW);
+        rEdgePre.push((ri + 1) * charW);
+      }
+    }
+
+    // Convert to column-local px and clamp
+    const lEdgeLC = lEdgePre.map(x => Math.min(lcW, Math.max(0, preRect.left + x - lcRect.left)));
+    const rEdgeRC = rEdgePre.map(x => Math.min(rcW, Math.max(0, preRect.left + x - rcRect.left)));
+
+    // Vertical alignment: margin-top aligns float top with bunny top
+    const lcMT = Math.max(0, preRect.top - lcRect.top);
+    const rcMT = Math.max(0, preRect.top - rcRect.top);
+
+    // --- Left column float:right ---
+    // Blocks [lEdgeLC[r], lcW] at each row. Text flows in [0, lEdgeLC[r]].
+    // Polygon (exclusion area, right portion of column):
+    //   trace right boundary (lcW) and step left boundary (lEdgeLC) per row.
+    {
+      let pts = [];
+      pts.push(`${lEdgeLC[0].toFixed(1)}px 0px`);
+      pts.push(`${lcW}px 0px`);
+      pts.push(`${lcW}px ${bh.toFixed(1)}px`);
+      for (let r = nLines - 1; r >= 0; r--) {
+        pts.push(`${lEdgeLC[r].toFixed(1)}px ${((r + 1) * charH).toFixed(1)}px`);
+        pts.push(`${lEdgeLC[r].toFixed(1)}px ${(r * charH).toFixed(1)}px`);
+      }
+      floatR.style.marginTop    = `${lcMT.toFixed(1)}px`;
+      floatR.style.width        = `${lcW}px`;
+      floatR.style.height       = `${bh.toFixed(1)}px`;
+      floatR.style.shapeOutside = `polygon(${pts.join(', ')})`;
+      floatR.style.shapeMargin  = '0px';
+    }
+
+    {
+      let pts = [];
+      pts.push('0px 0px');
+      for (let r = 0; r < nLines; r++) {
+        pts.push(`${rEdgeRC[r].toFixed(1)}px ${(r * charH).toFixed(1)}px`);
+        pts.push(`${rEdgeRC[r].toFixed(1)}px ${((r + 1) * charH).toFixed(1)}px`);
+      }
+      pts.push(`0px ${bh.toFixed(1)}px`);
+      floatL.style.marginTop    = `${rcMT.toFixed(1)}px`;
+      floatL.style.width        = `${rcW}px`;
+      floatL.style.height       = `${bh.toFixed(1)}px`;
+      floatL.style.shapeOutside = `polygon(${pts.join(', ')})`;
+      floatL.style.shapeMargin  = '0px';
+    }
+  });
 }
 
 function loop(){

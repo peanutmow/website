@@ -41,16 +41,49 @@ body {
       z-index: 20;
       display: none; 
       overflow: visible; 
-    padding: 1rem; 
+    padding: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    outline: none;
+    box-shadow: none;
+}
+
+.bunny-shape-float--left {
+    float: left;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    user-select: none;
+}
+.bunny-shape-float--right {
+    float: right;
+    width: 0;
+    height: 0;
+    pointer-events: none;
+    user-select: none;
+}
+
+.text-area {
+    position: relative;
+    display: flex;
+    flex: 1 1 0;
+    min-width: 0;
+    gap: 0;
+    align-items: flex-start;
 }
 
 #bunny-container {
-    flex: 1 1 auto; 
-    display: flex;
-    justify-content: center;
-    position: sticky;
-    top: 2rem; 
-    height: max-content; 
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    top: 0;
+    width: max-content;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+    outline: none;
+    z-index: 2;
 }
 
 /* CRT Scanlines Effect */
@@ -339,28 +372,31 @@ body {
 .text-archive-grid {
     display: flex;
     flex-direction: row;
-    flex-wrap: nowrap; /* keep them in the same row */
-    gap: 2rem;
+    flex-wrap: nowrap;
+    gap: 1rem;
     flex-grow: 1;
+    min-width: 0;
     padding: 0 4rem 4rem 4rem; 
     font-size: 1.1rem;
     line-height: 1.4;
-    text-transform: none; 
+    text-transform: none;
     position: relative;
-   
 }
 
 .archive-column {
-    flex: 0 1 50%; /* take up 50% max so others fit */
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+    flex: 1 1 0;
+    min-width: 0;
+    display: block;
+    position: relative;
     font-weight: bold;
     text-shadow: 0 0 5px var(--theme-text);
+    overflow-wrap: break-word;
+    overflow: hidden;
 }
 
 .archive-column p {
     word-break: break-word;
+    margin-bottom: 1.5rem;
 }
 
 .archive-column .indent {
