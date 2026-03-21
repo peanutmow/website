@@ -413,7 +413,7 @@ body {
     display: block;
     position: relative;
     font-weight: bold;
-    text-align: justify;
+    text-align: left;
     text-justify: inter-word;
     text-shadow: 0 0 5px var(--theme-text);
     overflow-wrap: break-word;
@@ -421,15 +421,30 @@ body {
     opacity: 0.6;
 }
 
+.archive-column--left,
+.archive-column--left p {
+    text-align: left;
+}
+
+.archive-column--right,
+.archive-column--right p {
+    text-align: right;
+}
+
 .archive-column p {
     word-break: break-word;
     margin-bottom: 0.25rem;
-    text-align: justify;
+    text-align: inherit;
     line-height: 1.35;
 }
 
 .archive-column .indent {
     margin-left: 3rem;
+}
+
+.archive-column--right .indent {
+    margin-left: 0;
+    margin-right: 3rem;
 }
 
 .archive-column .data-block {
