@@ -106,7 +106,7 @@
       this.spanText    = null;
       this.cursor      = null;
 
-      setTimeout(() => this._mount(), Math.random() * 3000);
+      setTimeout(() => this._mount(), Math.random() * 6000);
     }
 
     _rand(min, max) { return Math.random() * (max - min) + min; }
@@ -116,6 +116,7 @@
       if (!nodes.length) { setTimeout(() => this._mount(), 500); return; }
 
       const hostNode = nodes[Math.floor(Math.random() * nodes.length)];
+      if (!hostNode.parentNode) { setTimeout(() => this._mount(), 200); return; }
       const text     = hostNode.textContent;
 
       const lo  = Math.floor(text.length * 0.1);
