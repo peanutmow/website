@@ -4,6 +4,30 @@
     box-sizing: border-box;
 }
 
+/* Ghost typist */
+.ghost-field {
+    display: inline;
+    color: var(--theme-text);
+    letter-spacing: 0.04em;
+    font-size: 1em;
+}
+
+.ghost-cursor {
+    display: inline-block;
+    width: 0.55em;
+    height: 1em;
+    background: var(--theme-text);
+    box-shadow: 0 0 4px var(--theme-text);
+    vertical-align: text-bottom;
+    margin-left: 1px;
+    animation: ghost-blink 0.9s step-start infinite;
+}
+
+@keyframes ghost-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+}
+
 :root {
     --bg-color: #0b0811;
     --neon-green: #39ff14;
@@ -389,14 +413,19 @@ body {
     display: block;
     position: relative;
     font-weight: bold;
+    text-align: justify;
+    text-justify: inter-word;
     text-shadow: 0 0 5px var(--theme-text);
     overflow-wrap: break-word;
     overflow: hidden;
+    opacity: 0.6;
 }
 
 .archive-column p {
     word-break: break-word;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.25rem;
+    text-align: justify;
+    line-height: 1.35;
 }
 
 .archive-column .indent {

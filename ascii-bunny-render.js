@@ -244,5 +244,5 @@ el.addEventListener('touchmove',e=>{
   angX=Math.max(-1.5,Math.min(1.5,angX));lmx=e.touches[0].clientX;lmy=e.touches[0].clientY;
 },{passive:true});
 el.addEventListener('wheel',e=>{
-  zoom*=e.deltaY>0?0.91:1.10;zoom=Math.max(0.3,Math.min(4,zoom));e.preventDefault();
+  e.preventDefault();
 },{passive:false});
