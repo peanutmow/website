@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>// ARCHIVE RESIDUE //</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <script>
+        (function () {
+            var map = { 'theme-text': '--theme-text', 'theme-ui': '--theme-ui', 'theme-bg': '--theme-bg', 'theme-clock': '--theme-clock' };
+            for (var k in map) {
+                var v = localStorage.getItem(k);
+                if (v) document.documentElement.style.setProperty(map[k], v);
+            }
+        })();
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            background-color: var(--theme-bg, #0b0811);
+            color: var(--theme-text, #ff6600);
+        }
+
+        #liquid-screen {
+            background-color: var(--theme-bg, #0b0811);
+            background-image:
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 50px 50px;
+            background-position: center center;
+            min-height: 100vh;
+            max-height: 100vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .liquid-header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 3px solid var(--theme-ui);
+            padding: 1rem 2rem;
+            background-color: rgba(11, 8, 17, 0.96);
+            margin-bottom: 1.2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(4px);
+        }
+
+        .liquid-header a {
+            color: var(--theme-ui);
+            text-decoration: none;
+            font-size: 11px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            transition: all 0.2s;
+            text-shadow: 0 0 8px var(--theme-ui, rgba(255,102,0,0.6));
+        }
+        .liquid-header a:hover {
+            color: #fff;
+            text-shadow: 0 0 10px #ff6600;
+        }
+
+        .liquid-header .node-label {
+            color: var(--theme-ui);
+            font-size: 10px;
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            opacity: 0.75;
+        }
+
+        .hint-bar {
+            color: var(--theme-text);
+            font-size: 10px;
+            letter-spacing: 0.22em;
+            margin: 4px 0 10px;
+            text-align: center;
+            font-family: 'Share Tech Mono', monospace;
+            text-transform: uppercase;
+            opacity: 0.55;
+        }
+
+        #sim-wrap {
+            position: relative;
+            cursor: crosshair;
+            flex-shrink: 0;
+        }
+
+        #sim-canvas {
+            display: block;
+        }
+
+        .reset-btn {
+            display: block;
+            margin: 14px auto 28px;
+            background: none;
+            border: 1px solid var(--theme-ui);
+            color: var(--theme-text);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            padding: 6px 22px;
+            cursor: pointer;
+            transition: all 0.2s;
+            opacity: 0.7;
+        }
+        .reset-btn:hover {
+            background-color: var(--theme-ui);
+            color: #0b0811;
+            opacity: 1;
+            text-shadow: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="scanlines"></div>
+
+    <div id="liquid-screen">
+        <header class="liquid-header">
+            <a href="index.html?return">← RETURN TO ARCHIVE</a>
+            <span class="node-label">ARCHIVE NODE: ALPHA-7 // RESIDUE LOG // CLEARANCE 3</span>
+        </header>
+
+        <div id="sim-wrap">
+            <canvas id="sim-canvas"></canvas>
+        </div>
+
+        <button class="reset-btn" id="reset-btn">↺ RESTORE TEXT</button>
+    </div>
+
+<script>
+(function () {
+    'use strict';
+
+    // ── Canvas & font setup ────────────────────────────────────────────────────
+    const canvas = document.getElementById('sim-canvas');
+    const ctx    = canvas.getContext('2d');
+
+    const FONT_FAMILY = "'Share Tech Mono', 'Courier New', monospace";
+    const FONT_PX     = 13;
+    const CELL_W      = 8;
+    const CELL_H      = 16;
+
+    // Fit columns to viewport, capped at 90
+    const COLS      = Math.min(90, Math.max(40, Math.floor((Math.min(window.innerWidth, 760) - 24) / CELL_W)));
+    const TXT_ROWS  = 72;   // tall enough for wrapping the full text
+    const POOL_ROWS = 30;   // liquid pool zone below text
+    const ROWS      = TXT_ROWS + POOL_ROWS;
+
+    canvas.width  = COLS * CELL_W;
+    canvas.height = ROWS * CELL_H;
+
+    // ── Cell type constants ───────────────────────────────────────────────────
+    const EMPTY   = 0;
+    const TEXT    = 1;
+    const FALLING = 2;
+    const POOL    = 3;
+
+    // ── Grid: typed arrays for performance ───────────────────────────────────
+    const N      = ROWS * COLS;
+    const gType  = new Uint8Array(N);   // cell type
+    const gChar  = new Uint16Array(N);  // char code (original)
+    const gTimer = new Uint8Array(N);   // ticks until next physics step
+    const gSpeed = new Uint8Array(N);   // ticks between steps (lower = faster)
+    const gAge   = new Uint16Array(N);  // frames in POOL state (depth)
+
+    function idx(r, c)           { return r * COLS + c; }
+    function inBounds(r, c)      { return r >= 0 && r < ROWS && c >= 0 && c < COLS; }
+    function isEmpty(r, c)       { return inBounds(r, c) && gType[idx(r, c)] === EMPTY; }
+
+    function copyCell(r0, c0, r1, c1) {
+        const s = idx(r0, c0), d = idx(r1, c1);
+        gType[d]  = gType[s];
+        gChar[d]  = gChar[s];
+        gTimer[d] = gTimer[s];
+        gSpeed[d] = gSpeed[s];
+        gAge[d]   = gAge[s];
+    }
+
+    function clearCell(r, c) {
+        const i   = idx(r, c);
+        gType[i]  = EMPTY;
+        gChar[i]  = 32;
+        gTimer[i] = 0;
+        gSpeed[i] = 0;
+        gAge[i]   = 0;
+    }
+
+    function makePool(r, c, charCode, age) {
+        const i   = idx(r, c);
+        gType[i]  = POOL;
+        gChar[i]  = charCode;
+        gTimer[i] = 0;
+        gSpeed[i] = 0;
+        gAge[i]   = age;
+    }
+
+    // ── Archive text content ──────────────────────────────────────────────────
+    const SOURCE_TEXT = `ARCHIVE NODE: ALPHA-7  //  CLEARANCE: 3  //  SUBJECT: TERMINAL RESIDUE
+
+The following is a reconstructed log from what remained after the synchronization event of March 2015. Most of this was pulled from damaged media. Some sections are fabricated by the recovery team to fill in gaps. We do not know which sections. Neither do you.
+
+GEHIRN maintained seventeen discrete nodes across the ward system. Only four are documented. The others exist in the record as anomalies. Timestamps without location. Personnel logs without names. Budget allocations referencing project codes that resolve to nothing. The system accepts them. The system does not question them. We have noted this about the system.
+
+Project ADAM was not the first attempt. It was not the second. It was, however, the first to survive its own completion. The previous attempts were closed quietly. No incident reports were filed. The staff involved were reassigned to positions that no longer appear in any active directory. Their access credentials expired on dates that do not correspond to any recorded termination event.
+
+The synchronization tests were conducted in the lower levels. Dr. A supervised all of them. Her notes were thorough. Her notes were also removed from the archive entirely at some point between March 2013 and the current access date. The gap is logged. No explanation is attached. The log entry reads only: REDACTED. The author field reads: SYSTEM. We do not know what system.
+
+PILOT LOG 001 // Session terminated at minute 23 due to instrumentation failure. Neural trace within acceptable range. No anomalies noted. Report signed and filed by an individual whose name appears as a sequence of dashes in every copy we have retrieved.
+
+PILOT LOG 002 // Subject refused initial contact. Restraint protocols were reviewed but not used. Session resumed after a 40-minute interval at the subject's own request. Neural trace moderate. Session terminated at minute 11. An anomalous reading in the 8th minute was noted and flagged. No follow-up exists on file. The flag itself is the only record that anything unusual occurred.
+
+PILOT LOG 003 // Records suppressed. Access requires clearance level 5. This notice is itself a clearance level 3 document. The existence of log 003 is therefore known. Its contents are not. That this distinction was deliberately preserved tells us something. We are not sure what.
+
+PILOT LOG 009 // This session is not referenced anywhere in the main log. It appears only in the residue files, which are what you are reading now. The timestamp places it three weeks after pilot log 006. Pilot logs 007 and 008 do not exist in any version of the archive we have accessed. We have accessed fourteen versions.
+
+The structure at the core of the ADAM project was not mechanical in origin. This is stated once, in a recovered internal memo, and never repeated. The memo is listed as a draft. Its author field is blank. The file was accessed fourteen times before being removed. The access log shows the same user ID each time. That user ID does not correspond to any personnel record, past or present. It does not return an error. It simply returns nothing.
+
+Internal log reference 0044-B: personnel count at time of last confirmed update was twelve. Active projects: three. Budget overage: confirmed. Recommended action: continue. No one is listed as having written this recommendation. It was nonetheless acted upon.
+
+The facility in the lower ward was not on any official registry. Its power draw was attributed to an adjacent building that did not exist. We confirmed this by checking the building registry for that address. The address returns a vacant lot. The vacant lot has a maintenance contract. The maintenance contract is billed to an entity registered in a ward destroyed in the Second Impact. The billing continues to this day.
+
+Dr. A's last recorded action in the system was the upload of a file titled RESIDUE-CORE-FINAL. The file is 0 bytes. The upload succeeded. The timestamp is three minutes after the last synchronization session ended. She is not recorded as having left the building that day. She is not recorded as having remained either. The entry log simply stops.
+
+What we know: the project existed. It was funded. It produced results significant enough to classify at the highest available level. It was then classified. The people responsible were dispersed. The building where it occurred was demolished in 2016. No demolition permits were filed with any ward authority. The demolition is recorded in the land registry as: NATURAL LOSS.
+
+What we do not know: almost everything else. We have been inside this archive for what feels like a long time. We are aware this is not a reassuring sentence to find in an official document. We are including it anyway because accuracy matters more than reassurance, and because we believe whoever is reading this should know that we were here, and that we tried.
+
+The archive ends here. The following segment is locked at clearance level 5. If you have reached this point at a lower clearance, your access has been logged. This sentence is not a threat. It is a description of what has happened. Please proceed as normal. We will know.
+
+END OF DOCUMENT  //  SEGMENT 7-A  //  REFERENCE: APW-TERMINAL-RESIDUE  //  STATUS: OPEN`;
+
+    // ── Word wrap ─────────────────────────────────────────────────────────────
+    function wordWrap(text, width) {
+        const out = [];
+        for (const para of text.split('\n')) {
+            if (!para.trim()) { out.push(''); continue; }
+            const words = para.split(/\s+/);
+            let line = '';
+            for (const w of words) {
+                if (!line) {
+                    line = w;
+                } else if (line.length + 1 + w.length <= width) {
+                    line += ' ' + w;
+                } else {
+                    out.push(line);
+                    line = w;
+                }
+            }
+            if (line) out.push(line);
+        }
+        return out;
+    }
+
+    // ── Text layout (stored for reset) ───────────────────────────────────────
+    let textLayout = [];
+
+    function buildLayout() {
+        textLayout = [];
+        const lines = wordWrap(SOURCE_TEXT, COLS - 4);
+        let r = 1;
+        for (const line of lines) {
+            if (r >= TXT_ROWS - 1) break;
+            for (let ci = 0; ci < line.length && ci + 2 < COLS - 1; ci++) {
+                const code = line.charCodeAt(ci);
+                if (code !== 32) textLayout.push({ r, c: ci + 2, code });
+            }
+            r++;
+        }
+    }
+
+    let typewriterIndex = 0;
+    let typewriterDone  = false;
+    const CHARS_PER_TICK = 3;
+
+    function resetGrid() {
+        gType.fill(EMPTY);
+        gChar.fill(32);
+        gTimer.fill(0);
+        gSpeed.fill(0);
+        gAge.fill(0);
+        typewriterIndex = 0;
+        typewriterDone  = false;
+    }
+
+    function tickTypewriter() {
+        if (typewriterDone) return;
+        const end = Math.min(typewriterIndex + CHARS_PER_TICK, textLayout.length);
+        for (let k = typewriterIndex; k < end; k++) {
+            const { r, c, code } = textLayout[k];
+            const i  = idx(r, c);
+            gType[i] = TEXT;
+            gChar[i] = code;
+            gSpeed[i] = 10;
+        }
+        typewriterIndex = end;
+        if (typewriterIndex >= textLayout.length) typewriterDone = true;
+    }
+
+    const AUTO_DISSOLVE_CHANCE = 0.00024;
+    function tickAutoDissol() {
+        if (typewriterIndex < textLayout.length * 0.4) return;
+        for (let i = 0; i < N; i++) {
+            if (gType[i] !== TEXT) continue;
+            if (Math.random() < AUTO_DISSOLVE_CHANCE) {
+                gType[i]  = FALLING;
+                gTimer[i] = (Math.random() * 8) | 0;
+                gSpeed[i] = 8 + ((Math.random() * 6) | 0);
+            }
+        }
+    }
+
+    let scanDir  = 1;
+    let tickCount = 0;
+
+    function update() {
+        tickCount++;
+        if (tickCount % 4 === 0) scanDir = -scanDir;
+
+        const cStart = scanDir > 0 ? 0 : COLS - 1;
+        const cStep  = scanDir;
+        const cEnd   = scanDir > 0 ? COLS : -1;
+
+        for (let c = 0; c < COLS; c++) {
+            const i = idx(ROWS - 1, c);
+            if (gType[i] === FALLING) { gType[i] = POOL; gAge[i] = 0; }
+        }
+
+        // --- Falling cells: scan bottom→top ---
+        for (let r = ROWS - 2; r >= 0; r--) {
+            for (let c = cStart; c !== cEnd; c += cStep) {
+                const i = idx(r, c);
+                if (gType[i] !== FALLING) continue;
+
+                if (gTimer[i] > 0) { gTimer[i]--; continue; }
+
+                // Accelerate (lower speed = faster)
+                if (gSpeed[i] > 1) gSpeed[i]--;
+                gTimer[i] = gSpeed[i];
+
+                const r1 = r + 1;
+
+                // 1. Fall straight down
+                if (isEmpty(r1, c)) {
+                    copyCell(r, c, r1, c);
+                    gAge[idx(r1, c)] = 0;
+                    clearCell(r, c);
+                    continue;
+                }
+
+                // 2. Diagonal flow (liquid spreading while falling)
+                const dirs = (tickCount & 1) ? [-1, 1] : [1, -1];
+                let moved = false;
+                for (const dc of dirs) {
+                    if (isEmpty(r, c + dc) && isEmpty(r1, c + dc)) {
+                        copyCell(r, c, r1, c + dc);
+                        gAge[idx(r1, c + dc)] = 0;
+                        clearCell(r, c);
+                        moved = true;
+                        break;
+                    }
+                }
+                if (moved) continue;
+
+                // 3. Horizontal spread on same row (pooling surface)
+                for (const dc of dirs) {
+                    const nc = c + dc;
+                    if (!inBounds(r, nc)) continue;
+                    if (gType[idx(r, nc)] !== EMPTY) continue;
+                    // Only spread onto a supported surface
+                    const belowNc = r + 1;
+                    const supported = belowNc >= ROWS || !isEmpty(belowNc, nc);
+                    if (supported) {
+                        copyCell(r, c, r, nc);
+                        gTimer[idx(r, nc)] = gSpeed[idx(r, nc)] + 3;
+                        clearCell(r, c);
+                        moved = true;
+                        break;
+                    }
+                }
+                if (moved) continue;
+
+                // 4. Nowhere to go — settle
+                gType[i] = POOL;
+                gAge[i]  = 0;
+            }
+        }
+
+        // --- Pool cells: age + slow lateral spread ---
+        for (let r = ROWS - 1; r >= 0; r--) {
+            for (let c = cStart; c !== cEnd; c += cStep) {
+                const i = idx(r, c);
+                if (gType[i] !== POOL) continue;
+                if (gAge[i] < 60000) gAge[i]++;
+
+                if (Math.random() < 0.004) {
+                    const dirs2 = (Math.random() < 0.5) ? [-1, 1] : [1, -1];
+                    for (const dc of dirs2) {
+                        const nc = c + dc;
+                        if (!inBounds(r, nc) || gType[idx(r, nc)] !== EMPTY) continue;
+                        const belowNc  = r + 1;
+                        const supported = belowNc >= ROWS || !isEmpty(belowNc, nc);
+                        if (supported) {
+                            makePool(r, nc, gChar[i], Math.floor(gAge[i] * 0.5));
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // ── Rendering ─────────────────────────────────────────────────────────────
+    // Pool wave characters (ASCII only)
+    const WAVE   = [126, 126, 46, 126, 44, 39, 96, 126, 45, 126];
+    //             [ ~    ~   .   ~   ,   '  `   ~   -   ~ ]
+
+    function waveChar(i, r, c) {
+        const t   = (Date.now() / 210) | 0;
+        const key = ((t + r * 5 + c * 11 + ((gAge[i] >> 2))) >>> 0) % WAVE.length;
+        return WAVE[key];
+    }
+
+    // ── Theme color cache ─────────────────────────────────────────────────────
+    // Resolved once; refreshed via MutationObserver when <html style> changes.
+    let textRgb = [255, 102, 0];
+    let uiRgb   = [255, 102, 0];
+    let bgStr   = '#0b0811';
+
+    function resolveRgb(cssVar, fallback) {
+        const raw   = getComputedStyle(document.documentElement).getPropertyValue(cssVar).trim() || fallback;
+        const probe = document.createElement('div');
+        probe.style.cssText = `position:absolute;visibility:hidden;color:${raw}`;
+        document.body.appendChild(probe);
+        const s = getComputedStyle(probe).color;
+        document.body.removeChild(probe);
+        const m = s.match(/(\d+),\s*(\d+),\s*(\d+)/);
+        return m ? [+m[1], +m[2], +m[3]] : [255, 102, 0];
+    }
+
+    function refreshTheme() {
+        textRgb = resolveRgb('--theme-text', '#ff6600');
+        uiRgb   = resolveRgb('--theme-ui',   '#ff6600');
+        bgStr   = getComputedStyle(document.documentElement).getPropertyValue('--theme-bg').trim() || '#0b0811';
+    }
+
+    refreshTheme();
+    new MutationObserver(refreshTheme).observe(document.documentElement, { attributes: true, attributeFilter: ['style'] });
+
+    // Pre-built char lookup — avoids String.fromCharCode per cell every frame
+    const charCache = new Array(128);
+    for (let ci = 32; ci < 128; ci++) charCache[ci] = String.fromCharCode(ci);
+
+    // Pre-allocated per-bucket cell lists for POOL rendering (no GC pressure)
+    const POOL_BUCKETS = 6;
+    const bSize  = new Uint16Array(POOL_BUCKETS);
+    const bIdx   = Array.from({ length: POOL_BUCKETS }, () => new Uint32Array(N));
+
+    function draw() {
+        const [tr, tg, tb] = textRgb;
+        const [ur, ug, ub] = uiRgb;
+
+        // Clear
+        ctx.fillStyle = bgStr;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.font         = `${FONT_PX}px ${FONT_FAMILY}`;
+        ctx.textBaseline = 'top';
+
+        // ── Pass 1: TEXT — one state set, one loop ────────────────────────────
+        ctx.fillStyle   = `rgb(${tr},${tg},${tb})`;
+        ctx.shadowColor = `rgba(${tr},${tg},${tb},0.4)`;
+        ctx.shadowBlur  = 4;
+        for (let i = 0; i < N; i++) {
+            if (gType[i] !== TEXT) continue;
+            ctx.fillText(charCache[gChar[i]], (i % COLS) * CELL_W, ((i / COLS) | 0) * CELL_H);
+        }
+        ctx.shadowBlur = 0;
+
+        // ── Pass 2a: FALLING trails (translucent rect, no shadow) ─────────────
+        ctx.fillStyle = `rgba(${ur},${ug},${ub},0.07)`;
+        for (let i = 0; i < N; i++) {
+            if (gType[i] !== FALLING) continue;
+            ctx.fillRect((i % COLS) * CELL_W, ((i / COLS) | 0) * CELL_H - CELL_H, CELL_W, CELL_H);
+        }
+
+        // ── Pass 2b: FALLING chars — one state set, one loop ─────────────────
+        ctx.fillStyle   = `rgb(${ur},${ug},${ub})`;
+        ctx.shadowColor = `rgba(${ur},${ug},${ub},0.8)`;
+        ctx.shadowBlur  = 9;
+        for (let i = 0; i < N; i++) {
+            if (gType[i] !== FALLING) continue;
+            ctx.fillText(charCache[gChar[i]], (i % COLS) * CELL_W, ((i / COLS) | 0) * CELL_H);
+        }
+        ctx.shadowBlur = 0;
+
+        // ── Pass 3: POOL — bucketed by opacity, no shadow ─────────────────────
+        bSize.fill(0);
+        const t0 = (Date.now() / 210) | 0;
+        for (let i = 0; i < N; i++) {
+            if (gType[i] !== POOL) continue;
+            const opacity = Math.max(0.45, 0.9 - gAge[i] / 1400);
+            const b = Math.min(POOL_BUCKETS - 1, ((opacity - 0.45) / 0.45 * POOL_BUCKETS) | 0);
+            bIdx[b][bSize[b]++] = i;
+        }
+        for (let b = 0; b < POOL_BUCKETS; b++) {
+            if (!bSize[b]) continue;
+            const opacity = (0.45 + (b + 0.5) / POOL_BUCKETS * 0.45).toFixed(2);
+            ctx.fillStyle = `rgba(${ur},${ug},${ub},${opacity})`;
+            for (let j = 0; j < bSize[b]; j++) {
+                const i = bIdx[b][j];
+                const c = i % COLS, r = (i / COLS) | 0;
+                const key = ((t0 + r * 5 + c * 11 + (gAge[i] >> 2)) >>> 0) % WAVE.length;
+                ctx.fillText(charCache[WAVE[key]], c * CELL_W, r * CELL_H);
+            }
+        }
+
+        drawCursor();
+    }
+
+    // ── Hover / cursor ────────────────────────────────────────────────────────
+    let curR = -1, curC = -1;
+    const HR = 1, HC = 3; // activation radius
+
+    function activateAround(r, c) {
+        for (let dr = -HR; dr <= HR; dr++) {
+            for (let dc = -HC; dc <= HC; dc++) {
+                const nr = r + dr, nc = c + dc;
+                if (!inBounds(nr, nc)) continue;
+                const i = idx(nr, nc);
+                if (gType[i] === TEXT) {
+                    gType[i]  = FALLING;
+                    gTimer[i] = (Math.random() * 6) | 0;
+                    gSpeed[i] = 7 + ((Math.random() * 5) | 0);
+                }
+            }
+        }
+    }
+
+    function drawCursor() {
+        // Hover cursor rectangle
+        if (curR >= 0) {
+            ctx.strokeStyle = 'rgba(255,140,40,0.12)';
+            ctx.lineWidth   = 1;
+            ctx.strokeRect(
+                (curC - HC) * CELL_W,
+                (curR - HR) * CELL_H,
+                (HC * 2 + 1) * CELL_W,
+                (HR * 2 + 1) * CELL_H
+            );
+        }
+        // Typewriter write cursor: blinking block at current write position
+        if (!typewriterDone && typewriterIndex < textLayout.length) {
+            const { r, c } = textLayout[typewriterIndex];
+            const blink = ((Date.now() / 400) | 0) & 1;
+            if (blink) {
+                const [ur, ug, ub] = uiRgb;
+                ctx.fillStyle = `rgba(${ur},${ug},${ub},0.85)`;
+                ctx.fillRect(c * CELL_W, r * CELL_H, CELL_W, CELL_H);
+            }
+        }
+    }
+
+    const simWrap = document.getElementById('sim-wrap');
+
+    simWrap.addEventListener('mousemove', e => {
+        const rect = canvas.getBoundingClientRect();
+        curC = Math.floor((e.clientX - rect.left) / CELL_W);
+        curR = Math.floor((e.clientY - rect.top)  / CELL_H);
+        activateAround(curR, curC);
+    });
+
+    simWrap.addEventListener('mouseleave', () => { curR = -1; curC = -1; });
+
+    // Touch support
+    simWrap.addEventListener('touchmove', e => {
+        e.preventDefault();
+        const rect  = canvas.getBoundingClientRect();
+        const touch = e.touches[0];
+        curC = Math.floor((touch.clientX - rect.left) / CELL_W);
+        curR = Math.floor((touch.clientY - rect.top)  / CELL_H);
+        activateAround(curR, curC);
+    }, { passive: false });
+
+    // ── Reset button ──────────────────────────────────────────────────────────
+    document.getElementById('reset-btn').addEventListener('click', resetGrid);
+
+    // ── Animation loop ────────────────────────────────────────────────────────
+    let lastTime = 0;
+    const FRAME_MS = 1000 / 50; // ~50 fps
+
+    function loop(now) {
+        requestAnimationFrame(loop);
+        if (now - lastTime < FRAME_MS) return;
+        lastTime = now;
+        tickTypewriter();
+        tickAutoDissol();
+        update();
+        draw();
+    }
+
+    // ── Init ─────────────────────────────────────────────────────────────────
+    buildLayout();
+    resetGrid();
+    requestAnimationFrame(loop);
+})();
+</script>
+<script src="script.js"></script>
+</body>
+</html>

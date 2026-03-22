@@ -2,14 +2,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const cmdInput = document.getElementById("cmd-input");
     const terminalScreen = document.getElementById("terminal-screen");
     const homeScreen = document.getElementById("home-screen");
-    //TEST LINE
-    // Re-focus the terminal input if the user clicks anywhere on the terminal screen
-    terminalScreen.addEventListener("click", () => {
-        cmdInput.focus();
-    });
+    if (cmdInput && terminalScreen && homeScreen) {
+        // Re-focus the terminal input if the user clicks anywhere on the terminal screen
+        terminalScreen.addEventListener("click", () => {
+            cmdInput.focus();
+        });
 
-    // Listen for the "Enter" key on the terminal input
-    cmdInput.addEventListener("keydown", (event) => {
+        // Listen for the "Enter" key on the terminal input
+        cmdInput.addEventListener("keydown", (event) => {
         if (event.key === "Enter") {
             const inputValue = cmdInput.value.trim();
             
@@ -32,6 +32,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }
     });
+    }
 
     // Prevent navigation
     const disabledLinks = document.querySelectorAll(".disable-click");
@@ -92,6 +93,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     const settingsInput = document.getElementById("settings-input");
     const settingsLog = document.getElementById("settings-log");
+
+    // If arriving from another page via ?return, skip the terminal
+    if (new URLSearchParams(window.location.search).has('return')) {
+        if (terminalScreen) { terminalScreen.classList.remove('active'); terminalScreen.classList.add('hidden'); }
+        if (homeScreen)     { homeScreen.classList.remove('hidden');    homeScreen.classList.add('active'); }
+        const asciiBunny = document.getElementById('ascii-bunny');
+        if (asciiBunny) asciiBunny.style.display = 'block';
+        window.history.replaceState(null, '', window.location.pathname);
+    }
 
     // load persisted theme values from localStorage (if any)
     const storedText = localStorage.getItem('theme-text');
