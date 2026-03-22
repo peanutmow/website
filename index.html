@@ -14,7 +14,7 @@
     <div id="portrait-screen" class="screen hidden" style="position:relative;align-items:center;justify-content:center;padding:0;overflow:hidden;background:#000;color:#fff;">
         <audio id="portrait-audio" src="Aphex Twin - Tree [ATzlzPLMUhc]_trim.mp3" preload="auto"></audio>
         <div id="portrait-greeting" style="position:absolute;top:14%;right:7%;font-family:inherit;color:#fff;font-size:clamp(9px,0.9vw,13px);line-height:2.1;letter-spacing:0.12em;text-align:right;pointer-events:none;opacity:0;z-index:20;transition:opacity 2s ease-in;"></div>
-        <pre style="font-family:inherit;color:var(--theme-text);font-size:clamp(4px,0.52vw,10px);line-height:1.2;letter-spacing:0.05em;white-space:pre;background:transparent;">                                                                                                                        
+        <pre style="font-family:inherit;color:#fff;font-size:clamp(4px,0.52vw,10px);line-height:1.2;letter-spacing:0.05em;white-space:pre;background:transparent;">                                                                                                                        
                                                                                                                         
                                                                                                                         
                                                                                                                         
@@ -253,7 +253,9 @@ MWB%$##@@@@@###$%$%%&amp;&amp;BB&amp;BBB%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
     <script src="ascii-bunny-render.js"></script>
     <script src="ghost-typist.js"></script>
     <script>
-        const forcePortrait = new URLSearchParams(window.location.search).has('ruka');
+        const params = new URLSearchParams(window.location.search);
+        const forcePortrait = params.has('ruka');
+        const testCity = params.get('city'); 
         const _pk = atob("MmEwMjozMTAw");
 
         function activatePortrait(isRuka, geo) {
@@ -374,16 +376,56 @@ MWB%$##@@@@@###$%$%%&amp;&amp;BB&amp;BBB%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
         }
 
         function fetchGeo() {
+            // If testing locally with ?city=, use that
+            if (testCity) {
+                console.log('Using test city:', testCity);
+                return Promise.resolve({ city: testCity, latitude: null, longitude: null });
+            }
+
+            // Try ipapi.co first
             return fetch('https://ipapi.co/json/')
                 .then(r => {
                     if (!r.ok) throw new Error('ipapi failed');
                     return r.json();
                 })
                 .then(d => {
-                    return d;
+                    console.log('ipapi response:', d);
+                    if (d.city) return d;
+                    throw new Error('no city from ipapi');
                 })
-                .catch(() => {
-                    return { city: '', latitude: null, longitude: null };
+                .catch(e => {
+                    console.log('ipapi failed, trying fallback:', e);
+                    return fetch('https://ip-api.com/json/')
+                        .then(r => r.json())
+                        .then(d => {
+                            console.log('ip-api response:', d);
+                            if (d && d.status === 'success') {
+                                return {
+                                    ip: d.query,
+                                    city: d.city || '',
+                                    latitude: d.lat,
+                                    longitude: d.lon
+                                };
+                            }
+                            throw new Error('ip-api failed');
+                        })
+                        .catch(e => {
+                            console.log('ip-api failed, trying geoip-db:', e);
+                            return fetch('https://geoip-db.com/json/')
+                                .then(r => r.json())
+                                .then(d => {
+                                    console.log('geoip-db response:', d);
+                                    return {
+                                        city: d.city || '',
+                                        latitude: d.latitude,
+                                        longitude: d.longitude
+                                    };
+                                })
+                                .catch(e => {
+                                    console.log('All geolocation services failed:', e);
+                                    return { city: '', latitude: null, longitude: null };
+                                });
+                        });
                 });
         }
 
@@ -391,7 +433,7 @@ MWB%$##@@@@@###$%$%%&amp;&amp;BB&amp;BBB%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
             console.log('Geo data received:', d);
             const isRuka = forcePortrait || (d && d.ip && d.ip.toLowerCase().startsWith(_pk));
             console.log('isRuka check:', { ip: d?.ip, decoded: _pk, isRuka, forcePortrait });
-            const chance = forcePortrait ? 1 : (isRuka ? 0.6 : 0.05);
+            const chance = forcePortrait ? 1 : (isRuka ? 0.5 : 0.05);
             console.log('Chance calculated:', chance, 'Random roll:', Math.random(), 'forcePortrait:', forcePortrait);
             if (Math.random() < chance) {
                 console.log('Portrait activated with isRuka =', isRuka);
