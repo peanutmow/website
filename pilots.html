@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PILOTS // SYSTEM</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        #pilots-screen {
+            background-image:
+                linear-gradient(var(--grid-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 50px 50px;
+            background-position: center center;
+            background-attachment: fixed;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #ascii-CAT {
+            color: var(--theme-ui);
+            font-size: clamp(8px, 1.2vw, 14px);
+            line-height: 1.18;
+            letter-spacing: .05em;
+            white-space: pre;
+            text-shadow: 0 0 8px var(--theme-ui);
+            user-select: none;
+            cursor: grab;
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            display: block;
+            overflow: visible;
+            padding: 0;
+            margin: 0;
+            border: none;
+            background: transparent;
+            outline: none;
+            box-shadow: none;
+        }
+
+        .cat-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex: 1;
+            min-height: calc(100vh - 120px);
+            width: 100vw;
+            padding: 0.5rem;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <div class="scanlines"></div>
+
+    <div id="pilots-screen" class="screen active">
+        <header class="main-header">
+            <div class="brand">
+                <h1>SYSTEM ARCHIVE</h1>
+            </div>
+            <nav class="top-nav">
+                <a href="error.html" class="nav-item">DATABANKS</a>
+                <a href="error.html" class="nav-item">SYNCHRO</a>
+                <a href="pilots.html" class="nav-item">PILOTS</a>
+            </nav>
+        </header>
+
+        <div class="cat-container">
+            <pre id="ascii-CAT"></pre>
+        </div>
+    </div>
+
+    <script src="CAT-render.js"></script>
+</body>
+</html>

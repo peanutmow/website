@@ -9,7 +9,94 @@
 </head>
 <body>
     <div class="scanlines"></div>
-    
+
+    <!-- ASCII PORTRAIT EASTER EGG -->
+    <div id="portrait-screen" class="screen hidden" style="position:relative;align-items:center;justify-content:center;padding:0;overflow:hidden;">
+        <audio id="portrait-audio" src="Aphex Twin - Tree [ATzlzPLMUhc]_trim.mp3" preload="auto"></audio>
+        <div id="portrait-greeting" style="position:absolute;top:14%;right:7%;font-family:inherit;color:var(--theme-text);font-size:clamp(9px,0.9vw,13px);line-height:2.1;letter-spacing:0.12em;text-align:right;pointer-events:none;opacity:0;z-index:20;transition:opacity 2s ease-in;"></div>
+        <pre style="font-family:inherit;color:var(--theme-text);font-size:clamp(4px,0.52vw,10px);line-height:1.2;letter-spacing:0.05em;white-space:pre;background:transparent;">                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                                                                                        
+                                                    .....................                                               
+                                                ....                      ..                                            
+                                             ...    ..:::-----=+*o+-.:-::.   ....                                       
+                                          ..    .-=-OWWBMB&amp;B&amp;B&amp;&amp;&amp;%$%B&amp;&amp;BWo=:      .                                     
+                                       ..   .==:+oOMBWB&amp;&amp;%%&amp;%%%%&amp;B%$$$$####BM*-::.  ..                                  
+                                     ..   -+oWWOB%$$$$@@@#####%%$$%%$&amp;&amp;&amp;&amp;&amp;&amp;&amp;%$##%W+                                     
+                                   ..  .+O8WMB%$@@@@@@@##@##$$#@@@@@@@@@#%&amp;&amp;BB&amp;%%#%W+-.. .                              
+                                     :+MBMM%####@@@@@@###@@@@@@@@@@@@@@@@@@@#%%%&amp;&amp;%%%BM*. ..                            
+                                .. :OWBMW&amp;%#@#####@##$#@@@@@@@@@@@@@@@@@@@@@@@@#$&amp;$&amp;WWBWO:  .                           
+                              .. .=OB%BWB%&amp;%$$#######@@@@@@@@@@@@@@@@@@@@@@@@@@@@###&amp;BMB%W+: ..                         
+                             .  :+8B&amp;MMM&amp;&amp;$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#%&amp;BWWBW*..                          
+                            . :+*8WMM8W&amp;$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$&amp;BBBWBo-:..                       
+                             :ooOBB8M&amp;$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$&amp;B$%$BM8*:..                      
+                          ..=oO8WWMW&amp;$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$&amp;&amp;%$#MM8+...                     
+                         . -88OWBMW&amp;$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$##@&amp;BBM+..                     
+                         ..=OOWB%B&amp;###@@@##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#@@@$&amp;&amp;&amp;8- .                    
+                        . :OOM&amp;%$%%$$$###$$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#@@@$B%Bo- .                   
+                       . .*8W%#%%$#$%%%#$$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$BBMO...                  
+                       . =8M&amp;#$&amp;%$$%&amp;&amp;%$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@###@@@@@#&amp;&amp;B8=..                  
+                      ..:OMW%#&amp;&amp;$$$%&amp;%$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##@@@@@#%&amp;&amp;8. .                 
+                       .:*8W%$$%%$#$%%$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@####%&amp;8-..                 
+                       . =OM&amp;&amp;%&amp;$$$$$&amp;&amp;$##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@####$&amp;M- .                 
+                       ..-oMMWB%$%%&amp;BMMB%$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@####%&amp;M- .                 
+                       . .*888W&amp;%$B8o*8&amp;#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$%#@@@@#$$$$Bo..                  
+                        ..=O8O8B%$M**W#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@&amp;W%%#@$%%%%W- .                  
+                          :*88OM&amp;8*=8#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$MM&amp;#%&amp;%%BO:..                  
+                         . =oM8Mo=+=O%#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@M*8B%%%&amp;M= .                   
+                      .....:*888+=*8B%#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%OoO&amp;$%WO....                  
+                     .      *8OO++8$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%MOWBBW=    ..                
+                    . .=oOo+*o8o=o&amp;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%O8W&amp;W**o*-                  
+                   . -WWW&amp;##&amp;88=+W$##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$MOW%@@@#%&amp;O..               
+                  ..:WMoOMB#%M==*M%$$##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%BoM$@#$%BW&amp;+ .              
+                  . 8B8O8B&amp;$@W:=+8B&amp;$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#&amp;M*8@@#$$&amp;8BO .              
+                  . +BOOB%&amp;&amp;%8:=+OB%#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#%M*M#$#$#%8&amp;o .              
+                   . *MM%&amp;BWMO-=+oB$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$&amp;8+M#B&amp;%#$WB: .              
+                    ..OB%%BMMW=-+8%##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#&amp;O+W@BB%#$B= .               
+                    ...8B#&amp;W$%*=+8%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$O+B@$$@#B= .                
+                     . :8BM8$#B-=8%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@Bo*$@#%%&amp;+ ..                
+                      . .+W&amp;%%$+=O$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#Bo8@##$B= .                  
+                       . .oW&amp;%#8-O%#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#Bo&amp;@@#%O .                   
+                        .  .-=+--oB#@@@@@@@##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#W+o8O*: .                    
+                         ..     .*M$@@@@@@#%#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$8:     .                     
+                           ..... -8&amp;#@@@@#%&amp;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@&amp;+ .....                      
+                                ..*M%#@@@#&amp;$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@O=..                          
+                                . :*W&amp;$##%B$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@M8O..                          
+                                 . .+8B#$&amp;B%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$WB#O. .                         
+                                  .  :*8BBW&amp;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$&amp;#@#M: .                         
+                                    . =o*oOM%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##@@@@B-  ..                       
+                                    ..+&amp;%O+*OW$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%=:=  ..                     
+                                    . +&amp;$#&amp;8O8M%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$8=*M:   .                   
+                                   .. =B%#@@%&amp;&amp;&amp;%$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$M-B&amp;+:   ..                
+                                  .  .=W%#@@@@@####@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$&amp;8M#BO=:.   ..             
+                                 . .++=M%#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$&amp;&amp;@#%MO*=:.  .......      
+                      ....      ...MOOWM$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$#@@@$&amp;WM8o=:         ... 
+                 ....      ....:::W%-8$$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$%%&amp;BMo+---::..    
+             ....     .:-++=---=-M@8=O%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##$$%&amp;BMOo*+=-:...
+         ....    .:=*OMBB8*++++=8@@8OM&amp;$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@###$$$$%%&amp;WMOo*+
+    ...      .-+o8W&amp;%%%B8o****+O#@@BB&amp;%##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@###$$#@@#$%%B
+ ..    ...:=o8W&amp;%%$$%&amp;W8OooOO*O$@@@$%$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##@@@@@@#
+   ..:--+oMB%$$####$%BM88888OO&amp;@@@@@###@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#@@@@@@@
+.:=+**OMB%$###@###$&amp;BWMMMMM88B#@@@@@@#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+ooO8MB%$###@@@###%%&amp;BBBWWWWMW%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+MWB%$##@@@@@###$%$%%&amp;&amp;BB&amp;BBB%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+%$##@@@@@@@##$%$#$$$%%%%%&amp;&amp;%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+#@@@@@@@@@###$#@##$$$$$$$%$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@##############$$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@##@@@@@@@#####@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@#$$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$$##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$%$##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#####@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@###@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##%#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@</pre>
+    </div>
+
     <!-- TERMINAL ENTRY SCREEN -->
     <div id="terminal-screen" class="screen active">
         <div class="terminal-container">
@@ -32,7 +119,7 @@
             <nav class="top-nav">
                 <a href="error.html" class="nav-item">DATABANKS</a>
                 <a href="error.html" class="nav-item">SYNCHRO</a>
-                <a href="error.html" class="nav-item">PILOTS</a>
+                <a href="pilots.html" class="nav-item">PILOTS</a>
             </nav>
             <!-- gear icon opens settings -->
             <button id="settings-btn" class="gear-btn" title="Settings">&#9881;</button>
@@ -165,5 +252,152 @@
     <script src="script.js"></script>
     <script src="ascii-bunny-render.js"></script>
     <script src="ghost-typist.js"></script>
+    <script>
+        const forcePortrait = new URLSearchParams(window.location.search).has('ruka');
+        const _pk = atob("MmEwMjozMTAw");
+
+        function activatePortrait(isRuka, geo) {
+            document.querySelectorAll('.screen').forEach(s => s.className = 'screen hidden');
+            document.getElementById('portrait-screen').className = 'screen active';
+            document.getElementById('system-clock').style.display = 'none';
+
+            const portraitAudio = document.getElementById('portrait-audio');
+            if (portraitAudio) {
+                portraitAudio.volume = 0.65;
+                portraitAudio.currentTime = 0;
+
+                const unlockMusic = () => {
+                    portraitAudio.play().then(() => {
+                        document.body.removeEventListener('click', unlockMusic);
+                        document.body.removeEventListener('keydown', unlockMusic);
+                    }).catch(() => {});
+                };
+
+                document.body.addEventListener('click', unlockMusic, { once: false, passive: true });
+                document.body.addEventListener('keydown', unlockMusic, { once: false, passive: true });
+                portraitAudio.play().catch(() => {});
+            }
+
+            (function() {
+                const el = document.getElementById('portrait-greeting');
+                const now = new Date();
+                const hour = now.getHours();
+                const mins = String(now.getMinutes()).padStart(2,'0');
+
+                function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+                const WMO = {
+                    0:'clear',1:'clear',2:'cloudy',3:'overcast',
+                    45:'foggy',48:'foggy',51:'drizzling',53:'drizzling',55:'drizzling',
+                    56:'freezing',57:'freezing',
+                    61:'raining',63:'raining',65:'raining',
+                    66:'freezing rain',67:'freezing rain',
+                    71:'snowing',73:'snowing',75:'snowing',77:'snowing',
+                    80:'raining',81:'raining',82:'raining',
+                    85:'snowing',86:'snowing',
+                    95:'storming',96:'storming',99:'storming'
+                };
+
+                const timeNote = hour < 5
+                    ? pick(["it is very late.", `${hour}:${mins}. you shouldn't be awake.`, "the middle of the night."])
+                    : hour < 9
+                    ? pick([`${hour}:${mins} in the morning.`, "early. awfully early.", "you woke up early today."])
+                    : hour < 12
+                    ? pick([`${hour}:${mins}.`, "morning.", "the day is just beginning."])
+                    : hour < 14
+                    ? pick(["midday.", `${hour}:${mins}.`, "right in the middle of the day."])
+                    : hour < 17
+                    ? pick(["afternoon.", `${hour}:${mins}.`, "the afternoon drags on."])
+                    : hour < 20
+                    ? pick(["almost evening.", `${hour}:${mins}.`, "the light is fading."])
+                    : hour < 23
+                    ? pick(["late evening.", `${hour}:${mins}.`, "almost time to sleep."])
+                    : pick([`${hour}:${mins}.`, "past midnight.", "you should be asleep."]);
+
+                function show(lines) {
+                    el.innerHTML = lines.map(l => `<span style="display:block;">${l}</span>`).join('');
+                    el.style.opacity = '1';
+                }
+
+                function buildLines(city, weather, name) {
+                    const cityStr = city || 'your city';
+
+                    const weatherLines = weather ? [
+                        pick([
+                            `it is ${weather} in ${cityStr}.`,
+                            `${weather} tonight in ${cityStr}.`,
+                            `${cityStr}. ${weather}.`,
+                            `the sky over ${cityStr} is ${weather}.`,
+                        ])
+                    ] : [
+                        pick([
+                            `you are in ${cityStr}.`,
+                            `${cityStr}. we know.`,
+                            `somewhere in ${cityStr}.`,
+                        ])
+                    ];
+
+                    const opener = name
+                        ? pick([`oh. ${name}.`, `hello, ${name}.`, `there you are, ${name}.`, `${name}.`])
+                        : pick(["oh.", "...", "hello.", "there you are.", "ah."]);
+
+                    return [
+                        opener,
+                        timeNote,
+                        ...weatherLines,
+                        pick(["we've been watching.", "we see you.", "we've always been here.", "don't look away."]),
+                    ];
+                }
+
+                let city = (geo && geo.city) || '';
+                const lat  = geo && geo.latitude;
+                const lon  = geo && geo.longitude;
+                const name = (forcePortrait || isRuka) ? 'Ruka' : null;
+
+                function continueWithWeather(city, lat, lon, name) {
+                    if (lat && lon) {
+                        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
+                            .then(r => r.json())
+                            .then(w => {
+                                const code = w.current_weather ? w.current_weather.weathercode : null;
+                                const desc = (code !== null && WMO[code]) ? WMO[code] : null;
+                                show(buildLines(city, desc, name));
+                            })
+                            .catch(() => show(buildLines(city, null, name)));
+                    } else {
+                        show(buildLines(city, null, name));
+                    }
+                }
+
+                continueWithWeather(city, lat, lon, name);
+            })();
+        }
+
+        function fetchGeo() {
+            return fetch('https://ipapi.co/json/')
+                .then(r => {
+                    if (!r.ok) throw new Error('ipapi failed');
+                    return r.json();
+                })
+                .then(d => {
+                    return d;
+                })
+                .catch(() => {
+                    return { city: '', latitude: null, longitude: null };
+                });
+        }
+
+        fetchGeo().then(d => {
+            console.log('Geo data received:', d);
+            const isRuka = forcePortrait || (d && d.ip && d.ip.toLowerCase().startsWith(_pk));
+            console.log('isRuka check:', { ip: d?.ip, decoded: _pk, isRuka, forcePortrait });
+            const chance = forcePortrait ? 1 : (isRuka ? 0.6 : 0.05);
+            console.log('Chance calculated:', chance, 'Random roll:', Math.random(), 'forcePortrait:', forcePortrait);
+            if (Math.random() < chance) {
+                console.log('Portrait activated with isRuka =', isRuka);
+                activatePortrait(isRuka, d);
+            }
+        });
+    </script>
 </body>
 </html>
