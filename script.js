@@ -112,6 +112,66 @@ document.addEventListener("DOMContentLoaded", () => {
     if (storedUi) document.documentElement.style.setProperty('--theme-ui', storedUi);
     if (storedClock) document.documentElement.style.setProperty('--theme-clock', storedClock);
     if (storedBg) document.documentElement.style.setProperty('--theme-bg', storedBg);
+    updateChromaticAberration(storedText || storedUi || 'var(--magi-orange)');
+    function rgbToHsl(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h = 0, s = 0;
+        const l = (max + min) / 2;
+        if (max !== min) {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                case g: h = ((b - r) / d + 2) / 6; break;
+                case b: h = ((r - g) / d + 4) / 6; break;
+            }
+        }
+        return [h * 360, s, l];
+    }
+
+    function hslToRgb(h, s, l) {
+        h /= 360;
+        if (s === 0) {
+            const v = Math.round(l * 255);
+            return [v, v, v];
+        }
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        const hue2rgb = (p, q, t) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1 / 6) return p + (q - p) * 6 * t;
+            if (t < 1 / 2) return q;
+            if (t < 2 / 3) return p + (q - p) * (2 / 3 - t) * 6;
+            return p;
+        };
+        return [
+            Math.round(hue2rgb(p, q, h + 1 / 3) * 255),
+            Math.round(hue2rgb(p, q, h) * 255),
+            Math.round(hue2rgb(p, q, h - 1 / 3) * 255)
+        ];
+    }
+
+    function updateChromaticAberration(colorStr) {
+        // Resolve CSS variables / named colors to an actual rgb() value
+        const tmp = document.createElement('div');
+        tmp.style.cssText = 'position:absolute;visibility:hidden;pointer-events:none;color:' + colorStr;
+        document.documentElement.appendChild(tmp);
+        const resolved = getComputedStyle(tmp).color;
+        document.documentElement.removeChild(tmp);
+        const m = resolved.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+        if (!m) return;
+        const [h, s, l] = rgbToHsl(+m[1], +m[2], +m[3]);
+        // Keep saturation strong enough to be visible, lightness in readable range
+        const sat = Math.max(s, 0.7);
+        const lit = Math.min(Math.max(l, 0.4), 0.65);
+        const warm = hslToRgb(((h - 30) + 360) % 360, sat, lit);
+        const cool = hslToRgb((h + 180) % 360, sat, lit);
+        document.documentElement.style.setProperty('--aberr-warm', `rgba(${warm.join(',')},0.6)`);
+        document.documentElement.style.setProperty('--aberr-cool', `rgba(${cool.join(',')},0.6)`);
+    }
+
     const availableCommands = {
         'theme': ['ui', 'text', 'clock', 'background', 'reset'],
         'volume': [],
@@ -317,6 +377,7 @@ document.addEventListener("DOMContentLoaded", () => {
                                 localStorage.removeItem('theme-ui');
                                 localStorage.removeItem('theme-clock');
                                 localStorage.removeItem('theme-bg');
+                                updateChromaticAberration('var(--magi-orange)');
                                 logSettingsEntry('Theme reset to defaults');
                             } else {
                                 const color = parts[2];
@@ -329,10 +390,12 @@ document.addEventListener("DOMContentLoaded", () => {
                                         localStorage.setItem('theme-ui', realColor);
                                         localStorage.setItem('theme-text', realColor);
                                         localStorage.setItem('theme-clock', realColor);
+                                        updateChromaticAberration(realColor);
                                         logSettingsEntry('Theme updated: UI, text and clock to ' + color);
                                     } else if (target === 'text') {
                                         document.documentElement.style.setProperty('--theme-text', realColor);
                                         localStorage.setItem('theme-text', realColor);
+                                        updateChromaticAberration(realColor);
                                         logSettingsEntry('Theme updated: text to ' + color);
                                     } else if (target === 'clock') {
                                         document.documentElement.style.setProperty('--theme-clock', realColor);
@@ -360,6 +423,7 @@ document.addEventListener("DOMContentLoaded", () => {
                             localStorage.removeItem('theme-ui');
                             localStorage.removeItem('theme-clock');
                             localStorage.removeItem('theme-bg');
+                            updateChromaticAberration('var(--magi-orange)');
                             logSettingsEntry('Theme reset to defaults');
                         } else {
                             logSettingsEntry(baseCmd + ' executed');

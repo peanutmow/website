@@ -38,6 +38,9 @@
     --theme-ui: var(--magi-orange);
     --theme-clock: var(--magi-orange);
     --theme-bg: var(--bg-color);
+    /* chromatic aberration split colors — updated by JS based on theme */
+    --aberr-warm: rgba(255, 0, 0, 0.6);
+    --aberr-cool: rgba(0, 204, 255, 0.6);
 }
 
 body {
@@ -46,7 +49,7 @@ body {
     font-family: 'Share Tech Mono', monospace;
     overflow-x: hidden;
     /* CRT color bleed & slight blur, reduced offsets */
-    text-shadow: 1px 0px 2px rgba(255, 0, 0, 0.6), -1px 0px 2px rgba(0, 255, 255, 0.6),
+    text-shadow: 1px 0px 2px var(--aberr-warm), -1px 0px 2px var(--aberr-cool),
                  0 0 8px rgba(255,255,255,0.4);
     filter: contrast(1.2) brightness(1.1) saturate(1.2) blur(0.5px);
 }
@@ -194,7 +197,7 @@ body {
     max-width: none;
     max-height: none;
     color: var(--theme-text);
-    text-shadow: 1px 0px 2px rgba(255, 0, 0, 0.6), -1px 0px 2px rgba(0, 255, 255, 0.6), 0 0 8px var(--theme-text);
+    text-shadow: 1px 0px 2px var(--aberr-warm), -1px 0px 2px var(--aberr-cool), 0 0 8px var(--theme-text);
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -226,7 +229,7 @@ body {
     width: 100%;
     outline: none;
     text-transform: uppercase;
-    text-shadow: 1px 0px 2px rgba(255, 0, 0, 0.6), -1px 0px 2px rgba(0, 255, 255, 0.6), 0 0 8px var(--theme-text);
+    text-shadow: 1px 0px 2px var(--aberr-warm), -1px 0px 2px var(--aberr-cool), 0 0 8px var(--theme-text);
 }
 
 /* --- HOMEPAGE SCREEN --- */
