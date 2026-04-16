@@ -58,16 +58,12 @@
     ],
   ];
 
-  function getTextNodes() {
-    const nodes = [];
-    document.querySelectorAll('.archive-column p:not(.data-block)').forEach(p => {
-      const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT);
-      let n;
-      while ((n = walker.nextNode())) {
-        if (n.textContent.trim().length > 8) nodes.push(n);
-      }
-    });
-    return nodes;
+  let cachedParagraphs = null;
+  function getParagraphs() {
+    if (!cachedParagraphs) {
+      cachedParagraphs = Array.from(document.querySelectorAll('.archive-column p:not(.data-block)'));
+    }
+    return cachedParagraphs;
   }
 
   const personas = [
@@ -112,10 +108,26 @@
     _rand(min, max) { return Math.random() * (max - min) + min; }
 
     _mount() {
-      const nodes = getTextNodes();
-      if (!nodes.length) { setTimeout(() => this._mount(), 500); return; }
+      const paras = getParagraphs();
+      if (!paras.length) { setTimeout(() => this._mount(), 500); return; }
 
-      const hostNode = nodes[Math.floor(Math.random() * nodes.length)];
+      const hostP = paras[Math.floor(Math.random() * paras.length)];
+      if (!hostP.isConnected) {
+        cachedParagraphs = null; // Stale cache
+        setTimeout(() => this._mount(), 200);
+        return;
+      }
+
+      const walker = document.createTreeWalker(hostP, NodeFilter.SHOW_TEXT);
+      const textNodes = [];
+      let n;
+      while ((n = walker.nextNode())) {
+        if (n.textContent.trim().length > 8) textNodes.push(n);
+      }
+
+      if (!textNodes.length) { setTimeout(() => this._mount(), 500); return; }
+
+      const hostNode = textNodes[Math.floor(Math.random() * textNodes.length)];
       if (!hostNode.parentNode) { setTimeout(() => this._mount(), 200); return; }
       const text     = hostNode.textContent;
 
@@ -162,7 +174,7 @@
       this.hostParent = this.beforeNode = this.afterNode = this.span = this.spanText = this.cursor = null;
     }
 
-    _render() { if (this.spanText) this.spanText.textContent = this.current; }
+    _render() { if (this.spanText) this.spanText.nodeValue = this.current; }
 
     _nextTarget() {
       this.poolIdx = (this.poolIdx + 1) % this.pool.length;
