@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYSTEM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #000;
+            --orange: #ff6600;
+            --red: #cc0000;
+            --dim: rgba(255, 60, 0, 0.35);
+            --aberr-warm: rgba(255, 0, 0, 0.6);
+            --aberr-cool: rgba(0, 180, 255, 0.5);
+            --theme: var(--orange);
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            background: #000;
+            color: var(--theme);
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            overflow: hidden;
+            cursor: none;
+        }
+
+        /* CRT overlay */
+        .scanlines {
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(0,0,0,0.18),
+                rgba(0,0,0,0.18) 1px,
+                transparent 1px,
+                transparent 2px
+            );
+            pointer-events: none;
+            z-index: 200;
+            animation: scanline-scroll 6s linear infinite;
+        }
+
+        .crt-vignette {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.88) 100%);
+            pointer-events: none;
+            z-index: 199;
+        }
+
+        @keyframes scanline-scroll {
+            from { transform: translateY(0); }
+            to   { transform: translateY(20px); }
+        }
+
+        @keyframes flicker {
+            0%   { opacity: 1; }
+            92%  { opacity: 1; }
+            93%  { opacity: 0.4; }
+            94%  { opacity: 1; }
+            97%  { opacity: 1; }
+            98%  { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes glitch-shift {
+            0%,100% { transform: translate(0,0); }
+            20%     { transform: translate(-2px, 1px); }
+            40%     { transform: translate(2px, -1px); }
+            60%     { transform: translate(-1px, 2px); }
+            80%     { transform: translate(1px, -2px); }
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0; }
+        }
+
+        @keyframes boot-fade-in {
+            from { opacity: 0; }
+            to   { opacity: 1; }
+        }
+
+        /* ── Boot screen ── */
+        #boot-screen {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            color: var(--theme);
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            font-size: clamp(11px, 1.3vw, 14px);
+            letter-spacing: 0.1em;
+            line-height: 1.9;
+            padding: 40px clamp(20px, 5vw, 80px);
+            z-index: 300;
+            text-shadow:
+                1px 0 2px var(--aberr-warm),
+                -1px 0 2px var(--aberr-cool),
+                0 0 8px rgba(255,100,0,0.5);
+            animation: boot-fade-in 0.3s ease;
+            overflow: hidden;
+        }
+
+        #boot-screen.hidden {
+            display: none;
+        }
+
+        #boot-log {
+            white-space: pre-wrap;
+        }
+
+        .boot-cursor {
+            display: inline-block;
+            width: 0.55em;
+            height: 1em;
+            background: var(--theme);
+            box-shadow: 0 0 6px var(--theme);
+            vertical-align: text-bottom;
+            margin-left: 1px;
+            animation: blink 0.7s step-start infinite;
+        }
+
+        /* ── ASCII fullscreen ── */
+        #ascii-screen {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            display: flex;
+            align-items: flex-start;
+            justify-content: flex-start;
+            z-index: 100;
+            opacity: 0;
+            transition: opacity 1.2s ease;
+        }
+
+        #ascii-screen.visible {
+            opacity: 1;
+        }
+
+        #ascii-output {
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            white-space: pre;
+            line-height: 1.0;
+            letter-spacing: 0.02em;
+            display: block;
+            color: var(--theme);
+            text-shadow:
+                0.5px 0 1px var(--aberr-warm),
+                -0.5px 0 1px var(--aberr-cool),
+                0 0 4px rgba(255,100,0,0.4);
+            animation: flicker 4s infinite, glitch-shift 8s infinite;
+            overflow: hidden;
+            /* size calculated dynamically in JS */
+        }
+    </style>
+</head>
+<body>
+    <div class="scanlines"></div>
+    <div class="crt-vignette"></div>
+
+    <!-- Boot sequence overlay -->
+    <div id="boot-screen">
+        <div id="boot-log"></div><span class="boot-cursor"></span>
+    </div>
+
+    <!-- Fullscreen ASCII feed -->
+    <div id="ascii-screen">
+        <pre id="ascii-output"></pre>
+    </div>
+
+    <!-- Hidden processing elements -->
+    <video id="webcam" autoplay playsinline muted style="display:none;"></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <script>
+        // ── Character map (dark → light) ─────────────────────────────────
+        const CHARS = ' .`-_\',:;"~+<>!i?][}{1|/fjrxnvczXYUJCLQ0OZmwpdbkhao*#MW&8%B@$';
+        const CHARS_LEN = CHARS.length - 1;
+
+        // ── DOM refs ─────────────────────────────────────────────────────
+        const video      = document.getElementById('webcam');
+        const canvas     = document.getElementById('canvas');
+        const ctx        = canvas.getContext('2d', { willReadFrequently: true });
+        const output     = document.getElementById('ascii-output');
+        const bootScreen = document.getElementById('boot-screen');
+        const bootLog    = document.getElementById('boot-log');
+        const asciiScreen = document.getElementById('ascii-screen');
+
+        // ── State ────────────────────────────────────────────────────────
+        let stream  = null;
+        let rafId   = null;
+        let lastTs  = 0;
+        let COLS    = 160;
+        let ROWS    = 44;
+        let charW   = 7;
+        let charH   = 7;
+
+        // ── Calculate grid size from viewport ────────────────────────────
+        function calcGrid() {
+            // Measure a reference character
+            const probe = document.createElement('span');
+            probe.style.cssText = 'position:fixed;visibility:hidden;font-family:"Share Tech Mono","Courier New",monospace;font-size:' + charW + 'px;white-space:pre;';
+            probe.textContent = 'X';
+            document.body.appendChild(probe);
+            const r = probe.getBoundingClientRect();
+            document.body.removeChild(probe);
+
+            // Find a font size so the grid exactly fills the screen
+            const targetCols = Math.floor(window.innerWidth  / (r.width  || 7));
+            const targetRows = Math.floor(window.innerHeight / (r.height || 14));
+            COLS = Math.max(60, targetCols);
+            ROWS = Math.max(20, targetRows);
+
+            // Set font size so COLS chars fill the width
+            charW = window.innerWidth  / COLS;
+            charH = window.innerHeight / ROWS;
+            const fs = Math.min(charW, charH * 0.55); // chars are ~2× taller than wide
+            output.style.fontSize = fs.toFixed(2) + 'px';
+            output.style.lineHeight = (window.innerHeight / ROWS / (fs || 1)).toFixed(3);
+        }
+
+        // ── Boot sequence text ────────────────────────────────────────────
+        const BOOT_LINES = [
+            '> MAGI SYSTEM 03 — TERMINAL INIT',
+            '> BIOS rev 4.02 ... OK',
+            '> MEMORY CHECK ........... PASS',
+            '> LOADING KERNEL MODULES',
+            '  [██████████████████░░] 91%',
+            '  [████████████████████] 100%',
+            '> NETWORK ADAPTERS ... DETECTED',
+            '> OPTICAL SENSOR ARRAY ... ONLINE',
+            '> FACIAL GEOMETRY ENGINE ... READY',
+            '> SCANNING ENVIRONMENT',
+            '> SUBJECT DETECTED',
+            '> ACQUIRING BIOMETRIC FEED ...',
+        ];
+
+        async function runBootSequence() {
+            for (const line of BOOT_LINES) {
+                await typeLine(line);
+                await sleep(line.startsWith('  [') ? 180 : 90);
+            }
+            await sleep(400);
+        }
+
+        function typeLine(text) {
+            return new Promise(resolve => {
+                const delay = text.startsWith('  [') ? 4 : 18;
+                let i = 0;
+                const current = bootLog.textContent;
+                function tick() {
+                    bootLog.textContent = current + text.slice(0, ++i);
+                    if (i < text.length) {
+                        setTimeout(tick, delay + Math.random() * delay * 0.5);
+                    } else {
+                        bootLog.textContent += '\n';
+                        resolve();
+                    }
+                }
+                tick();
+            });
+        }
+
+        function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        // ── Start camera silently ─────────────────────────────────────────
+        async function acquireFeed() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+                    audio: false,
+                });
+                video.srcObject = stream;
+                // Do not await play() directly — some browsers require it to be event-driven
+                // for autoplay; muted video is allowed silently
+                await video.play().catch(() => {});
+                return true;
+            } catch {
+                return false;
+            }
+        }
+
+        // ── Frame render ─────────────────────────────────────────────────
+        function renderFrame(ts) {
+            rafId = requestAnimationFrame(renderFrame);
+            if (ts - lastTs < 42) return; // ~24fps
+            lastTs = ts;
+            if (video.readyState < 2) return;
+
+            // Maintain correct aspect ratio from actual video dimensions
+            const vAR  = video.videoWidth / (video.videoHeight || 1);
+            const rows = Math.round(COLS / vAR * 0.55);
+
+            canvas.width  = COLS;
+            canvas.height = rows;
+
+            // Mirror (selfie)
+            ctx.save();
+            ctx.translate(COLS, 0);
+            ctx.scale(-1, 1);
+            ctx.drawImage(video, 0, 0, COLS, rows);
+            ctx.restore();
+
+            const data = ctx.getImageData(0, 0, COLS, rows).data;
+            let out = '';
+            for (let y = 0; y < rows; y++) {
+                for (let x = 0; x < COLS; x++) {
+                    const i = (y * COLS + x) * 4;
+                    const b = (data[i] * 0.299 + data[i+1] * 0.587 + data[i+2] * 0.114) / 255;
+                    out += CHARS[Math.round(b * CHARS_LEN)];
+                }
+                out += '\n';
+            }
+            output.textContent = out;
+        }
+
+        // ── Main entry ───────────────────────────────────────────────────
+        async function main() {
+            calcGrid();
+
+            // Kick off camera request in parallel with boot animation
+            // getUserMedia does NOT require a user gesture on most browsers
+            const camPromise = acquireFeed();
+
+            await runBootSequence();
+
+            const camOk = await camPromise;
+
+            if (camOk) {
+                // Transition: hide boot, reveal ASCII feed
+                bootScreen.classList.add('hidden');
+                asciiScreen.classList.add('visible');
+                rafId = requestAnimationFrame(renderFrame);
+            } else {
+                // Permission denied or no camera — stay on boot screen with a message
+                await typeLine('> ERROR: FEED ACQUISITION FAILED');
+                await typeLine('> SIGNAL LOST — SUBJECT ESCAPED');
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            calcGrid();
+        });
+
+        document.addEventListener('DOMContentLoaded', main);
+    </script>
+</body>
+</html>
