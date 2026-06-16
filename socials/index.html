@@ -1,0 +1,240 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Socials — Alice</title>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html, body {
+            width: 100%;
+            min-height: 100vh;
+            background: transparent;
+        }
+        body {
+            font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: transparent;
+        }
+
+        .body-bg {
+            position: fixed;
+            inset: 0;
+            background: url('../GlassBlock.png') center/cover no-repeat, rgba(255,255,255,0.015);
+            backdrop-filter: blur(1.5px);
+            -webkit-backdrop-filter: blur(1.5px);
+            will-change: transform;
+            transform: translateZ(0);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .page-wrap {
+            position: relative;
+            z-index: 1;
+            max-width: 560px;
+            width: 100%;
+            padding: 2rem;
+        }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        .page-header .back-link {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.3);
+            text-decoration: none;
+            letter-spacing: 2px;
+            transition: color 0.3s;
+        }
+        .page-header .back-link:hover { color: rgba(255,255,255,0.7); }
+        .page-header h1 {
+            font-size: 1.1rem;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.85);
+            font-weight: 300;
+        }
+
+        .section { margin-bottom: 2rem; }
+        .section:last-child { margin-bottom: 0; }
+
+        .section-header {
+            font-size: 0.6rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 0.75rem;
+            padding-left: 0.25rem;
+        }
+
+        .link-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .link-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.8rem 1.1rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            text-decoration: none;
+            color: rgba(255,255,255,0.65);
+            transition: color 0.25s ease, border-color 0.25s ease;
+            text-align: left;
+            background: rgba(255,255,255,0.04);
+            contain: paint;
+        }
+        .link-item:hover {
+            color: rgba(255,255,255,0.9);
+            border-color: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.06);
+        }
+
+        .link-item .tag {
+            font-size: 0.55rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
+            min-width: 70px;
+            flex-shrink: 0;
+        }
+        .link-item .name {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.8);
+        }
+        .link-item:hover .name { color: rgba(255,255,255,0.9); }
+
+        .link-item.placeholder { cursor: default; opacity: 0.35; }
+        .link-item.placeholder:hover {
+            border-color: rgba(255,255,255,0.06);
+            background: rgba(255,255,255,0.02);
+            color: rgba(255,255,255,0.45);
+        }
+        .link-item.placeholder .name {
+            font-size: 0.65rem;
+            color: rgba(255,255,255,0.2);
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="body-bg"></div>
+    <div class="page-wrap">
+        <div class="page-header">
+            <a href="../index.html" class="back-link">&larr; back</a>
+            <h1>Connect</h1>
+        </div>
+
+        <div class="section">
+            <div class="section-header">My Accounts</div>
+            <div class="link-list">
+                <a href="https://x.com/Alice_mow" target="_blank" class="link-item">
+                    <span class="tag">X</span>
+                    <span class="name">@Alice_mow</span>
+                </a>
+                <a href="https://github.com/peanutmow" target="_blank" class="link-item">
+                    <span class="tag">GitHub</span>
+                    <span class="name">peanutmow</span>
+                </a>
+                <a href="https://discord.gg/sdTrfEHF" target="_blank" class="link-item">
+                    <span class="tag">Discord</span>
+                    <span class="name">alice_meower</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">Friends</div>
+            <div class="link-list">
+                <a href="https://alexinabox.de/" target="_blank" class="link-item">
+                    <span class="tag">Link</span>
+                    <span class="name">alexinabox.de &mdash; Alex</span>
+                </a>
+                <a href="https://lovesick.wtf/" target="_blank" class="link-item">
+                    <span class="tag">Link</span>
+                    <span class="name">lovesick.wtf &mdash; Rachel</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header">Cool Sites</div>
+            <div class="link-list">
+                <a href="https://valdevia.art/" target="_blank" class="link-item">
+                    <span class="tag">Link</span>
+                    <span class="name">valdevia.art</span>
+                </a>
+                <a href="https://fontjoy.com/" target="_blank" class="link-item">
+                    <span class="tag">Link</span>
+                    <span class="name">fontjoy.com</span>
+                </a>
+                <a href="https://64f.de/" target="_blank" class="link-item">
+                    <span class="tag">Link</span>
+                    <span class="name">64f.de</span>
+                </a>
+                <a href="https://meye.dk/" target="_blank" class="link-item">
+                    <span class="tag">Link</span>
+                    <span class="name">meye.dk</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── Resolution-aware 4K image loader ──
+        (function() {
+            // Above 1080p? (1920x1080)
+            if (window.screen.width <= 1920 && window.screen.height <= 1080) return;
+
+            var bgEl = document.querySelector('.body-bg');
+            if (!bgEl) return;
+
+            var images = [
+                { path: '../GlassBlock4K.png',      prop: 'backgroundImage', value: "url('../GlassBlock4K.png'), rgba(255,255,255,0.015)" },
+                { path: '../GlassBlockNormal4K.png', prop: null }
+            ];
+
+            var loaded = 0;
+            images.forEach(function(item) {
+                var img = new Image();
+                img.onload = function() {
+                    loaded++;
+                    if (item.prop && loaded >= 1) {
+                        bgEl.style.backgroundImage = item.value;
+                        bgEl.style.backgroundSize = 'cover';
+                        bgEl.style.backgroundPosition = 'center';
+                        bgEl.style.backgroundRepeat = 'no-repeat';
+                    }
+                };
+                img.src = item.path;
+            });
+        })();
+
+        // Forward mouse events to parent page so the water sim reacts
+        (function() {
+            if (!window.parent) return;
+            var parentDoc = window.parent.document;
+            document.documentElement.addEventListener('mousemove', function(e) {
+                parentDoc.dispatchEvent(new MouseEvent('mousemove', {
+                    clientX: e.clientX,
+                    clientY: e.clientY,
+                    bubbles: true,
+                    cancelable: true
+                }));
+            });
+        })();
+    </script>
+</body>
+</html>
