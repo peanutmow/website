@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gallery — Alice</title>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #050505 0%, #0f0f0f 50%, #080808 100%);
+            color: #fff;
+            font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        /* ── Layout ── */
+        .page-wrap {
+            position: relative;
+            z-index: 10;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 4rem;
+        }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .page-header h1 {
+            font-size: 1.1rem;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.5);
+            font-weight: 300;
+        }
+
+        .back-link {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.2);
+            text-decoration: none;
+            letter-spacing: 2px;
+            transition: color 0.3s;
+        }
+        .back-link:hover {
+            color: rgba(255,255,255,0.6);
+        }
+
+        /* ── Filter tabs ── */
+        .filters {
+            display: flex;
+            gap: 0.25rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px;
+            padding: 0.3rem;
+            background: rgba(255,255,255,0.02);
+        }
+        .filters button {
+            font-family: inherit;
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            background: transparent;
+            color: rgba(255,255,255,0.25);
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .filters button:hover {
+            color: rgba(255,255,255,0.6);
+            background: rgba(255,255,255,0.04);
+        }
+        .filters button.active {
+            color: rgba(255,255,255,0.85);
+            background: rgba(255,255,255,0.07);
+        }
+
+        /* ── Subtype filter tabs ── */
+        .sub-filters {
+            display: flex;
+            gap: 0.25rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            padding: 0 0.15rem;
+            min-height: 0;
+            overflow: hidden;
+            transition: min-height 0.3s, margin-bottom 0.3s, opacity 0.3s;
+            opacity: 0;
+            pointer-events: none;
+        }
+        .sub-filters.visible {
+            min-height: 2rem;
+            margin-bottom: 1.5rem;
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .sub-filters button {
+            font-family: inherit;
+            font-size: 0.6rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 0.35rem 0.75rem;
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 6px;
+            background: transparent;
+            color: rgba(255,255,255,0.15);
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .sub-filters button:hover {
+            color: rgba(255,255,255,0.5);
+            border-color: rgba(255,255,255,0.1);
+            background: rgba(255,255,255,0.03);
+        }
+        .sub-filters button.active {
+            color: rgba(255,255,255,0.7);
+            border-color: rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.05);
+        }
+
+        /* ── Gallery grid (fluid justified layout) ── */
+        .gallery-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+
+        .gallery-row {
+            display: flex;
+            gap: 4px;
+            width: 100%;
+        }
+
+        .gallery-item {
+            position: relative;
+            overflow: hidden;
+            border-radius: 3px;
+            background: rgba(255,255,255,0.02);
+            transition: opacity 0.3s ease;
+            flex-shrink: 0;
+        }
+        .gallery-item.hidden {
+            display: none;
+        }
+        .gallery-item:hover {
+            opacity: 0.85;
+        }
+
+        .gallery-item img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            pointer-events: none;
+            -webkit-user-drag: none;
+            user-select: none;
+        }
+
+        .gallery-item .type-tag {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            font-size: 0.5rem;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            padding: 0.15rem 0.4rem;
+            border-radius: 2px;
+            background: rgba(0,0,0,0.65);
+            color: rgba(255,255,255,0.4);
+            border: 1px solid rgba(255,255,255,0.06);
+            pointer-events: none;
+            line-height: 1;
+        }
+
+        .gallery-empty {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: rgba(255,255,255,0.15);
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            display: none;
+        }
+        .gallery-empty.visible {
+            display: block;
+        }
+
+        /* ── Add-item hint ── */
+        .add-hint {
+            margin-top: 3rem;
+            text-align: center;
+            font-size: 0.6rem;
+            color: rgba(255,255,255,0.08);
+            letter-spacing: 1px;
+            line-height: 1.8;
+        }
+        .add-hint code {
+            color: rgba(255,255,255,0.15);
+        }
+
+        /* ── Lightbox ── */
+        .lightbox {
+            display: none;
+            position: fixed;
+            z-index: 9999;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.92);
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            cursor: zoom-out;
+        }
+        .lightbox.open {
+            display: flex;
+        }
+
+        .lightbox .lb-img-wrap {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            max-width: 92vw;
+            max-height: 88vh;
+            cursor: default;
+        }
+        .lightbox .lb-img-wrap img {
+            display: block;
+            max-width: 100%;
+            max-height: 88vh;
+            object-fit: contain;
+            border-radius: 4px;
+            box-shadow: 0 4px 40px rgba(0,0,0,0.5);
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        .lightbox .lb-close {
+            position: fixed;
+            top: 1rem;
+            right: 1.5rem;
+            font-size: 1.4rem;
+            color: rgba(255,255,255,0.3);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-family: inherit;
+            letter-spacing: 2px;
+            transition: color 0.25s;
+            z-index: 10;
+        }
+        .lightbox .lb-close:hover {
+            color: rgba(255,255,255,0.7);
+        }
+
+        .lightbox .lb-nav {
+            position: fixed;
+            top: 0; bottom: 0;
+            width: clamp(80px, 20vw, 240px);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: rgba(255,255,255,0.08);
+            transition: color 0.3s, background 0.3s;
+            background: none;
+            border: none;
+            font-family: inherit;
+            z-index: 5;
+            padding: 0;
+        }
+        .lightbox .lb-nav:hover {
+            color: rgba(255,255,255,0.5);
+            background: rgba(255,255,255,0.02);
+        }
+        .lightbox .lb-prev {
+            left: 0;
+        }
+        .lightbox .lb-next {
+            right: 0;
+        }
+
+        .lightbox .lb-counter {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.6rem;
+            letter-spacing: 3px;
+            color: rgba(255,255,255,0.2);
+            text-transform: uppercase;
+        }
+
+        .lightbox .lb-link {
+            display: inline-block;
+            padding: 0.35rem 0.75rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.5rem;
+            letter-spacing: 1.5px;
+            color: rgba(255,255,255,0.15);
+            text-decoration: none;
+            text-transform: uppercase;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 3px;
+            transition: color 0.25s, border-color 0.25s;
+            background: rgba(0,0,0,0.3);
+        }
+        .lightbox .lb-link:hover {
+            color: rgba(255,255,255,0.5);
+            border-color: rgba(255,255,255,0.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="page-wrap">
+        <div class="page-header">
+            <a href="../index.html" class="back-link">&larr; back</a>
+            <h1>Gallery</h1>
+            <span></span>
+        </div>
+
+        <!-- Filter tabs -->
+        <div class="filters" id="filters">
+            <button class="active" data-filter="all">All</button>
+            <button data-filter="photography">Photography</button>
+            <button data-filter="3d-art">3D Art</button>
+            <button data-filter="misc">Misc</button>
+        </div>
+
+        <!-- Subtype filter tabs (appears when a type is selected) -->
+        <div class="sub-filters" id="sub-filters"></div>
+
+        <!-- Gallery grid -->
+        <div class="gallery-grid" id="gallery-grid"></div>
+
+        <div class="gallery-empty" id="gallery-empty">no works in this category yet</div>
+
+    </div>
+
+    <!-- ── Lightbox overlay ── -->
+    <div class="lightbox" id="lightbox">
+        <button class="lb-close" id="lb-close">✕</button>
+        <button class="lb-nav lb-prev" id="lb-prev">â€¹</button>
+        <button class="lb-nav lb-next" id="lb-next">â€º</button>
+        <div class="lb-img-wrap" id="lb-img-wrap">
+            <a class="lb-link" id="lb-link" target="_blank" rel="noopener">view on flickr â†’</a>
+            <img id="lb-img" src="" alt="">
+        </div>
+        <div class="lb-counter" id="lb-counter"></div>
+    </div>
+
+    <script>
+        // ── Artwork data ──
+        // Add new entries here. Each entry needs:
+        //   src     — URL to the hosted image
+        //   type    — one of: "photography", "3d-art", "misc"
+        //   subtypes — array of subcategory tags (see list below)
+        //   alt     — optional description
+const artworks = [
+    { src: "https://live.staticflickr.com/65535/55335865751_ae878e3e04_b.jpg", type: "photography", subtypes: ["nature", "architectural", "sky"], link: "https://www.flickr.com/photos/185219841@N08/55335865751/", alt: "DSC02805" },
+    { src: "https://live.staticflickr.com/65535/55334930857_62296866e4_b.jpg", type: "photography", subtypes: ["nature", "sky"], link: "https://www.flickr.com/photos/185219841@N08/55334930857/", alt: "DSC02844" },
+    { src: "https://live.staticflickr.com/65535/55335865911_2c8e673fc1_b.jpg", type: "photography", subtypes: ["nature", "organic"], link: "https://www.flickr.com/photos/185219841@N08/55335865911/", alt: "DSC02861" },
+    { src: "https://live.staticflickr.com/65535/55334930922_72947ab303_b.jpg", type: "photography", subtypes: ["nature", "organic"], link: "https://www.flickr.com/photos/185219841@N08/55334930922/", alt: "DSC02863" },
+    { src: "https://live.staticflickr.com/65535/55336017163_ffd4a64d3b_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336017163/", alt: "DSC02868-2" },
+    { src: "https://live.staticflickr.com/65535/55334930962_87aabdf94f_b.jpg", type: "photography", subtypes: ["nature", "stylized", "experimental"], link: "https://www.flickr.com/photos/185219841@N08/55334930962/", alt: "DSC02868" },
+    { src: "https://live.staticflickr.com/65535/55334931042_5ee762cbf2_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55334931042/", alt: "DSC02906" },
+    { src: "https://live.staticflickr.com/65535/55336279740_c653ab4884_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336279740/", alt: "DSC02930" },
+    { src: "https://live.staticflickr.com/65535/55334931067_8bb3155f73_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55334931067/", alt: "DSC02947" },
+    { src: "https://live.staticflickr.com/65535/55335866081_b69db0bb21_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55335866081/", alt: "DSC02949" },
+    { src: "https://live.staticflickr.com/65535/55334931107_05e342402c_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55334931107/", alt: "DSC02959" },
+    { src: "https://live.staticflickr.com/65535/55336017268_4cbed6397e_b.jpg", type: "photography", subtypes: ["nature", "sky"], link: "https://www.flickr.com/photos/185219841@N08/55336017268/", alt: "DSC02983" },
+    { src: "https://live.staticflickr.com/65535/55336076524_1d70af9552_b.jpg", type: "photography", subtypes: ["nature", "sky"], link: "https://www.flickr.com/photos/185219841@N08/55336076524/", alt: "DSC03108" },
+    { src: "https://live.staticflickr.com/65535/55336017363_af19c8670b_b.jpg", type: "photography", subtypes: ["sky", "stylized", "nature"], link: "https://www.flickr.com/photos/185219841@N08/55336017363/", alt: "DSC03423-Enhanced-NR" },
+    { src: "https://live.staticflickr.com/65535/55336017383_f26a92165c_b.jpg", type: "photography", subtypes: ["nature", "sky"], link: "https://www.flickr.com/photos/185219841@N08/55336017383/", alt: "DSC03428" },
+    { src: "https://live.staticflickr.com/65535/55336017358_a3074c8d6f_b.jpg", type: "photography", subtypes: ["stylized", "sky"], link: "https://www.flickr.com/photos/185219841@N08/55336017358/", alt: "DSC03429" },
+    { src: "https://live.staticflickr.com/65535/55334931182_f383e47b94_b.jpg", type: "photography", subtypes: ["nature", "sky"], link: "https://www.flickr.com/photos/185219841@N08/55334931182/", alt: "DSC03532" },
+    { src: "https://live.staticflickr.com/65535/55336279915_252e7c4201_b.jpg", type: "photography", subtypes: ["nature", "experimental"], link: "https://www.flickr.com/photos/185219841@N08/55336279915/", alt: "DSC03545" },
+    { src: "https://live.staticflickr.com/65535/55336279880_9d7f637011_b.jpg", type: "photography", subtypes: ["nature", "sky"], link: "https://www.flickr.com/photos/185219841@N08/55336279880/", alt: "DSC03557" },
+    { src: "https://live.staticflickr.com/65535/55336017433_c5f445e876_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336017433/", alt: "DSC03573" },
+    { src: "https://live.staticflickr.com/65535/55336017438_3605b8dc76_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336017438/", alt: "DSC03582" },
+    { src: "https://live.staticflickr.com/65535/55335866151_fa7ccdd9bf_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55335866151/", alt: "DSC03606" },
+    { src: "https://live.staticflickr.com/65535/55336076649_434df8cb1d_b.jpg", type: "photography", subtypes: ["architectural"], link: "https://www.flickr.com/photos/185219841@N08/55336076649/", alt: "DSC03619" },
+    { src: "https://live.staticflickr.com/65535/55336017448_a6c5402446_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336017448/", alt: "DSC03630" },
+    { src: "https://live.staticflickr.com/65535/55335866236_648c1b5866_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55335866236/", alt: "DSC03636" },
+    { src: "https://live.staticflickr.com/65535/55336076659_df71f535fc_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55336076659/", alt: "DSC03645-Enhanced-NR" },
+    { src: "https://live.staticflickr.com/65535/55335866226_d0dae46f17_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55335866226/", alt: "DSC03778" },
+    { src: "https://live.staticflickr.com/65535/55335866286_7d32a8fc2e_b.jpg", type: "photography", subtypes: ["winter", "stylized"], link: "https://www.flickr.com/photos/185219841@N08/55335866286/", alt: "DSC03789" },
+    { src: "https://live.staticflickr.com/65535/55336076709_0985753493_b.jpg", type: "photography", subtypes: ["architectural", "winter"], link: "https://www.flickr.com/photos/185219841@N08/55336076709/", alt: "DSC03811" },
+    { src: "https://live.staticflickr.com/65535/55336017493_d5d4ef9a52_b.jpg", type: "photography", subtypes: ["organic"], link: "https://www.flickr.com/photos/185219841@N08/55336017493/", alt: "DSC03820" },
+    { src: "https://live.staticflickr.com/65535/55336262135_a4188df5c2_b.jpg", type: "photography", subtypes: ["nature", "winter"], link: "https://www.flickr.com/photos/185219841@N08/55336262135/", alt: "DSC03839" },
+    { src: "https://live.staticflickr.com/65535/55336280050_0cd7a2a634_b.jpg", type: "photography", subtypes: ["nature", "winter"], link: "https://www.flickr.com/photos/185219841@N08/55336280050/", alt: "DSC03841" },
+    { src: "https://live.staticflickr.com/65535/55335848411_464c8164ce_b.jpg", type: "photography", subtypes: ["nature", "winter"], link: "https://www.flickr.com/photos/185219841@N08/55335848411/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334913967_44228639bf_b.jpg", type: "photography", subtypes: ["nature", "winter"], link: "https://www.flickr.com/photos/185219841@N08/55334913967/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336262220_2ba405a3be_b.jpg", type: "photography", subtypes: ["winter"], link: "https://www.flickr.com/photos/185219841@N08/55336262220/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335866331_d618c422da_b.jpg", type: "photography", subtypes: ["winter", "street"], link: "https://www.flickr.com/photos/185219841@N08/55335866331/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336076744_34a3c11949_b.jpg", type: "photography", subtypes: ["winter", "street"], link: "https://www.flickr.com/photos/185219841@N08/55336076744/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334914007_6520d91f65_b.jpg", type: "photography", subtypes: ["stylized", "street", "sky"], link: "https://www.flickr.com/photos/185219841@N08/55334914007/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336017548_ae72cdc0b7_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336017548/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334931337_02c8d117f3_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55334931337/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336076779_370b87e61a_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336076779/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336076814_d76619371d_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336076814/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336280085_63f209c02b_b.jpg", type: "photography", subtypes: ["animal", "nature"], link: "https://www.flickr.com/photos/185219841@N08/55336280085/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334931392_bb20d9402a_b.jpg", type: "photography", subtypes: ["animal", "nature"], link: "https://www.flickr.com/photos/185219841@N08/55334931392/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335866376_985afd578a_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55335866376/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336059239_e3aeccb1df_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336059239/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336262740_5efa834f07_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336262740/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336262630_7f9da7d4d6_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336262630/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336262905_27d77639e2_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55336262905/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336000298_3ece9eb74c_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336000298/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336263215_593eeca164_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336263215/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334914892_0d8140530a_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55334914892/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335849571_7ab3a1c09a_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55335849571/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336059829_86def11ae6_b.jpg", type: "photography", subtypes: ["street"], link: "https://www.flickr.com/photos/185219841@N08/55336059829/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336059924_89048e30a9_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336059924/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336263605_921896b2e7_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336263605/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334915332_8a8ddcc1d5_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55334915332/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336263620_55eaf2a2fc_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336263620/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336000973_77575dd5ed_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336000973/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334915737_d72da5004d_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55334915737/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336060144_97599b145b_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336060144/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334915702_dae97227e0_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55334915702/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336060364_deef4812c1_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336060364/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335850531_2e068900fc_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55335850531/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336264475_5b199810e0_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336264475/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336264385_7b0415f155_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55336264385/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336264895_a1ca68a271_b.jpg", type: "photography", subtypes: ["sky", "architectural"], link: "https://www.flickr.com/photos/185219841@N08/55336264895/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336061324_f054f8daa3_b.jpg", type: "photography", subtypes: ["experimental", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336061324/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336002483_6c39656c71_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55336002483/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336265195_148231c82b_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55336265195/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336265290_22fc6ac0de_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55336265290/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336002663_3552f31d76_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55336002663/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336061854_1121177f43_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336061854/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336061909_cba7aba5b9_b.jpg", type: "photography", subtypes: ["animal", "nature"], link: "https://www.flickr.com/photos/185219841@N08/55336061909/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335851866_1840cc53c9_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55335851866/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336062014_f966b60ea0_b.jpg", type: "photography", subtypes: ["organic", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336062014/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336266005_a682689684_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336266005/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336266010_ff7f9450d8_b.jpg", type: "photography", subtypes: ["organic", "animal", "nature"], link: "https://www.flickr.com/photos/185219841@N08/55336266010/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336062264_9ee75be349_b.jpg", type: "photography", subtypes: ["organic", "animal", "nature"], link: "https://www.flickr.com/photos/185219841@N08/55336062264/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334917907_b8f0bc301a_b.jpg", type: "photography", subtypes: ["nature", "organic", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55334917907/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334918222_93d602eb45_b.jpg", type: "photography", subtypes: ["nature", "architectural"], link: "https://www.flickr.com/photos/185219841@N08/55334918222/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336266030_4db9eee10a_b.jpg", type: "photography", subtypes: ["nature", "architectural"], link: "https://www.flickr.com/photos/185219841@N08/55336266030/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334917687_d2812bfe1f_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55334917687/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336003908_60799a0781_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336003908/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334918232_8e3ca01e7d_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55334918232/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336266480_61ec5d9c13_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336266480/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336266985_79c56a8d7b_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336266985/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336004268_830e7c0196_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336004268/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336266860_96fd210753_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336266860/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336063409_d563927360_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55336063409/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336063664_1b19358bb9_b.jpg", type: "photography", subtypes: ["portrait", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336063664/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336004828_3dff4bcb12_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55336004828/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336063749_8482807cf3_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55336063749/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335853911_b6b6c33dbc_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55335853911/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336267780_1b00549a5c_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55336267780/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336005143_c615e25e52_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55336005143/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335854326_50f4e80636_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55335854326/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336064364_d7187d4f32_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336064364/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336268220_9c30b7c847_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336268220/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336005613_4525399a72_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336005613/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335854346_ebd8418df3_b.jpg", type: "photography", subtypes: ["portrait", "nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55335854346/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336064389_698ebc0cf9_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336064389/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334920102_d0fcd1c62a_b.jpg", type: "photography", subtypes: ["interior"], link: "https://www.flickr.com/photos/185219841@N08/55334920102/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335854776_59d510df9f_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55335854776/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336268720_56225f9bfd_b.jpg", type: "photography", subtypes: ["street"], link: "https://www.flickr.com/photos/185219841@N08/55336268720/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334920677_ca5573c756_b.jpg", type: "photography", subtypes: ["nature", "portrait", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55334920677/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335855741_757986dd02_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55335855741/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335855906_589db8f9cb_b.jpg", type: "photography", subtypes: ["nature", "abstract"], link: "https://www.flickr.com/photos/185219841@N08/55335855906/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336066284_4d563eb391_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55336066284/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336066534_bf3327be86_b.jpg", type: "photography", subtypes: ["portrait", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336066534/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334921942_655fcdf6e2_b.jpg", type: "photography", subtypes: ["nature", "sky"], link: "https://www.flickr.com/photos/185219841@N08/55334921942/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336066809_a82408e8f4_b.jpg", type: "photography", subtypes: ["interior", "nature"], link: "https://www.flickr.com/photos/185219841@N08/55336066809/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334921952_7d5d082f0a_b.jpg", type: "photography", subtypes: ["interior", "nature"], link: "https://www.flickr.com/photos/185219841@N08/55334921952/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336067204_8b174a5d5f_b.jpg", type: "photography", subtypes: ["street"], link: "https://www.flickr.com/photos/185219841@N08/55336067204/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335857116_7718031d9b_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55335857116/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335857711_79b10ab370_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55335857711/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335857651_b4497f6607_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55335857651/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336271385_36fd2e9a9f_b.jpg", type: "photography", subtypes: ["stylized", "experimental", "abstract", "organic", "nature"], link: "https://www.flickr.com/photos/185219841@N08/55336271385/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334923127_d9ed2aca83_b.jpg", type: "photography", subtypes: ["nature", "stylized", "street"], link: "https://www.flickr.com/photos/185219841@N08/55334923127/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336068659_b6304c0527_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336068659/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336010228_b25f21725b_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336010228/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336010348_8712c38cd9_b.jpg", type: "photography", subtypes: ["nature", "architectural"], link: "https://www.flickr.com/photos/185219841@N08/55336010348/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336010628_945ebeecdf_b.jpg", type: "photography", subtypes: ["architectural", "street"], link: "https://www.flickr.com/photos/185219841@N08/55336010628/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336069059_4f617d1466_b.jpg", type: "photography", subtypes: ["architectural", "street"], link: "https://www.flickr.com/photos/185219841@N08/55336069059/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336010608_fa548878a4_b.jpg", type: "photography", subtypes: ["architectural"], link: "https://www.flickr.com/photos/185219841@N08/55336010608/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336069324_166d5d4f35_b.jpg", type: "photography", subtypes: ["sky"], link: "https://www.flickr.com/photos/185219841@N08/55336069324/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335859581_6c75541de8_b.jpg", type: "photography", subtypes: ["nature", "street"], link: "https://www.flickr.com/photos/185219841@N08/55335859581/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336273140_988280453d_b.jpg", type: "photography", subtypes: ["nature", "architectural", "stylized"], link: "https://www.flickr.com/photos/185219841@N08/55336273140/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334924607_01ccab0194_b.jpg", type: "photography", subtypes: ["street", "architectural"], link: "https://www.flickr.com/photos/185219841@N08/55334924607/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336070184_fd4f272829_b.jpg", type: "photography", subtypes: ["stylized", "abstract", "experimental", "street", "architectural"], link: "https://www.flickr.com/photos/185219841@N08/55336070184/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336070179_71880fac4e_b.jpg", type: "photography", subtypes: ["street"], link: "https://www.flickr.com/photos/185219841@N08/55336070179/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334925402_e731645db2_b.jpg", type: "photography", subtypes: ["street"], link: "https://www.flickr.com/photos/185219841@N08/55334925402/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336274050_c7b2f0c9fb_b.jpg", type: "photography", subtypes: ["animal", "organic"], link: "https://www.flickr.com/photos/185219841@N08/55336274050/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335860416_00c7ab0578_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55335860416/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336274235_414b7c0628_b.jpg", type: "photography", subtypes: ["nature", "animal", "organic", "experimental"], link: "https://www.flickr.com/photos/185219841@N08/55336274235/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335860806_ee97f169bb_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55335860806/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336071029_b92f7c15bb_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336071029/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334926027_3dec1c816d_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55334926027/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336275115_ba09522510_b.jpg", type: "photography", subtypes: ["animal", "portrait"], link: "https://www.flickr.com/photos/185219841@N08/55336275115/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334931412_1cb653f813_b.jpg", type: "photography", subtypes: ["architectural", "nature"], link: "https://www.flickr.com/photos/185219841@N08/55334931412/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336261120_513f18706d_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336261120/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336058389_75987635d9_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336058389/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336261620_6c42869998_b.jpg", type: "photography", subtypes: ["nature", "black&white", "sky", "winter"], link: "https://www.flickr.com/photos/185219841@N08/55336261620/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335848256_91fa40672d_b.jpg", type: "photography", subtypes: ["nature", "stylized", "winter"], link: "https://www.flickr.com/photos/185219841@N08/55335848256/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335999288_408dced5bb_b.jpg", type: "photography", subtypes: ["nature", "winter", "stylized"], link: "https://www.flickr.com/photos/185219841@N08/55335999288/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336058854_a50863190a_b.jpg", type: "photography", subtypes: ["experimental", "stylized", "nature", "street"], link: "https://www.flickr.com/photos/185219841@N08/55336058854/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334914572_cb47e124c4_b.jpg", type: "photography", subtypes: ["architectural"], link: "https://www.flickr.com/photos/185219841@N08/55334914572/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336275535_098704c1ac_b.jpg", type: "photography", subtypes: ["street"], link: "https://www.flickr.com/photos/185219841@N08/55336275535/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336275735_b97abaaf78_b.jpg", type: "photography", subtypes: ["sky"], link: "https://www.flickr.com/photos/185219841@N08/55336275735/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336013758_540f81d4f5_b.jpg", type: "photography", subtypes: ["abstract", "nature"], link: "https://www.flickr.com/photos/185219841@N08/55336013758/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334927452_ee08930ee8_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55334927452/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334927402_97a29aa2d7_b.jpg", type: "photography", subtypes: ["nature", "architectural"], link: "https://www.flickr.com/photos/185219841@N08/55334927402/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336072604_fd4812c6eb_b.jpg", type: "photography", subtypes: ["nature", "organic"], link: "https://www.flickr.com/photos/185219841@N08/55336072604/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336072734_fa8ac4bf08_b.jpg", type: "photography", subtypes: ["sky", "stylized"], link: "https://www.flickr.com/photos/185219841@N08/55336072734/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336072899_b46233d950_b.jpg", type: "photography", subtypes: ["sky"], link: "https://www.flickr.com/photos/185219841@N08/55336072899/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336276320_ee0da28ed3_b.jpg", type: "photography", subtypes: ["experimental", "sky"], link: "https://www.flickr.com/photos/185219841@N08/55336276320/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336276605_52e8be209b_b.jpg", type: "photography", subtypes: ["sky", "dark"], link: "https://www.flickr.com/photos/185219841@N08/55336276605/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336073174_8e86d4fcbc_b.jpg", type: "photography", subtypes: ["sky"], link: "https://www.flickr.com/photos/185219841@N08/55336073174/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336073079_d03f298cee_b.jpg", type: "photography", subtypes: ["sky"], link: "https://www.flickr.com/photos/185219841@N08/55336073079/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336015023_6d6f148103_b.jpg", type: "photography", subtypes: ["animal"], link: "https://www.flickr.com/photos/185219841@N08/55336015023/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336277175_c823488472_b.jpg", type: "photography", subtypes: ["black&white", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336277175/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336015193_0d64e207b6_b.jpg", type: "photography", subtypes: ["architectural"], link: "https://www.flickr.com/photos/185219841@N08/55336015193/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334928807_cc125dacb2_b.jpg", type: "photography", subtypes: ["abstract", "experimental"], link: "https://www.flickr.com/photos/185219841@N08/55334928807/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336073764_84c5653d51_b.jpg", type: "photography", subtypes: ["sky"], link: "https://www.flickr.com/photos/185219841@N08/55336073764/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336277805_757fd732b8_b.jpg", type: "photography", subtypes: ["architectural", "stylized"], link: "https://www.flickr.com/photos/185219841@N08/55336277805/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336277955_04f22bc316_b.jpg", type: "photography", subtypes: ["street", "architectural"], link: "https://www.flickr.com/photos/185219841@N08/55336277955/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336074299_c16eddfb0b_b.jpg", type: "photography", subtypes: ["architectural", "street"], link: "https://www.flickr.com/photos/185219841@N08/55336074299/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336278150_acb6bdafac_b.jpg", type: "photography", subtypes: ["street", "architectural"], link: "https://www.flickr.com/photos/185219841@N08/55336278150/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336074619_e05cc521ab_b.jpg", type: "photography", subtypes: ["architectural", "street"], link: "https://www.flickr.com/photos/185219841@N08/55336074619/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336278545_efe61a20a0_b.jpg", type: "photography", subtypes: ["street", "organic"], link: "https://www.flickr.com/photos/185219841@N08/55336278545/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334929402_5e135286c0_b.jpg", type: "photography", subtypes: ["architectural", "street"], link: "https://www.flickr.com/photos/185219841@N08/55334929402/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335864591_47bb64280b_b.jpg", type: "photography", subtypes: ["stylized", "interior", "architectural"], link: "https://www.flickr.com/photos/185219841@N08/55335864591/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336016248_b3cb5dbdff_b.jpg", type: "photography", subtypes: ["architectural", "stylized", "interior"], link: "https://www.flickr.com/photos/185219841@N08/55336016248/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336278880_6afd4b5e70_b.jpg", type: "photography", subtypes: ["sky"], link: "https://www.flickr.com/photos/185219841@N08/55336278880/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336278885_bd97cb67ff_b.jpg", type: "photography", subtypes: ["nature", "stylized", "street"], link: "https://www.flickr.com/photos/185219841@N08/55336278885/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336075694_f1416b7879_b.jpg", type: "photography", subtypes: ["experimental", "sky", "dark", "night"], link: "https://www.flickr.com/photos/185219841@N08/55336075694/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335865581_7380eced15_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55335865581/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336017068_68a8807f5e_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336017068/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336017183_fcb0ac63b5_b.jpg", type: "photography", subtypes: ["animal", "organic", "nature"], link: "https://www.flickr.com/photos/185219841@N08/55336017183/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336076069_1fda198567_b.jpg", type: "photography", subtypes: ["dark", "sky", "night"], link: "https://www.flickr.com/photos/185219841@N08/55336076069/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336268855_87983a74de_b.jpg", type: "photography", subtypes: ["nature", "sky"], link: "https://www.flickr.com/photos/185219841@N08/55336268855/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336269090_deb887ca29_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336269090/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335855336_075641f150_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55335855336/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336065509_7f1dc89f82_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336065509/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336007113_ba4f43956c_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336007113/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336007248_f7d855d64c_b.jpg", type: "photography", subtypes: ["nature", "portrait", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336007248/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334921652_f328331beb_b.jpg", type: "photography", subtypes: ["nature", "portrait", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55334921652/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336007878_2b02d378bc_b.jpg", type: "photography", subtypes: ["dark", "sky", "night"], link: "https://www.flickr.com/photos/185219841@N08/55336007878/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336066849_475838dc55_b.jpg", type: "photography", subtypes: ["architectural"], link: "https://www.flickr.com/photos/185219841@N08/55336066849/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336270915_4a3013678f_b.jpg", type: "photography", subtypes: ["architectural", "street"], link: "https://www.flickr.com/photos/185219841@N08/55336270915/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336008718_180cb1f18e_b.jpg", type: "photography", subtypes: ["nature", "architectural"], link: "https://www.flickr.com/photos/185219841@N08/55336008718/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335857476_ae590386dc_b.jpg", type: "photography", subtypes: ["portrait", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55335857476/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334924267_11bc6c1bd9_b.jpg", type: "photography", subtypes: ["sky", "organic"], link: "https://www.flickr.com/photos/185219841@N08/55334924267/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336070419_caa0726b27_b.jpg", type: "photography", subtypes: ["nature"], link: "https://www.flickr.com/photos/185219841@N08/55336070419/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336011473_52ec317378_b.jpg", type: "photography", subtypes: ["street"], link: "https://www.flickr.com/photos/185219841@N08/55336011473/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335860996_0ef165cd94_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55335860996/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336071424_56d2b82d4f_b.jpg", type: "photography", subtypes: ["nature", "animal", "portrait"], link: "https://www.flickr.com/photos/185219841@N08/55336071424/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336071669_a29ef7a8db_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336071669/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336275260_eb265d2d24_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336275260/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336057659_ab88e0b203_b.jpg", type: "photography", subtypes: ["nature", "dark", "sky", "night"], link: "https://www.flickr.com/photos/185219841@N08/55336057659/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336057564_90c465cee2_b.jpg", type: "photography", subtypes: ["nature", "dark", "sky", "night"], link: "https://www.flickr.com/photos/185219841@N08/55336057564/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335847116_75ff1342c1_b.jpg", type: "photography", subtypes: ["nature", "portrait", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55335847116/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335998643_d51457779c_b.jpg", type: "photography", subtypes: ["nature", "sky"], link: "https://www.flickr.com/photos/185219841@N08/55335998643/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334913192_1aa014de60_b.jpg", type: "photography", subtypes: ["night", "sky", "dark"], link: "https://www.flickr.com/photos/185219841@N08/55334913192/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334913412_aef94ca712_b.jpg", type: "photography", subtypes: ["dark", "sky", "night"], link: "https://www.flickr.com/photos/185219841@N08/55334913412/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55335847686_6d358ae8dc_b.jpg", type: "photography", subtypes: ["dark", "sky", "night"], link: "https://www.flickr.com/photos/185219841@N08/55335847686/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336058229_9e06df8f3c_b.jpg", type: "photography", subtypes: ["black&white", "winter", "nature"], link: "https://www.flickr.com/photos/185219841@N08/55336058229/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336262270_3c91db165c_b.jpg", type: "photography", subtypes: ["winter", "abstract"], link: "https://www.flickr.com/photos/185219841@N08/55336262270/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334926852_59952ef3af_b.jpg", type: "photography", subtypes: ["stylized", "street"], link: "https://www.flickr.com/photos/185219841@N08/55334926852/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55334926987_631fea059d_b.jpg", type: "photography", subtypes: ["nature", "stylized"], link: "https://www.flickr.com/photos/185219841@N08/55334926987/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336276765_b0a330e907_b.jpg", type: "photography", subtypes: ["stylized", "dark", "sky", "night"], link: "https://www.flickr.com/photos/185219841@N08/55336276765/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336277355_86d9358141_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336277355/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336277615_c035a70ab6_b.jpg", type: "photography", subtypes: ["animal", "nature"], link: "https://www.flickr.com/photos/185219841@N08/55336277615/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336015083_30387d801a_b.jpg", type: "photography", subtypes: ["nature", "stylized"], link: "https://www.flickr.com/photos/185219841@N08/55336015083/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336016873_c3c0e370f7_b.jpg", type: "photography", subtypes: ["experimental", "abstract", "stylized", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336016873/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336075609_0318313c5f_b.jpg", type: "photography", subtypes: ["sky", "dark"], link: "https://www.flickr.com/photos/185219841@N08/55336075609/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336016868_773c4185a9_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336016868/", alt: "photo" },
+    { src: "https://live.staticflickr.com/65535/55336279850_7d5d2c24f6_b.jpg", type: "photography", subtypes: ["nature", "animal"], link: "https://www.flickr.com/photos/185219841@N08/55336279850/", alt: "photo" }
+];
+
+        // ── Global subtypes ──
+        // These work across ALL media types (photography, 3D art, misc).
+        // Add or remove subtypes here — the filter buttons auto-generate.
+        const subtypes = ['nature', 'experimental', 'portrait', 'street', 'abstract', 'architectural', 'organic', 'animal', 'sky', 'night', 'interior', 'black&white', 'stylized', 'dark', 'winter'];
+
+        // ── Render ──
+        const grid = document.getElementById('gallery-grid');
+        const empty = document.getElementById('gallery-empty');
+        const subFilterEl = document.getElementById('sub-filters');
+        let currentFilter = 'all';
+        let currentSubtype = null;
+
+        // ── Pre-load images to get natural aspect ratios ──
+        var imageCache = {};
+
+        function preloadImages(arts, callback) {
+            var loaded = 0;
+            var total = arts.length;
+            arts.forEach(function(art) {
+                if (imageCache[art.src]) {
+                    loaded++;
+                    if (loaded === total) callback();
+                    return;
+                }
+                var img = new Image();
+                img.onload = function() {
+                    imageCache[art.src] = img.naturalWidth / img.naturalHeight;
+                    loaded++;
+                    if (loaded === total) callback();
+                };
+                img.onerror = function() {
+                    imageCache[art.src] = 1; // fallback square
+                    loaded++;
+                    if (loaded === total) callback();
+                };
+                img.src = art.src;
+            });
+            if (total === 0) callback();
+        }
+
+        function renderGallery(filter, subtype) {
+            var filtered = filter === 'all'
+                ? artworks
+                : artworks.filter(function(a) { return a.type === filter; });
+
+            if (subtype) {
+                filtered = filtered.filter(function(a) { return a.subtypes && a.subtypes.indexOf(subtype) !== -1; });
+            }
+
+            grid.innerHTML = '';
+            if (filtered.length === 0) {
+                empty.classList.add('visible');
+                return;
+            }
+            empty.classList.remove('visible');
+
+            preloadImages(filtered, function() {
+                // Balance portrait and landscape images for visual rhythm
+                var balanced = balanceOrientations(filtered);
+                layoutJustified(balanced);
+                if (editMode) styleItemsForEditMode();
+            });
+        }
+
+        // ── Balance orientations for visual rhythm ──
+        function balanceOrientations(arts) {
+            var portraits = [];
+            var landscapes = [];
+            var squares = [];
+
+            arts.forEach(function(a) {
+                var ratio = imageCache[a.src] || 1;
+                if (ratio < 0.85) portraits.push(a);
+                else if (ratio > 1.15) landscapes.push(a);
+                else squares.push(a);
+            });
+
+            var result = [];
+            var p = 0, l = 0, s = 0;
+            var targetGroupSize = 3; // how many of dominant type before switching
+            var mode = landscapes.length >= portraits.length ? 'landscape' : 'portrait';
+            var count = 0;
+
+            while (p < portraits.length || l < landscapes.length || s < squares.length) {
+                if (mode === 'landscape' && l < landscapes.length) {
+                    result.push(landscapes[l++]);
+                    count++;
+                    if (count >= targetGroupSize) { mode = 'portrait'; count = 0; }
+                } else if (mode === 'portrait' && p < portraits.length) {
+                    result.push(portraits[p++]);
+                    count++;
+                    if (count >= (targetGroupSize - 1)) { mode = 'landscape'; count = 0; }
+                } else if (s < squares.length) {
+                    result.push(squares[s++]);
+                } else if (l < landscapes.length) {
+                    result.push(landscapes[l++]);
+                } else if (p < portraits.length) {
+                    result.push(portraits[p++]);
+                } else {
+                    break;
+                }
+            }
+
+            return result;
+        }
+
+        // ── Flickr-style justified row layout ──
+        var ROW_GAP = 4;
+
+        function layoutJustified(arts) {
+            var containerWidth = grid.offsetWidth;
+            var targetRowHeight = 280;
+            var rows = [];
+            var currentRow = [];
+            var currentWidth = 0;
+
+            arts.forEach(function(art, i) {
+                var ratio = imageCache[art.src] || 1;
+                var itemWidth = targetRowHeight * ratio;
+
+                if (currentRow.length > 0 && currentWidth + itemWidth > containerWidth - ROW_GAP) {
+                    // Finalize the current row
+                    rows.push({ items: currentRow, totalWidth: currentWidth });
+                    currentRow = [];
+                    currentWidth = 0;
+                }
+
+                currentRow.push({ art: art, ratio: ratio, width: itemWidth });
+                currentWidth += itemWidth + (currentRow.length > 1 ? ROW_GAP : 0);
+            });
+
+            // Push remaining items as the last row (not stretched)
+            if (currentRow.length > 0) {
+                rows.push({ items: currentRow, totalWidth: currentWidth, last: true });
+            }
+
+            // Render rows
+            var fragment = document.createDocumentFragment();
+            rows.forEach(function(row) {
+                var rowEl = document.createElement('div');
+                rowEl.className = 'gallery-row';
+
+                var totalRatio = 0;
+                row.items.forEach(function(it) { totalRatio += it.ratio; });
+
+                var availableWidth = containerWidth - (row.items.length - 1) * ROW_GAP;
+                var actualRowHeight = row.last
+                    ? targetRowHeight
+                    : Math.max(120, Math.min(500, availableWidth / totalRatio));
+
+                row.items.forEach(function(it, idx) {
+                    var item = document.createElement('div');
+                    item.className = 'gallery-item';
+                    item.style.cursor = 'zoom-in';
+
+                    var img = document.createElement('img');
+                    img.src = it.art.src;
+                    img.alt = it.art.alt || '';
+                    img.loading = 'lazy';
+                    img.style.aspectRatio = it.ratio;
+
+                    var tag = document.createElement('span');
+                    tag.className = 'type-tag';
+                    tag.textContent = (it.art.subtypes && it.art.subtypes[0]) || it.art.type;
+
+                    item.appendChild(img);
+                    item.appendChild(tag);
+
+                    // Click to open lightbox — or tag picker in edit mode
+                    (function(artwork, itemEl) {
+                        itemEl.addEventListener('click', function(e) {
+                            if (typeof editMode !== 'undefined' && editMode) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                openTagPicker(artwork, itemEl);
+                                return;
+                            }
+                            e.preventDefault();
+                            var allIndex = arts.indexOf(artwork);
+                            if (allIndex !== -1) {
+                                openLightbox(arts, allIndex);
+                            }
+                        });
+                    })(it.art, item);
+
+                    var w = row.last
+                        ? Math.round(it.ratio * actualRowHeight)
+                        : Math.round((it.ratio / totalRatio) * availableWidth);
+                    item.style.width = w + 'px';
+                    item.style.height = actualRowHeight + 'px';
+
+                    rowEl.appendChild(item);
+                });
+
+                fragment.appendChild(rowEl);
+            });
+
+            grid.appendChild(fragment);
+        }
+
+        // ── Lightbox viewer ──
+        var lb = document.getElementById('lightbox');
+        var lbImg = document.getElementById('lb-img');
+        var lbClose = document.getElementById('lb-close');
+        var lbPrev = document.getElementById('lb-prev');
+        var lbNext = document.getElementById('lb-next');
+        var lbCounter = document.getElementById('lb-counter');
+        var lbLink = document.getElementById('lb-link');
+        var lbArts = [];
+        var lbIndex = 0;
+
+        function openLightbox(arts, index) {
+            lbArts = arts;
+            lbIndex = index;
+            showLightboxImage();
+            lb.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function showLightboxImage() {
+            var art = lbArts[lbIndex];
+            lbImg.src = art.src;
+            lbImg.alt = art.alt || '';
+            lbLink.href = art.link || '#';
+            lbCounter.textContent = (lbIndex + 1) + ' / ' + lbArts.length;
+            lbPrev.style.display = lbArts.length > 1 ? '' : 'none';
+            lbNext.style.display = lbArts.length > 1 ? '' : 'none';
+        }
+
+        function closeLightbox() {
+            lb.classList.remove('open');
+            document.body.style.overflow = '';
+        }
+
+        function prevImage() {
+            if (lbArts.length < 2) return;
+            lbIndex = (lbIndex - 1 + lbArts.length) % lbArts.length;
+            showLightboxImage();
+        }
+
+        function nextImage() {
+            if (lbArts.length < 2) return;
+            lbIndex = (lbIndex + 1) % lbArts.length;
+            showLightboxImage();
+        }
+
+        // Lightbox event listeners
+        lbClose.addEventListener('click', function(e) { e.stopPropagation(); closeLightbox(); });
+        lbPrev.addEventListener('click', function(e) { e.stopPropagation(); prevImage(); });
+        lbNext.addEventListener('click', function(e) { e.stopPropagation(); nextImage(); });
+        lb.addEventListener('click', closeLightbox);
+        document.getElementById('lb-img-wrap').addEventListener('click', function(e) { e.stopPropagation(); });
+
+        document.addEventListener('keydown', function(e) {
+            if (!lb.classList.contains('open')) return;
+            if (e.key === 'Escape') closeLightbox();
+            if (e.key === 'ArrowLeft') prevImage();
+            if (e.key === 'ArrowRight') nextImage();
+        });
+
+        // ── Re-layout on resize ──
+        var resizeTimer;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimer);
+            resizeTimer = setTimeout(function() {
+                if (currentFilter) {
+                    renderGallery(currentFilter, currentSubtype);
+                }
+            }, 250);
+        });
+
+        // ── Build subtype buttons (global — same for all types) ──
+        function buildSubtypeButtons() {
+            subFilterEl.innerHTML = '';
+            currentSubtype = null;
+
+            if (!subtypes || subtypes.length === 0) {
+                subFilterEl.classList.remove('visible');
+                return;
+            }
+
+            subFilterEl.classList.add('visible');
+
+            subtypes.forEach(function(st) {
+                var btn = document.createElement('button');
+                btn.textContent = st;
+                btn.setAttribute('data-subtype', st);
+                btn.addEventListener('click', function() {
+                    subFilterEl.querySelectorAll('button').forEach(function(b) {
+                        b.classList.remove('active');
+                    });
+                    btn.classList.add('active');
+                    currentSubtype = st;
+                    renderGallery(currentFilter, currentSubtype);
+                });
+                subFilterEl.appendChild(btn);
+            });
+        }
+
+        // ── Type filter buttons ──
+        document.getElementById('filters').addEventListener('click', function(e) {
+            if (e.target.tagName !== 'BUTTON') return;
+            var filt = e.target.getAttribute('data-filter');
+            if (!filt) return; // skip buttons without data-filter (e.g. edit toggle)
+            document.querySelectorAll('#filters button').forEach(function(b) {
+                b.classList.remove('active');
+            });
+            e.target.classList.add('active');
+            currentFilter = filt;
+
+            // Show subtypes regardless of which type is selected
+            buildSubtypeButtons();
+
+            renderGallery(currentFilter, currentSubtype);
+        });
+
+        // Initial render
+        buildSubtypeButtons();
+        renderGallery('all', null);
+
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        //  TAG EDITOR — click an image to change subtype
+        // â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+        // Globals — needed by inline click handlers in layoutJustified
+        var editMode = false;
+        var editBtn, editPanel, editOutput;
+
+        function initTagEditor() {
+            // ── Toggle button ──
+            editBtn = document.createElement('button');
+            editBtn.textContent = '✎ Edit tags';
+            editBtn.style.cssText = 'font-family:inherit;font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;padding:0.4rem 0.8rem;border:1px solid rgba(255,255,255,0.08);border-radius:4px;background:transparent;color:rgba(255,255,255,0.2);cursor:pointer;transition:all 0.25s;margin-left:auto;';
+            editBtn.onmouseenter = function(){editBtn.style.color='rgba(255,255,255,0.5)';editBtn.style.borderColor='rgba(255,255,255,0.15)';};
+            editBtn.onmouseleave = function(){if(!editMode){editBtn.style.color='rgba(255,255,255,0.2)';editBtn.style.borderColor='rgba(255,255,255,0.08)';}};
+            editBtn.onclick = toggleEditMode;
+            document.getElementById('filters').appendChild(editBtn);
+
+                        // Copy button next to edit button
+            editPanel = document.createElement('button');
+            editPanel.textContent = 'Copy';
+            editPanel.style.cssText = 'font-family:inherit;font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;padding:0.4rem 0.6rem;border:1px solid rgba(255,255,255,0.06);border-radius:4px;background:transparent;color:rgba(255,255,255,0.15);cursor:pointer;transition:all 0.25s;display:none;';
+            editPanel.onmouseenter = function(){editPanel.style.color='rgba(255,255,255,0.4)';editPanel.style.borderColor='rgba(255,255,255,0.12)';};
+            editPanel.onmouseleave = function(){editPanel.style.color='rgba(255,255,255,0.15)';editPanel.style.borderColor='rgba(255,255,255,0.06)';};
+            editPanel.onclick = function() {
+                var code = generateCodeOutput();
+                navigator.clipboard.writeText(code).then(function() {
+                    editPanel.textContent = 'Copied!';
+                    setTimeout(function(){editPanel.textContent = 'Copy';}, 2000);
+                });
+            };
+            document.getElementById('filters').appendChild(editPanel);
+            editOutput = { textContent: '' };
+        }
+
+        function toggleEditMode() {
+            editMode = !editMode;
+            editBtn.textContent = editMode ? '✎ Done editing' : '✎ Edit tags';
+            editBtn.style.color = editMode ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.2)';
+            editBtn.style.borderColor = editMode ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.08)';
+            editPanel.style.display = editMode ? 'inline-block' : 'none';
+            if (editMode) {
+                // Close any open lightbox
+                closeLightbox();
+                generateCodeOutput();
+            }
+            renderGallery(currentFilter, currentSubtype);
+        }
+
+        function styleItemsForEditMode() {
+            grid.querySelectorAll('.gallery-item').forEach(function(el) {
+                el.style.cursor = editMode ? 'pointer' : 'zoom-in';
+                var tag = el.querySelector('.type-tag');
+                if (tag) {
+                    tag.style.background = editMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.65)';
+                    tag.style.color = editMode ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.4)';
+                    tag.style.fontSize = editMode ? '0.55rem' : '0.5rem';
+                }
+            });
+        }
+
+        function openTagPicker(artwork, itemEl) {
+            if (!editMode) return;
+
+            // Remove any existing picker
+            var old = document.querySelector('.tag-picker');
+            if (old) old.remove();
+
+            var picker = document.createElement('div');
+            picker.className = 'tag-picker';
+            picker.style.cssText = 'position:fixed;z-index:99999;background:rgba(10,10,10,0.97);border:1px solid rgba(255,255,255,0.15);border-radius:6px;padding:0.3rem;display:flex;flex-wrap:wrap;gap:2px;max-width:260px;box-shadow:0 8px 40px rgba(0,0,0,0.6);';
+
+            // Position picker near the clicked element, append to body
+            var rect = itemEl.getBoundingClientRect();
+            picker.style.left = Math.max(4, Math.min(window.innerWidth - 270, rect.left + rect.width/2 - 130)) + 'px';
+            picker.style.top = Math.max(4, rect.top - 10) + 'px';
+            document.body.appendChild(picker);
+
+            subtypes.forEach(function(st) {
+                var opt = document.createElement('button');
+                opt.textContent = st;
+                opt.setAttribute('data-tag', st);
+                opt.style.cssText = 'font-family:inherit;font-size:0.5rem;letter-spacing:1px;padding:0.2rem 0.4rem;border-radius:3px;cursor:pointer;transition:all 0.15s;';
+                opt.onclick = function(e) {
+                    e.stopPropagation();
+                    if (!artwork.subtypes) artwork.subtypes = [];
+                    var idx = artwork.subtypes.indexOf(st);
+                    if (idx !== -1) {
+                        artwork.subtypes.splice(idx, 1);
+                    } else {
+                        artwork.subtypes.push(st);
+                    }
+                    // Update button appearance
+                    var has = artwork.subtypes.indexOf(st) !== -1;
+                    opt.style.border = '1px solid ' + (has ? 'rgba(255,255,255,0.25)' : 'transparent');
+                    opt.style.background = has ? 'rgba(255,255,255,0.08)' : 'transparent';
+                    opt.style.color = has ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.25)';
+                    // Update item badge
+                    var badge = itemEl.querySelector('.type-tag');
+                    if (badge) badge.textContent = (artwork.subtypes && artwork.subtypes[0]) || artwork.type;
+                    generateCodeOutput();
+                };
+                // Apply initial state
+                var hasTag = artwork.subtypes && artwork.subtypes.indexOf(st) !== -1;
+                opt.style.border = '1px solid ' + (hasTag ? 'rgba(255,255,255,0.25)' : 'transparent');
+                opt.style.background = hasTag ? 'rgba(255,255,255,0.08)' : 'transparent';
+                opt.style.color = hasTag ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.25)';
+                opt.onmouseenter = function(){opt.style.background='rgba(255,255,255,0.05)';opt.style.color='rgba(255,255,255,0.6)';};
+                opt.onmouseleave = function(){
+                    var has = artwork.subtypes && artwork.subtypes.indexOf(st) !== -1;
+                    opt.style.background = has ? 'rgba(255,255,255,0.08)' : 'transparent';
+                    opt.style.color = has ? 'rgba(255,255,255,0.7)' : 'rgba(255,255,255,0.25)';
+                };
+                picker.appendChild(opt);
+            });
+
+            // Close picker when clicking outside
+            function closePicker(e) {
+                if (!picker.contains(e.target) && e.target !== itemEl.querySelector('img') && !itemEl.contains(e.target)) {
+                    picker.remove();
+                    document.removeEventListener('click', closePicker);
+                }
+            }
+            setTimeout(function(){document.addEventListener('click', closePicker);}, 10);
+        }
+
+        function generateCodeOutput() {
+            var code = 'const artworks = [\n';
+            artworks.forEach(function(a, i) {
+                var subs = a.subtypes && a.subtypes.length ? '["' + a.subtypes.join('", "') + '"]' : '[]';
+                code += '    { src: "' + a.src + '", type: "' + a.type + '", subtypes: ' + subs + ', link: "' + a.link + '", alt: "' + (a.alt || '') + '" }';
+                if (i < artworks.length - 1) code += ',';
+                code += '\n';
+            });
+            code += '];';
+            editOutput.textContent = code;
+            return code;
+        }
+
+        initTagEditor();
+    </script>
+</body>
+</html>
