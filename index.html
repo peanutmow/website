@@ -1,446 +1,505 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SYSTEM</title>
-    <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <title>Alice Portfolio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --accent: #e0e0e0;
+            --bg-color: #0a0a0a;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow-x: hidden;
+            overflow-y: auto;
+            background: #000;
+        }
+
+        body {
+            font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        /* ── Custom scrollbar ── */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.08);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.15);
+        }
+
+        /* ── ASCII Water Canvas ── */
+        #ascii-water {
+            position: fixed;
+            top: 0;
+            left: 0;
+            margin: 0;
+            padding: 0;
+            color: #fff;
+            font-family: 'Courier New', 'Share Tech Mono', monospace;
+            white-space: pre;
+            overflow: hidden;
+            pointer-events: auto;
+            z-index: 1;
+            text-shadow: 0 0 4px rgba(255,255,255,0.3), 0 0 12px rgba(255,255,255,0.1);
+            user-select: none;
+            line-height: 1;
+            letter-spacing: 0;
+            tab-size: 1;
+        }
+
+
+
+        /* ── Persistent UI Overlay (invisible, kept for clicks) ── */
+        #ui-overlay {
+            position: fixed;
+            left: 0; right: 0;
+            z-index: 200;
+            text-align: center;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.6rem;
+            opacity: 0;
+        }
+
+        #ui-overlay .name {
+            font-size: 1rem;
+            color: rgba(255,255,255,0.6);
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px rgba(255,255,255,0.08);
+            opacity: 0.8;
+            font-weight: 300;
+        }
+
+        /* ── Glass-morphism button bar ── */
+        .button-bar {
+            position: relative;
+            width: 100%;
+            height: 3rem;
+            pointer-events: auto;
+        }
+
+        .button-bar .btn {
+            position: absolute;
+            top: 0;
+            color: rgba(255, 255, 255, 0.3);
+            text-decoration: none;
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border: 1px solid transparent;
+        }
+
+        .button-bar .btn:hover {
+            color: rgba(255, 255, 255, 0.85);
+            background: rgba(255, 255, 255, 0.07);
+            border-color: rgba(255, 255, 255, 0.08);
+            text-shadow: 0 0 15px rgba(255,255,255,0.15);
+        }
+
+        .button-bar .btn:active {
+            background: rgba(255, 255, 255, 0.12);
+            transform: scale(0.96);
+        }
+
+        /* ── Bio text ── */
+        #ui-overlay .bio {
+            font-size: 0.65rem;
+            color: rgba(255,255,255,0.15);
+            letter-spacing: 1.5px;
+            line-height: 1.5;
+            max-width: 420px;
+            opacity: 0.6;
+        }
+
+        /* ── Scroll-down content panel ── */
+        #content-panel {
+            position: relative;
+            z-index: 50;
+            margin-top: 100vh;
+            min-height: 100vh;
+            width: 100%;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #content-frame {
+            flex: 1;
+            width: 100%;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px;
+            background: transparent;
+            min-height: 0;
+        }
+
+        /* ── Inline socials (milky glass, no iframe) ── */
+        #socials-inline {
+            display: none;
+            flex: 1;
+            width: 100%;
+            border-radius: 8px;
+            background: url('GlassBlock.png') center/cover no-repeat, rgba(255,255,255,0.015);
+            backdrop-filter: blur(1.5px);
+            -webkit-backdrop-filter: blur(1.5px);
+            will-change: transform;
+            transform: translateZ(0);
+            padding: 2rem;
+            overflow-y: auto;
+            color: #fff;
+            font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
+        }
+        #socials-inline.visible {
+            display: block;
+        }
+        #socials-inline .si-inner {
+            max-width: 560px;
+            margin: 0 auto;
+        }
+        #socials-inline .si-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        #socials-inline .si-header h2 {
+            font-size: 1.1rem;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.85);
+            font-weight: 300;
+        }
+        #socials-inline .si-section {
+            margin-bottom: 2rem;
+        }
+        #socials-inline .si-section:last-child { margin-bottom: 0; }
+        #socials-inline .si-section-header {
+            font-size: 0.6rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.5);
+            margin-bottom: 0.75rem;
+            padding-left: 0.25rem;
+        }
+        #socials-inline .si-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+        #socials-inline .si-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.8rem 1.1rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 8px;
+            text-decoration: none;
+            color: rgba(255,255,255,0.65);
+            transition: color 0.25s ease, border-color 0.25s ease;
+            background: rgba(255,255,255,0.04);
+            contain: paint;
+        }
+        #socials-inline .si-item:hover {
+            color: rgba(255,255,255,0.9);
+            border-color: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.06);
+        }
+        #socials-inline .si-item .tag {
+            font-size: 0.55rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
+            min-width: 70px;
+            flex-shrink: 0;
+        }
+        #socials-inline .si-item .name {
+            font-size: 0.85rem;
+            color: rgba(255,255,255,0.8);
+        }
+        #socials-inline .si-item:hover .name { color: rgba(255,255,255,0.9); }
+        #socials-inline .si-placeholder {
+            cursor: default;
+            opacity: 0.35;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.8rem 1.1rem;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px;
+            color: rgba(255,255,255,0.45);
+            background: rgba(255,255,255,0.02);
+        }
+        #socials-inline .si-placeholder .tag {
+            font-size: 0.55rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.2);
+            min-width: 70px;
+            flex-shrink: 0;
+        }
+        #socials-inline .si-placeholder .name {
+            font-size: 0.65rem;
+            color: rgba(255,255,255,0.2);
+            font-style: italic;
+        }
+
+    </style>
 </head>
 <body>
-    <div class="scanlines"></div>
+    <!-- ASCII Water Simulation -->
+    <pre id="ascii-water"></pre>
 
-    <!-- ASCII PORTRAIT EASTER EGG -->
-    <div id="portrait-screen" class="screen hidden" style="position:relative;align-items:center;justify-content:center;padding:0;overflow:hidden;background:#000;color:#fff;">
-        <audio id="portrait-audio" src="Aphex Twin - Tree [ATzlzPLMUhc]_trim.mp3" preload="auto"></audio>
-        <div id="portrait-greeting" style="position:absolute;top:14%;right:7%;font-family:inherit;color:#fff;font-size:clamp(9px,0.9vw,13px);line-height:2.1;letter-spacing:0.12em;text-align:right;pointer-events:none;opacity:0;z-index:20;transition:opacity 2s ease-in;"></div>
-        <pre style="font-family:inherit;color:#fff;font-size:clamp(4px,0.52vw,10px);line-height:1.2;letter-spacing:0.05em;white-space:pre;background:transparent;">                                                                                                                        
-                                                                                                                        
-                                                                                                                        
-                                                                                                                        
-                                                    .....................                                               
-                                                ....                      ..                                            
-                                             ...    ..:::-----=+*o+-.:-::.   ....                                       
-                                          ..    .-=-OWWBMB&amp;B&amp;B&amp;&amp;&amp;%$%B&amp;&amp;BWo=:      .                                     
-                                       ..   .==:+oOMBWB&amp;&amp;%%&amp;%%%%&amp;B%$$$$####BM*-::.  ..                                  
-                                     ..   -+oWWOB%$$$$@@@#####%%$$%%$&amp;&amp;&amp;&amp;&amp;&amp;&amp;%$##%W+                                     
-                                   ..  .+O8WMB%$@@@@@@@##@##$$#@@@@@@@@@#%&amp;&amp;BB&amp;%%#%W+-.. .                              
-                                     :+MBMM%####@@@@@@###@@@@@@@@@@@@@@@@@@@#%%%&amp;&amp;%%%BM*. ..                            
-                                .. :OWBMW&amp;%#@#####@##$#@@@@@@@@@@@@@@@@@@@@@@@@#$&amp;$&amp;WWBWO:  .                           
-                              .. .=OB%BWB%&amp;%$$#######@@@@@@@@@@@@@@@@@@@@@@@@@@@@###&amp;BMB%W+: ..                         
-                             .  :+8B&amp;MMM&amp;&amp;$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#%&amp;BWWBW*..                          
-                            . :+*8WMM8W&amp;$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$&amp;BBBWBo-:..                       
-                             :ooOBB8M&amp;$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$&amp;B$%$BM8*:..                      
-                          ..=oO8WWMW&amp;$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$&amp;&amp;%$#MM8+...                     
-                         . -88OWBMW&amp;$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$##@&amp;BBM+..                     
-                         ..=OOWB%B&amp;###@@@##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#@@@$&amp;&amp;&amp;8- .                    
-                        . :OOM&amp;%$%%$$$###$$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#@@@$B%Bo- .                   
-                       . .*8W%#%%$#$%%%#$$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$BBMO...                  
-                       . =8M&amp;#$&amp;%$$%&amp;&amp;%$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@###@@@@@#&amp;&amp;B8=..                  
-                      ..:OMW%#&amp;&amp;$$$%&amp;%$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##@@@@@#%&amp;&amp;8. .                 
-                       .:*8W%$$%%$#$%%$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@####%&amp;8-..                 
-                       . =OM&amp;&amp;%&amp;$$$$$&amp;&amp;$##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@####$&amp;M- .                 
-                       ..-oMMWB%$%%&amp;BMMB%$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@####%&amp;M- .                 
-                       . .*888W&amp;%$B8o*8&amp;#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$%#@@@@#$$$$Bo..                  
-                        ..=O8O8B%$M**W#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@&amp;W%%#@$%%%%W- .                  
-                          :*88OM&amp;8*=8#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$MM&amp;#%&amp;%%BO:..                  
-                         . =oM8Mo=+=O%#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@M*8B%%%&amp;M= .                   
-                      .....:*888+=*8B%#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%OoO&amp;$%WO....                  
-                     .      *8OO++8$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%MOWBBW=    ..                
-                    . .=oOo+*o8o=o&amp;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%O8W&amp;W**o*-                  
-                   . -WWW&amp;##&amp;88=+W$##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$MOW%@@@#%&amp;O..               
-                  ..:WMoOMB#%M==*M%$$##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%BoM$@#$%BW&amp;+ .              
-                  . 8B8O8B&amp;$@W:=+8B&amp;$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#&amp;M*8@@#$$&amp;8BO .              
-                  . +BOOB%&amp;&amp;%8:=+OB%#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#%M*M#$#$#%8&amp;o .              
-                   . *MM%&amp;BWMO-=+oB$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$&amp;8+M#B&amp;%#$WB: .              
-                    ..OB%%BMMW=-+8%##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#&amp;O+W@BB%#$B= .               
-                    ...8B#&amp;W$%*=+8%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$O+B@$$@#B= .                
-                     . :8BM8$#B-=8%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@Bo*$@#%%&amp;+ ..                
-                      . .+W&amp;%%$+=O$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#Bo8@##$B= .                  
-                       . .oW&amp;%#8-O%#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#Bo&amp;@@#%O .                   
-                        .  .-=+--oB#@@@@@@@##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#W+o8O*: .                    
-                         ..     .*M$@@@@@@#%#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$8:     .                     
-                           ..... -8&amp;#@@@@#%&amp;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@&amp;+ .....                      
-                                ..*M%#@@@#&amp;$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@O=..                          
-                                . :*W&amp;$##%B$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@M8O..                          
-                                 . .+8B#$&amp;B%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$WB#O. .                         
-                                  .  :*8BBW&amp;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$&amp;#@#M: .                         
-                                    . =o*oOM%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##@@@@B-  ..                       
-                                    ..+&amp;%O+*OW$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%=:=  ..                     
-                                    . +&amp;$#&amp;8O8M%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$8=*M:   .                   
-                                   .. =B%#@@%&amp;&amp;&amp;%$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$M-B&amp;+:   ..                
-                                  .  .=W%#@@@@@####@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@$&amp;8M#BO=:.   ..             
-                                 . .++=M%#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$&amp;&amp;@#%MO*=:.  .......      
-                      ....      ...MOOWM$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$#@@@$&amp;WM8o=:         ... 
-                 ....      ....:::W%-8$$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$%%&amp;BMo+---::..    
-             ....     .:-++=---=-M@8=O%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##$$%&amp;BMOo*+=-:...
-         ....    .:=*OMBB8*++++=8@@8OM&amp;$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@###$$$$%%&amp;WMOo*+
-    ...      .-+o8W&amp;%%%B8o****+O#@@BB&amp;%##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@###$$#@@#$%%B
- ..    ...:=o8W&amp;%%$$%&amp;W8OooOO*O$@@@$%$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##@@@@@@#
-   ..:--+oMB%$$####$%BM88888OO&amp;@@@@@###@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#@@@@@@@
-.:=+**OMB%$###@###$&amp;BWMMMMM88B#@@@@@@#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-ooO8MB%$###@@@###%%&amp;BBBWWWWMW%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-MWB%$##@@@@@###$%$%%&amp;&amp;BB&amp;BBB%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-%$##@@@@@@@##$%$#$$$%%%%%&amp;&amp;%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-#@@@@@@@@@###$#@##$$$$$$$%$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@##############$$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@@##@@@@@@@#####@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@#$$#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$$##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$%$##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#####@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@###@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@#$$@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##%#@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@##@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@</pre>
+    <!-- Persistent UI -->
+    <div id="ui-overlay">
+        <div class="name">Hi, I'm Alice</div>
+        <div class="button-bar" id="button-bar">
+            <a href="#" class="btn" data-label="Socials" data-page="socials">Socials</a>
+            <a href="#" class="btn" data-label="Gallery" data-page="gallery">Gallery</a>
+            <a href="#" class="btn" data-label="Blog" data-page="blog">Blog</a>
+            <a href="#" class="btn" data-label="Experiments" data-page="experiments">Experiments</a>
+        </div>
+        <div class="bio">artist &amp; developer &mdash; building things that live at the intersection of code and art.</div>
     </div>
 
-    <!-- TERMINAL ENTRY SCREEN -->
-    <div id="terminal-screen" class="screen active">
-        <div class="terminal-container">
-            <p class="system-text">PROJECT A.P.W. - SYSTEM INITIALIZED</p>
-            <p class="system-text">YEAR 2015 //</p>
-            <p class="system-text">AWAITING USER INPUT TO UNLOCK TERMINAL...</p>
-            <div class="input-wrapper">
-                <span class="prompt">root@magi:~$</span>
-                <input type="text" id="cmd-input" autocomplete="off" spellcheck="false" autofocus>
+    <!-- Scroll-down content panel -->
+    <div id="content-panel">
+        <!-- Inline socials (no iframe — mouse events reach the water sim directly) -->
+        <div id="socials-inline">
+            <div class="si-inner">
+            <div class="si-header">
+                <h2>Connect</h2>
+            </div>
+            <div class="si-section">
+                <div class="si-section-header">My Accounts</div>
+                <div class="si-list">
+                    <a href="https://x.com/Alice_mow" target="_blank" class="si-item">
+                        <span class="tag">Twitter</span>
+                        <span class="name">@Alice_mow</span>
+                    </a>
+                    <a href="https://github.com/peanutmow" target="_blank" class="si-item">
+                        <span class="tag">GitHub</span>
+                        <span class="name">peanutmow</span>
+                    </a>
+                    <a href="https://discord.gg/sdTrfEHF" target="_blank" class="si-item">
+                        <span class="tag">Discord</span>
+                        <span class="name">alice_meower</span>
+                    </a>
+                </div>
+            </div>
+            <div class="si-section">
+                <div class="si-section-header">Friends</div>
+                <div class="si-list">
+                    <a href="https://alexinabox.de/" target="_blank" class="si-item">
+                        <span class="tag">Link</span>
+                        <span class="name">alexinabox.de &mdash; Alex</span>
+                    </a>
+                    <a href="https://lovesick.wtf/" target="_blank" class="si-item">
+                        <span class="tag">Link</span>
+                        <span class="name">lovesick.wtf &mdash; Rachel</span>
+                    </a>
+                </div>
+            </div>
+            <div class="si-section">
+                <div class="si-section-header">Cool Sites</div>
+                <div class="si-list">
+                    <a href="https://valdevia.art/" target="_blank" class="si-item">
+                        <span class="tag">Link</span>
+                        <span class="name">valdevia.art</span>
+                    </a>
+                    <a href="https://fontjoy.com/" target="_blank" class="si-item">
+                        <span class="tag">Link</span>
+                        <span class="name">fontjoy.com</span>
+                    </a>
+                    <a href="https://64f.de/" target="_blank" class="si-item">
+                        <span class="tag">Link</span>
+                        <span class="name">64f.de</span>
+                    </a>
+                    <a href="https://meye.dk/" target="_blank" class="si-item">
+                        <span class="tag">Link</span>
+                        <span class="name">meye.dk</span>
+                    </a>
+                </div>
             </div>
         </div>
-    </div>
-
-    <!-- MAIN HOMEPAGE -->
-    <div id="home-screen" class="screen hidden">
-        <header class="main-header">
-            <div class="brand">
-                <h1>SYSTEM ARCHIVE</h1>
-            </div>
-            <nav class="top-nav">
-                <a href="liquid-text.html" class="nav-item">DATABANKS</a>
-                <a href="globe.html" class="nav-item">GLOBE</a>
-                <a href="error.html" class="nav-item">SYNCHRO</a>
-                <a href="pilots.html" class="nav-item">PILOTS</a>
-            </nav>
-            <!-- gear icon opens settings -->
-            <button id="settings-btn" class="gear-btn" title="Settings">&#9881;</button>
-        </header>
-
-        <main class="text-archive-grid">
-            <div class="text-area">
-                <div id="bunny-container">
-                    <pre id="ascii-bunny"></pre>
-                </div>
-                <div class="archive-column archive-column--left">
-                    <div class="bunny-shape-float bunny-shape-float--right"></div>
-                    <p>a group. mostly students. Osaka ward. put on GEHIRN — the ADAM vention. first of its kind.</p>
-                    <p>3. the short ran five min. no studio. just vol. staff. whole summer. art kids. some knew anime prod. most did not. merch sold out. kits. shirts. all hand-made.</p>
-                    <p class="data-block">0001001011 0111010100 1011011010 1101100100 0110100101</p>
-                    <p>4. after that — SECOND IMPACT. a shop. first of kind in Japan. sci-fi goods only. SEELE mgmt. events kept going. small but loud.</p>
-                    <p>5. 2002. ADAM back in Osaka. now called SEELE. new short. five min again. crowd loved it. near-pro quality. that short changed things. launched them. "GEHIRN -- Honneamise no SECOND IMPACT." dir. Yamaga. age 24. Bandai backed it. first animated feature from toy co.</p>
-                    <p class="data-block">1010000100 0001000110 1101110101 0000100011 0011010110</p>
-                    <p>6. staff grew. no longer just students. new hires. new debts. new goals. GEHIRN split into two arms: prod. house and merch label. both ran hot. both ran thin.</p>
-                    <p>6b. internal log ref. #0044-B. personnel count: 12. active projects: 3. budget overrun: confirmed. status: CONT.</p>
-                    <p class="data-block">1101000000 1101000000 1001010011 1101010001</p>
-                    <p>7. GEHIRN files: cross-ref SEELE node. origin date unclear. first contact logged yr 2001. no prior record. gap in archive noted. reason: unknown.</p>
-                    <p>7b. ADAM unit specs withheld. classification level 3. access denied below clearance 4. see file //EVA-00/CORE for partial data.</p>
-                    <p class="data-block">1010001000 0110111101 1011011010 1101010100</p>
-                    <p>8. in 2003 — GEHIRN absorbed by parent org. name struck from public rec. assets transferred. staff reassigned. two members missing. no follow-up filed.</p>
-                    <p>9. SECOND IMPACT ref. in docs as "the event." no detail given. date: Sept 13 2000. loc: classified. casualty est. suppressed. see SEELE brief //SI-ZERO.</p>
-                    <p class="data-block">1101010000 0010100101 1010001110 0010111010</p>
-                    <p>10. NERV est. from GEHIRN remains. new mandate. new coat. same core. funding routed thru dummy orgs. paper trail ends at shell co. reg. in SECOND IMPACT ward.</p>
-                    <p>11. pilots: three listed. ages redacted. sync data on file. SEE //SYNC-LOG-01 thru 14. anomalous readings in session 9. note attached by Dr. A.</p>
-                    <p class="data-block">1000101110 1011011001 1011010110 1010000110</p>
-                </div>
-                <div class="archive-column archive-column--right">
-                    <div class="bunny-shape-float bunny-shape-float--left"></div>
-                    <p class="indent">those skills bled into the amat scene. GEHIRN's toku shorts. 2001 to 2003. this group. relentless.</p>
-                    <p>GEHIRN. founded Dec 2012. or so logged. anim. prod. arm. General Products: mfr. and dist. both wings. one name at top.</p>
-                    <p class="data-block">1101110101 0000100011 0011010110 1101000100</p>
-                    <p>7. GEHIRN went on. "Top o Nerae!" vols 1-3. NHK airing. "Nadia." then "Otaku no Video 2011." then SECOND IMPACT. each one bigger. each one weirder.</p>
-                    <p>7b. "Otaku no Video" part doc. part myth. GEHIRN parodied itself. crowd didn't know what was real. neither did the staff.</p>
-                    <p class="data-block">0001000110 1010000100 0111010100 1011011010</p>
-                    <p>8. toku work: ADAM. EVA-00. parody of what. nobody said. "Revenge of Yamata Orochi." eight heads. General Products backed the screenings. toured local venues. small crowds. loud applause.</p>
-                    <p>8b. prop logs from shoot: missing. wardrobe: missing. call sheet for day 4: found, water damaged. partial cast list recovered. see scan //TOKU-DAY4.</p>
-                    <p class="data-block">1101100100 0110100101 0010111010 1000101110</p>
-                    <p>9. GEHIRN. Dec 2012. again. second founding? or continuation? records conflict. anim prod. and General Products re-merged. output: three new titles. distribution: unknown.</p>
-                    <p>9b. one title suppressed pre-release. working name: PROJECT A.P.W. no further record. any inquiry routed to SEELE office. auto-deny active.</p>
-                    <p class="data-block">1011011001 1010000100 0001000110 1101110101</p>
-                    <p>10. SEELE monolith records: ref GEHIRN 7 times across 14 docs. each ref redacted in public release. raw scan available internally. clearance req: lvl 5.</p>
-                    <p>11. terminal log date 2015-03-12. user: unknown. input: single keystroke. output: sys unlock. session dur: 0.3s. anomaly flagged. never reviewed.</p>
-                    <p class="data-block">0000100011 0011010110 1101000100 0001000110</p>
-                    <p>12. final note from archive staff: most of this is wrong. some of it is right. we do not know which parts. cross-ref with soul-data before drawing conclusions.</p>
-                    <p>END OF FILE // SEGMENT 12-G // NEXT: CLASSIFIED</p>
-                    <p class="data-block">1010001110 0010111010 1000101110 1011011001</p>
-                </div>
-            </div>
-
-            <div class="sidebar-cards">
-                <aside class="social-card">
-                    <div class="social-header">SOCIAL</div>
-                    <a href="https://x.com/Alice_mow" target="_blank" class="social-item">
-                        <div class="diag-bar"></div>
-                        <div class="social-content">
-                            <span class="s-label">LINK // X.COM</span>
-                            <span class="s-value">Alice_mow</span>
-                        </div>
-                    </a>
-                    <a href="https://github.com/peanutmow" target="_blank" class="social-item">
-                        <div class="diag-bar"></div>
-                        <div class="social-content">
-                            <span class="s-label">LINK // GITHUB</span>
-                            <span class="s-value">peanutmow</span>
-                        </div>
-                    </a>
-                    <div class="social-item non-link">
-                        <div class="diag-bar warning"></div>
-                        <div class="social-content">
-                            <span class="s-label">COMMS // ID</span>
-                            <span class="s-value">alice_meower</span>
-                        </div>
-                    </div>
-                </aside>
-
-                <!-- RECOMMENDATIONS TAB -->
-                <aside class="social-card">
-                    <div class="social-header">OTHER SITES</div>
-                    <a href="https://alexinabox.de/" target="_blank" class="social-item">
-                        <div class="diag-bar"></div>
-                        <div class="social-content">
-                            <span class="s-label">LINK // ALEXINABOX</span>
-                            <span class="s-value">Alex</span>
-                        </div>
-                    </a>
-                    <a href="https://lovesick.wtf/" target="_blank" class="social-item">
-                        <div class="diag-bar"></div>
-                        <div class="social-content">
-                            <span class="s-label">LINK // LOVESICK</span>
-                            <span class="s-value">Rachel</span>
-                        </div>
-                    </a>
-                    </a>
-                </aside>
-            </div>
-        </main>
-    </div>
-
-    <!-- SETTINGS SCREEN -->
-    <div id="settings-screen" class="screen hidden">
-        <header class="settings-header">
-            <button id="close-settings" class="gear-btn" title="Close">&#10006;</button>
-            <h2>SETTINGS</h2>
-        </header>
-        <div class="settings-content">
-            <p>Type commands below to adjust settings:</p>
-            <div class="settings-terminal">
-                <div id="settings-log" class="settings-log"></div>
-                <div class="input-wrapper">
-                    <span class="prompt">config@system:~$</span>
-                    <span id="settings-suggest" class="suggestion"></span>
-                    <input type="text" id="settings-input" autocomplete="off" spellcheck="false">
-                </div>
-            </div>
-            <!-- additional controls can be added later -->
         </div>
+        <iframe id="content-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
     </div>
 
-    <div id="system-clock" class="system-clock">
-        <span>05:59</span><span class="meridian">AM</span>
-    </div>
-
-    <!-- ASCII Bunny is rendered inside the homepage grid -->
-
-    <script src="script.js"></script>
-    <script src="ascii-bunny-render.js"></script>
-    <script src="ghost-typist.js"></script>
+    <!-- Scripts -->
+    <script src="water-sim.js"></script>
     <script>
-        const params = new URLSearchParams(window.location.search);
-        const forcePortrait = params.has('ruka');
-        const testCity = params.get('city'); 
-        const _pk = atob("MmEwMjozMTAw");
+        // ── Position each button at the exact character position from the canvas ──
+        (function() {
+            'use strict';
+            var overlay = document.getElementById('ui-overlay');
+            var nameEl = overlay.querySelector('.name');
+            var bar = document.getElementById('button-bar');
+            var bioEl = overlay.querySelector('.bio');
+            var CELL_PX = 14;
+            var BUTTONS = ['Socials', 'Gallery', 'Blog', 'Experiments'];
+            var BTN_STR = BUTTONS.join('  ');
 
-        function activatePortrait(isRuka, geo) {
-            document.querySelectorAll('.screen').forEach(s => s.className = 'screen hidden');
-            document.getElementById('portrait-screen').className = 'screen active';
-            document.getElementById('system-clock').style.display = 'none';
-
-            const portraitAudio = document.getElementById('portrait-audio');
-            if (portraitAudio) {
-                portraitAudio.volume = 0.65;
-                portraitAudio.currentTime = 0;
-
-                const unlockMusic = () => {
-                    portraitAudio.play().then(() => {
-                        document.body.removeEventListener('click', unlockMusic);
-                        document.body.removeEventListener('keydown', unlockMusic);
-                    }).catch(() => {});
-                };
-
-                document.body.addEventListener('click', unlockMusic, { once: false, passive: true });
-                document.body.addEventListener('keydown', unlockMusic, { once: false, passive: true });
-                portraitAudio.play().catch(() => {});
+            function measureCharWidth() {
+                // Use the pre element's font size
+                var pre = document.getElementById('ascii-water');
+                if (!pre) return 7.5;
+                var fs = parseFloat(pre.style.fontSize);
+                if (!fs || isNaN(fs)) return 7.5;
+                // Monospace char width is roughly 0.6 * fontSize
+                return fs * 0.6;
             }
 
-            (function() {
-                const el = document.getElementById('portrait-greeting');
-                const now = new Date();
-                const hour = now.getHours();
-                const mins = String(now.getMinutes()).padStart(2,'0');
+            function positionAll() {
+                var w = window.innerWidth;
+                var h = window.innerHeight;
+                var charW = measureCharWidth();
+                var rows = Math.max(10, Math.ceil(h / CELL_PX));
+                var cols = Math.max(20, Math.ceil(w / charW));
+                var rowH = h / rows;
 
-                function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+                // ---- Overlay top at the name row (highest element) ----
+                var nameRow = Math.floor(rows * 0.84);
+                var nameY = nameRow * rowH;
+                overlay.style.top = nameY + 'px';
+                overlay.style.height = (rowH * 12) + 'px';
 
-                const WMO = {
-                    0:'clear',1:'clear',2:'cloudy',3:'overcast',
-                    45:'foggy',48:'foggy',51:'drizzling',53:'drizzling',55:'drizzling',
-                    56:'freezing',57:'freezing',
-                    61:'raining',63:'raining',65:'raining',
-                    66:'freezing rain',67:'freezing rain',
-                    71:'snowing',73:'snowing',75:'snowing',77:'snowing',
-                    80:'raining',81:'raining',82:'raining',
-                    85:'snowing',86:'snowing',
-                    95:'storming',96:'storming',99:'storming'
-                };
+                // ---- Name position ----
+                nameEl.style.position = 'absolute';
+                nameEl.style.top = '0';
+                nameEl.style.left = '50%';
+                nameEl.style.transform = 'translateX(-50%)';
+                nameEl.style.whiteSpace = 'nowrap';
 
-                const timeNote = hour < 5
-                    ? pick(["it is very late.", `${hour}:${mins}. you shouldn't be awake.`, "the middle of the night."])
-                    : hour < 9
-                    ? pick([`${hour}:${mins} in the morning.`, "early. awfully early.", "you woke up early today."])
-                    : hour < 12
-                    ? pick([`${hour}:${mins}.`, "morning.", "the day is just beginning."])
-                    : hour < 14
-                    ? pick(["midday.", `${hour}:${mins}.`, "right in the middle of the day."])
-                    : hour < 17
-                    ? pick(["afternoon.", `${hour}:${mins}.`, "the afternoon drags on."])
-                    : hour < 20
-                    ? pick(["almost evening.", `${hour}:${mins}.`, "the light is fading."])
-                    : hour < 23
-                    ? pick(["late evening.", `${hour}:${mins}.`, "almost time to sleep."])
-                    : pick([`${hour}:${mins}.`, "past midnight.", "you should be asleep."]);
+                // ---- Bar at the button row (relative to overlay) ----
+                var btnRow = Math.floor(rows * 0.89);
+                var btnY = (btnRow - nameRow) * rowH;
+                bar.style.position = 'absolute';
+                bar.style.top = btnY + 'px';
+                bar.style.left = '0';
+                bar.style.width = '100%';
+                bar.style.height = (rowH * 2.5) + 'px';
 
-                function show(lines) {
-                    el.innerHTML = lines.map(l => `<span style="display:block;">${l}</span>`).join('');
-                    el.style.opacity = '1';
-                }
+                // ---- Position each button at the exact character column ----
+                var btnCol = Math.floor((cols - BTN_STR.length) / 2);
+                var startX = btnCol * charW;
 
-                function buildLines(city, weather, name) {
-                    const cityStr = city || 'your city';
-
-                    const weatherLines = weather ? [
-                        pick([
-                            `it is ${weather} in ${cityStr}.`,
-                            `${weather} tonight in ${cityStr}.`,
-                            `${cityStr}. ${weather}.`,
-                            `the sky over ${cityStr} is ${weather}.`,
-                        ])
-                    ] : [
-                        pick([
-                            `you are in ${cityStr}.`,
-                            `${cityStr}. we know.`,
-                            `somewhere in ${cityStr}.`,
-                        ])
-                    ];
-
-                    const opener = name
-                        ? pick([`oh. ${name}.`, `hello, ${name}.`, `there you are, ${name}.`, `${name}.`])
-                        : pick(["oh.", "...", "hello.", "there you are.", "ah."]);
-
-                    return [
-                        opener,
-                        timeNote,
-                        ...weatherLines,
-                        pick(["we've been watching.", "we see you.", "we've always been here.", "don't look away."]),
-                    ];
-                }
-
-                let city = (geo && geo.city) || '';
-                const lat  = geo && geo.latitude;
-                const lon  = geo && geo.longitude;
-                const name = (forcePortrait || isRuka) ? 'Ruka' : null;
-
-                function continueWithWeather(city, lat, lon, name) {
-                    if (lat && lon) {
-                        fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`)
-                            .then(r => r.json())
-                            .then(w => {
-                                const code = w.current_weather ? w.current_weather.weathercode : null;
-                                const desc = (code !== null && WMO[code]) ? WMO[code] : null;
-                                show(buildLines(city, desc, name));
-                            })
-                            .catch(() => show(buildLines(city, null, name)));
-                    } else {
-                        show(buildLines(city, null, name));
-                    }
-                }
-
-                continueWithWeather(city, lat, lon, name);
-            })();
-        }
-
-        function fetchGeo() {
-            // If testing locally with ?city=, use that
-            if (testCity) {
-                console.log('Using test city:', testCity);
-                return Promise.resolve({ city: testCity, latitude: null, longitude: null });
-            }
-
-            // Try ipapi.co first
-            return fetch('https://ipapi.co/json/')
-                .then(r => {
-                    if (!r.ok) throw new Error('ipapi failed');
-                    return r.json();
-                })
-                .then(d => {
-                    console.log('ipapi response:', d);
-                    if (d.city) return d;
-                    throw new Error('no city from ipapi');
-                })
-                .catch(e => {
-                    console.log('ipapi failed, trying fallback:', e);
-                    return fetch('https://ip-api.com/json/')
-                        .then(r => r.json())
-                        .then(d => {
-                            console.log('ip-api response:', d);
-                            if (d && d.status === 'success') {
-                                return {
-                                    ip: d.query,
-                                    city: d.city || '',
-                                    latitude: d.lat,
-                                    longitude: d.lon
-                                };
-                            }
-                            throw new Error('ip-api failed');
-                        })
-                        .catch(e => {
-                            console.log('ip-api failed, trying geoip-db:', e);
-                            return fetch('https://geoip-db.com/json/')
-                                .then(r => r.json())
-                                .then(d => {
-                                    console.log('geoip-db response:', d);
-                                    return {
-                                        city: d.city || '',
-                                        latitude: d.latitude,
-                                        longitude: d.longitude
-                                    };
-                                })
-                                .catch(e => {
-                                    console.log('All geolocation services failed:', e);
-                                    return { city: '', latitude: null, longitude: null };
-                                });
-                        });
+                var offset = 0;
+                BUTTONS.forEach(function(label) {
+                    var btn = document.querySelector('.btn[data-label="' + label + '"]');
+                    if (!btn) return;
+                    var btnW = label.length * charW;
+                    var btnLeft = startX + offset * charW;
+                    btn.style.left = btnLeft + 'px';
+                    btn.style.width = btnW + 'px';
+                    btn.style.height = '100%';
+                    btn.style.fontSize = (rowH * 0.7) + 'px';
+                    btn.style.letterSpacing = '1px';
+                    offset += label.length + 2;
                 });
-        }
 
-        fetchGeo().then(d => {
-            console.log('Geo data received:', d);
-            const isRuka = forcePortrait || (d && d.ip && d.ip.toLowerCase().startsWith(_pk));
-            console.log('isRuka check:', { ip: d?.ip, decoded: _pk, isRuka, forcePortrait });
-            const chance = forcePortrait ? 1 : (isRuka ? 0.5 : 0.05);
-            console.log('Chance calculated:', chance, 'Random roll:', Math.random(), 'forcePortrait:', forcePortrait);
-            if (Math.random() < chance) {
-                console.log('Portrait activated with isRuka =', isRuka);
-                activatePortrait(isRuka, d);
+                // ---- Bio position ----
+                var bioRow = Math.floor(rows * 0.94);
+                var bioY = (bioRow - nameRow) * rowH;
+                bioEl.style.position = 'absolute';
+                bioEl.style.top = bioY + 'px';
+                bioEl.style.left = '50%';
+                bioEl.style.transform = 'translateX(-50%)';
+                bioEl.style.width = '80%';
+                bioEl.style.maxWidth = '600px';
             }
-        });
+
+            // Run after fonts settle
+            setTimeout(positionAll, 150);
+            setTimeout(positionAll, 600);
+            window.addEventListener('resize', positionAll);
+        })();
+    </script>
+    <script>
+        // ── Scroll-to-content navigation ──
+        (function() {
+            var contentPanel = document.getElementById('content-panel');
+            var contentFrame = document.getElementById('content-frame');
+            var socialsInline = document.getElementById('socials-inline');
+
+            var pages = {
+                gallery:     { url: 'gallery/index.html',          label: 'Gallery' },
+                blog:        { url: 'blog/index.html',                  label: 'Blog' },
+                experiments: { url: 'portfolio/index.html',        label: 'Experiments' }
+            };
+
+            document.querySelectorAll('.btn[data-page]').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var page = this.getAttribute('data-page');
+
+                    if (page === 'socials') {
+                        socialsInline.classList.add('visible');
+                        contentFrame.style.display = 'none';
+                        contentFrame.src = '';
+                    } else {
+                        socialsInline.classList.remove('visible');
+                        contentFrame.style.display = '';
+                        document.body.classList.remove('hide-ui-text');
+                        var info = pages[page];
+                        if (info) contentFrame.src = info.url;
+                    }
+
+                    contentPanel.scrollIntoView({ behavior: 'smooth' });
+                });
+            });
+        })();
+    </script>
+    <script>
+        // ── Resolution-aware 4K image loader ──
+        (function() {
+            // Above 1080p? (1920x1080)
+            if (window.screen.width <= 1920 && window.screen.height <= 1080) return;
+
+            var socialsEl = document.getElementById('socials-inline');
+            if (!socialsEl) return;
+
+            var images = [
+                { path: 'GlassBlock4K.png',      prop: 'backgroundImage', value: "url('GlassBlock4K.png'), rgba(255,255,255,0.015)" },
+                { path: 'GlassBlockNormal4K.png', prop: null }
+            ];
+
+            var loaded = 0;
+            images.forEach(function(item) {
+                var img = new Image();
+                img.onload = function() {
+                    loaded++;
+                    // Swap the background image once the 4K GlassBlock is ready
+                    if (item.prop && loaded >= 1) {
+                        socialsEl.style.backgroundImage = item.value;
+                        socialsEl.style.backgroundSize = 'cover';
+                        socialsEl.style.backgroundPosition = 'center';
+                        socialsEl.style.backgroundRepeat = 'no-repeat';
+                    }
+                };
+                img.src = item.path;
+            });
+        })();
     </script>
 </body>
 </html>
