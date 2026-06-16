@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog — Alice</title>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body {
+            width: 100%;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #050505 0%, #0f0f0f 50%, #080808 100%);
+            color: #fff;
+            font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        /* ── Custom scrollbar ── */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.12); }
+
+        .page-wrap {
+            position: relative;
+            z-index: 10;
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 2rem 1.5rem 4rem;
+        }
+
+        /* ── Header ── */
+        .page-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2.5rem;
+        }
+        .page-header h1 {
+            font-size: 1.1rem;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.5);
+            font-weight: 300;
+        }
+
+        /* ── Category filters ── */
+        .filters {
+            display: flex;
+            gap: 0.25rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px;
+            padding: 0.3rem;
+            background: rgba(255,255,255,0.02);
+        }
+        .filters button {
+            font-family: inherit;
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 6px;
+            background: transparent;
+            color: rgba(255,255,255,0.25);
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .filters button:hover {
+            color: rgba(255,255,255,0.6);
+            background: rgba(255,255,255,0.04);
+        }
+        .filters button.active {
+            color: rgba(255,255,255,0.85);
+            background: rgba(255,255,255,0.07);
+        }
+
+        /* ── Blog posts list ── */
+        .post-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .post-card {
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.02);
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+        .post-card:hover {
+            border-color: rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.035);
+        }
+        .post-card.hidden {
+            display: none;
+        }
+
+        .post-preview {
+            padding: 1.1rem 1.25rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+
+        .post-meta {
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            min-width: 80px;
+        }
+        .post-date {
+            font-size: 0.55rem;
+            letter-spacing: 1.5px;
+            color: rgba(255,255,255,0.2);
+            text-transform: uppercase;
+        }
+        .post-category {
+            font-size: 0.5rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 0.2rem 0.45rem;
+            border-radius: 3px;
+            border: 1px solid rgba(255,255,255,0.08);
+            color: rgba(255,255,255,0.35);
+            background: rgba(255,255,255,0.03);
+            align-self: flex-start;
+        }
+
+        .post-content {
+            flex: 1;
+            min-width: 0;
+        }
+        .post-title {
+            font-size: 0.85rem;
+            font-weight: 400;
+            color: rgba(255,255,255,0.7);
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+            line-height: 1.4;
+        }
+        .post-excerpt {
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.25);
+            line-height: 1.6;
+            letter-spacing: 0.3px;
+        }
+
+        /* ── Post body (always visible) ── */
+        .post-body {
+            padding: 0 1.25rem 1.5rem;
+        }
+
+        .post-body-inner {
+            font-size: 0.78rem;
+            line-height: 1.8;
+            color: rgba(255,255,255,0.55);
+            letter-spacing: 0.3px;
+        }
+        .post-body-inner p {
+            margin-bottom: 1rem;
+        }
+        .post-body-inner p:last-child {
+            margin-bottom: 0;
+        }
+        .post-body-inner h2 {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: rgba(255,255,255,0.7);
+            letter-spacing: 1px;
+            margin: 1.5rem 0 0.75rem;
+            text-transform: uppercase;
+        }
+        .post-body-inner blockquote {
+            border-left: 2px solid rgba(255,255,255,0.1);
+            padding-left: 1rem;
+            margin: 1rem 0;
+            color: rgba(255,255,255,0.35);
+            font-style: italic;
+        }
+        .post-body-inner hr {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.04);
+            margin: 1.5rem 0;
+        }
+        .post-body-inner code {
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            background: rgba(255,255,255,0.04);
+            padding: 0.1rem 0.35rem;
+            border-radius: 3px;
+            color: rgba(255,255,255,0.5);
+        }
+        .post-body-inner pre {
+            background: rgba(255,255,255,0.025);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 6px;
+            padding: 1rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+        }
+        .post-body-inner pre code {
+            background: none;
+            padding: 0;
+            border-radius: 0;
+            color: rgba(255,255,255,0.45);
+            line-height: 1.6;
+        }
+        .post-body-inner ul, .post-body-inner ol {
+            margin: 0.75rem 0;
+            padding-left: 1.5rem;
+            color: rgba(255,255,255,0.5);
+        }
+        .post-body-inner li {
+            margin-bottom: 0.35rem;
+        }
+        .post-body-inner a {
+            color: rgba(255,255,255,0.5);
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            text-decoration-color: rgba(255,255,255,0.1);
+            transition: color 0.25s, text-decoration-color 0.25s;
+        }
+        .post-body-inner a:hover {
+            color: rgba(255,255,255,0.8);
+            text-decoration-color: rgba(255,255,255,0.3);
+        }
+
+        /* ── Empty state ── */
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: rgba(255,255,255,0.1);
+            font-size: 0.7rem;
+            letter-spacing: 2px;
+            display: none;
+        }
+        .empty-state.visible {
+            display: block;
+        }
+
+        /* ── Post count ── */
+        .post-count {
+            font-size: 0.6rem;
+            color: rgba(255,255,255,0.12);
+            letter-spacing: 2px;
+            margin-bottom: 1rem;
+        }
+
+        @media (max-width: 500px) {
+            .post-preview {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .post-meta {
+                flex-direction: row;
+                align-items: center;
+                min-width: unset;
+            }
+        }
+
+        /* ── New post button ── */
+        .new-post-btn {
+            font-family: inherit;
+            font-size: 0.65rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 0.45rem 0.9rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 6px;
+            background: rgba(255,255,255,0.03);
+            color: rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .new-post-btn:hover {
+            color: rgba(255,255,255,0.7);
+            border-color: rgba(255,255,255,0.15);
+            background: rgba(255,255,255,0.06);
+        }
+
+        /* ── Editor overlay ── */
+        .editor-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            padding: 1.5rem;
+            align-items: stretch;
+        }
+        .editor-overlay.open {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .editor-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+            flex-shrink: 0;
+        }
+        .editor-header h2 {
+            font-size: 0.9rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
+            font-weight: 300;
+        }
+        .editor-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .editor-actions button {
+            font-family: inherit;
+            font-size: 0.65rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 0.45rem 0.9rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 6px;
+            background: rgba(255,255,255,0.03);
+            color: rgba(255,255,255,0.3);
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+        .editor-actions button:hover {
+            color: rgba(255,255,255,0.7);
+            border-color: rgba(255,255,255,0.15);
+        }
+        .editor-actions .download-btn {
+            background: rgba(255,255,255,0.06);
+            color: rgba(255,255,255,0.5);
+            border-color: rgba(255,255,255,0.12);
+        }
+        .editor-actions .download-btn:hover {
+            background: rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.85);
+            border-color: rgba(255,255,255,0.25);
+        }
+
+        .editor-meta {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+        .editor-meta input,
+        .editor-meta select {
+            font-family: inherit;
+            font-size: 0.7rem;
+            letter-spacing: 1px;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 6px;
+            background: rgba(255,255,255,0.03);
+            color: rgba(255,255,255,0.6);
+            outline: none;
+            transition: border-color 0.25s;
+        }
+        .editor-meta input:focus,
+        .editor-meta select:focus {
+            border-color: rgba(255,255,255,0.2);
+        }
+        .editor-meta input::placeholder {
+            color: rgba(255,255,255,0.15);
+        }
+        .editor-meta .field-title {
+            flex: 2;
+            min-width: 180px;
+        }
+        .editor-meta .field-excerpt {
+            flex: 3;
+            min-width: 200px;
+        }
+        .editor-meta select {
+            min-width: 100px;
+            cursor: pointer;
+        }
+        .editor-meta select option {
+            background: #111;
+            color: rgba(255,255,255,0.6);
+        }
+
+        .editor-main {
+            display: flex;
+            gap: 1rem;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .editor-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+        }
+        .editor-pane .pane-label {
+            font-size: 0.55rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.15);
+            margin-bottom: 0.4rem;
+        }
+        /* ── Toolbar ── */
+        .editor-toolbar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1px;
+            padding: 0.4rem 0.5rem;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-bottom: none;
+            border-radius: 6px 6px 0 0;
+            background: rgba(255,255,255,0.02);
+        }
+        .editor-toolbar button {
+            font-family: inherit;
+            font-size: 0.65rem;
+            padding: 0.25rem 0.5rem;
+            border: none;
+            border-radius: 4px;
+            background: transparent;
+            color: rgba(255,255,255,0.25);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            min-width: 26px;
+            text-align: center;
+            line-height: 1.4;
+        }
+        .editor-toolbar button:hover {
+            color: rgba(255,255,255,0.7);
+            background: rgba(255,255,255,0.06);
+        }
+        .editor-toolbar .sep {
+            width: 1px;
+            background: rgba(255,255,255,0.04);
+            margin: 0 0.15rem;
+            align-self: stretch;
+        }
+        .editor-toolbar .tb-label {
+            font-size: 0.5rem;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.1);
+            align-self: center;
+            margin-right: 0.25rem;
+        }
+
+        .editor-pane textarea {
+            flex: 1;
+            font-family: 'Courier New', monospace;
+            font-size: 0.75rem;
+            line-height: 1.6;
+            padding: 0.75rem;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 0 0 6px 6px;
+            background: rgba(0,0,0,0.4);
+            color: rgba(255,255,255,0.5);
+            resize: none;
+            outline: none;
+            tab-size: 2;
+            white-space: pre-wrap;
+        }
+        .editor-pane textarea:focus {
+            border-color: rgba(255,255,255,0.12);
+        }
+
+        .preview-pane {
+            flex: 1;
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 6px;
+            padding: 0.75rem;
+            overflow-y: auto;
+            background: rgba(0,0,0,0.2);
+            min-height: 0;
+        }
+        .preview-pane .post-body-inner {
+            font-size: 0.78rem;
+            line-height: 1.8;
+            color: rgba(255,255,255,0.55);
+        }
+        .preview-pane .post-body-inner p { margin-bottom: 0.75rem; }
+        .preview-pane .post-body-inner h2 {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: rgba(255,255,255,0.65);
+            letter-spacing: 1px;
+            margin: 1.2rem 0 0.6rem;
+            text-transform: uppercase;
+        }
+        .preview-pane .post-body-inner h3 {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: rgba(255,255,255,0.55);
+            margin: 1rem 0 0.5rem;
+        }
+        .preview-pane .post-body-inner blockquote {
+            border-left: 2px solid rgba(255,255,255,0.08);
+            padding-left: 0.75rem;
+            margin: 0.75rem 0;
+            color: rgba(255,255,255,0.3);
+            font-style: italic;
+        }
+        .preview-pane .post-body-inner code {
+            font-family: 'Courier New', monospace;
+            font-size: 0.72rem;
+            background: rgba(255,255,255,0.04);
+            padding: 0.1rem 0.3rem;
+            border-radius: 3px;
+        }
+        .preview-pane .post-body-inner pre {
+            background: rgba(255,255,255,0.02);
+            border: 1px solid rgba(255,255,255,0.04);
+            border-radius: 4px;
+            padding: 0.75rem;
+            margin: 0.75rem 0;
+            overflow-x: auto;
+        }
+        .preview-pane .post-body-inner pre code {
+            background: none;
+            padding: 0;
+        }
+        .preview-pane .post-body-inner ul, 
+        .preview-pane .post-body-inner ol {
+            margin: 0.5rem 0;
+            padding-left: 1.25rem;
+            color: rgba(255,255,255,0.45);
+        }
+        .preview-pane .post-body-inner li { margin-bottom: 0.25rem; }
+        .preview-pane .post-body-inner hr {
+            border: none;
+            border-top: 1px solid rgba(255,255,255,0.03);
+            margin: 1rem 0;
+        }
+        .preview-pane .post-body-inner a {
+            color: rgba(255,255,255,0.45);
+            text-decoration: underline;
+            text-underline-offset: 2px;
+            text-decoration-color: rgba(255,255,255,0.08);
+        }
+        .preview-pane .post-body-inner a:hover {
+            color: rgba(255,255,255,0.7);
+        }
+
+        .preview-empty {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: rgba(255,255,255,0.08);
+            font-size: 0.65rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        @media (max-width: 700px) {
+            .editor-main { flex-direction: column; }
+            .editor-pane textarea { min-height: 200px; }
+            .preview-pane { min-height: 200px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="page-wrap">
+        <div class="page-header">
+            <h1>Journal</h1>
+            <button class="new-post-btn" id="new-post-btn">+ New</button>
+        </div>
+
+        <div class="filters" id="filters">
+            <button data-filter="diary">Diary</button>
+            <button data-filter="political">Political</button>
+        </div>
+
+        <div class="post-count" id="post-count"></div>
+
+        <div class="post-list" id="post-list">
+            <!-- Posts are injected here by JS -->
+        </div>
+
+        <div class="empty-state" id="empty-state">no entries found</div>
+    </div>
+
+    <!-- ── Editor overlay ── -->
+    <div class="editor-overlay" id="editor-overlay">
+        <div class="editor-header">
+            <h2>New Entry</h2>
+            <div class="editor-actions">
+                <button id="editor-close">Cancel</button>
+                <button class="download-btn" id="editor-download">Download</button>
+            </div>
+        </div>
+        <div class="editor-meta">
+            <input class="field-title" id="edit-title" placeholder="Post title" autocomplete="off">
+            <select id="edit-category">
+                <option value="diary">Diary</option>
+                <option value="political">Political</option>
+            </select>
+            <input class="field-excerpt" id="edit-excerpt" placeholder="Short excerpt" autocomplete="off">
+        </div>
+        <div class="editor-main">
+            <div class="editor-pane">
+                <div class="pane-label">Markdown</div>
+                <div class="editor-toolbar" id="md-toolbar">
+                    <button title="Bold" data-fn="bold"><strong>B</strong></button>
+                    <button title="Italic" data-fn="italic"><em>I</em></button>
+                    <div class="sep"></div>
+                    <button title="Heading" data-fn="heading">H</button>
+                    <button title="Blockquote" data-fn="quote">&ldquo;</button>
+                    <div class="sep"></div>
+                    <button title="Link" data-fn="link">&#128279;</button>
+                    <button title="Image" data-fn="image">&#128247;</button>
+                    <div class="sep"></div>
+                    <button title="Inline code" data-fn="code">&lt;/&gt;</button>
+                    <button title="Code block" data-fn="codeblock">&#9001;/&#9002;</button>
+                    <div class="sep"></div>
+                    <button title="Bullet list" data-fn="ul">&bull;</button>
+                    <button title="Numbered list" data-fn="ol">1.</button>
+                    <div class="sep"></div>
+                    <button title="Horizontal rule" data-fn="hr">&mdash;</button>
+                </div>
+                <textarea id="edit-body" spellcheck="false"></textarea>
+            </div>
+            <div class="editor-pane">
+                <div class="pane-label">Preview</div>
+                <div class="preview-pane" id="edit-preview">
+                    <div class="preview-empty">start typing...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ── Post files to load (add new .md filenames here) ──
+        var postFiles = [
+            'posts/hello-world.md'
+        ];
+
+        var posts = [];
+
+        // ── Simple markdown → HTML converter ──
+        function mdToHtml(md) {
+            // Escape HTML entities
+            var h = md.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+            // Code blocks (```...```) — protect them first
+            var codeBlocks = [];
+            h = h.replace(/```(\w*)\n?([\s\S]*?)```/g, function(m, lang, code) {
+                codeBlocks.push('<pre><code>' + code.trim() + '</code></pre>');
+                return '\x00CODE' + (codeBlocks.length - 1) + '\x00';
+            });
+
+            // Inline code
+            h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            // Headers (## then ###)
+            h = h.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+            h = h.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+
+            // Horizontal rules
+            h = h.replace(/^---$/gm, '<hr>');
+
+            // Blockquotes
+            h = h.replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>');
+
+            // Bold and italic
+            h = h.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            h = h.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+            // Links
+            h = h.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+
+            // Unordered lists
+            h = h.replace(/^- (.+)$/gm, '<li>$1</li>');
+            h = h.replace(/(<li>.*<\/li>\n?)+/g, '<ul>$&</ul>');
+
+            // Restore code blocks
+            h = h.replace(/\x00CODE(\d+)\x00/g, function(m, idx) {
+                return codeBlocks[parseInt(idx)];
+            });
+
+            // Paragraphs — wrap remaining lines that aren't already wrapped
+            var lines = h.split('\n');
+            var out = [];
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i].trim();
+                if (!line) continue;
+                // Skip if already wrapped in block-level tag
+                if (/^<(h[23]|ul|ol|li|blockquote|hr|pre|div|p)>/.test(line)) {
+                    out.push(line);
+                } else {
+                    out.push('<p>' + line + '</p>');
+                }
+            }
+            return out.join('\n');
+        }
+
+        // ── Parse YAML frontmatter ──
+        function parseFrontmatter(raw) {
+            // Normalize line endings
+            raw = raw.replace(/\r\n/g, '\n');
+            var match = raw.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+            if (!match) return { meta: {}, body: mdToHtml(raw) };
+
+            var meta = {};
+            match[1].split('\n').forEach(function(line) {
+                var kv = line.match(/^(\w+):\s*(.+)$/);
+                if (kv) {
+                    var val = kv[2].trim();
+                    // Strip quotes if present
+                    if ((val[0] === "'" && val[val.length-1] === "'") ||
+                        (val[0] === '"' && val[val.length-1] === '"')) {
+                        val = val.slice(1, -1);
+                    }
+                    meta[kv[1]] = val;
+                }
+            });
+            return { meta: meta, body: mdToHtml(match[2].trim()) };
+        }
+
+        // ── Load all markdown posts ──
+        function loadPosts(callback) {
+            var remaining = postFiles.slice();
+            var loaded = [];
+
+            function next() {
+                if (remaining.length === 0) {
+                    // Sort by date descending
+                    loaded.sort(function(a, b) { return a.date < b.date ? 1 : -1; });
+                    callback(loaded);
+                    return;
+                }
+
+                var file = remaining.shift();
+                fetch(file)
+                    .then(function(r) { return r.text(); })
+                    .then(function(raw) {
+                        var parsed = parseFrontmatter(raw);
+                        var m = parsed.meta;
+                        loaded.push({
+                            title:   m.title   || 'untitled',
+                            date:    m.date    || 'unknown',
+                            category:m.category|| 'diary',
+                            excerpt: m.excerpt || '',
+                            body:    parsed.body
+                        });
+                        next();
+                    })
+                    .catch(function() {
+                        console.warn('failed to load:', file);
+                        next();
+                    });
+            }
+            next();
+        }
+
+        // ── Render ──
+        function renderPosts(filter) {
+            var list = document.getElementById('post-list');
+            var empty = document.getElementById('empty-state');
+            var count = document.getElementById('post-count');
+
+            var filtered = filter
+                ? posts.filter(function(p) { return p.category === filter; })
+                : posts;
+
+            if (filtered.length === 0) {
+                list.innerHTML = '';
+                empty.classList.add('visible');
+                count.textContent = '';
+                return;
+            }
+            empty.classList.remove('visible');
+            count.textContent = filtered.length + ' entr' + (filtered.length === 1 ? 'y' : 'ies');
+
+            var html = '';
+            for (var i = 0; i < filtered.length; i++) {
+                var p = filtered[i];
+                var bodyHtml = '';
+                if (p.body) {
+                    bodyHtml = '<div class="post-body"><div class="post-body-inner">' + p.body + '</div></div>';
+                }
+                html += '<div class="post-card">'
+                    + '<div class="post-preview">'
+                    + '<div class="post-meta">'
+                    + '<span class="post-date">' + p.date + '</span>'
+                    + '<span class="post-category">' + p.category + '</span>'
+                    + '</div>'
+                    + '<div class="post-content">'
+                    + '<div class="post-title">' + p.title + '</div>'
+                    + '<div class="post-excerpt">' + p.excerpt + '</div>'
+                    + '</div>'
+                    + '</div>'
+                    + bodyHtml
+                    + '</div>';
+            }
+            list.innerHTML = html;
+        }
+
+        // ── Filter switching ──
+        document.querySelectorAll('.filters button').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.filters button').forEach(function(b) {
+                    b.classList.remove('active');
+                });
+                this.classList.add('active');
+                renderPosts(this.getAttribute('data-filter'));
+            });
+        });
+
+        // ── Init ──
+        loadPosts(function(loaded) {
+            posts = loaded;
+            renderPosts();
+        });
+
+        // ── Editor ──
+        (function() {
+            var overlay = document.getElementById('editor-overlay');
+            var titleEl = document.getElementById('edit-title');
+            var categoryEl = document.getElementById('edit-category');
+            var excerptEl = document.getElementById('edit-excerpt');
+            var bodyEl = document.getElementById('edit-body');
+            var previewEl = document.getElementById('edit-preview');
+
+            document.getElementById('new-post-btn').addEventListener('click', function() {
+                overlay.classList.add('open');
+                titleEl.focus();
+            });
+
+            document.getElementById('editor-close').addEventListener('click', function() {
+                overlay.classList.remove('open');
+            });
+
+            // Live preview
+            bodyEl.addEventListener('input', function() {
+                var val = bodyEl.value.trim();
+                if (!val) {
+                    previewEl.innerHTML = '<div class="preview-empty">start typing...</div>';
+                    return;
+                }
+                previewEl.innerHTML = '<div class="post-body-inner">' + mdToHtml(val) + '</div>';
+            });
+
+            // Download
+            document.getElementById('editor-download').addEventListener('click', function() {
+                var title = titleEl.value.trim() || 'untitled';
+                var category = categoryEl.value;
+                var excerpt = excerptEl.value.trim() || '';
+                var body = bodyEl.value;
+                var date = new Date();
+                var dateStr = date.getFullYear()
+                    + '-' + String(date.getMonth()+1).padStart(2,'0')
+                    + '-' + String(date.getDate()).padStart(2,'0');
+
+                var frontmatter = '---\n'
+                    + 'title: \'' + title.replace(/'/g,'\\\'') + '\'\n'
+                    + 'date: \'' + dateStr + '\'\n'
+                    + 'category: \'' + category + '\'\n'
+                    + (excerpt ? 'excerpt: \'' + excerpt.replace(/'/g,'\\\'') + '\'\n' : '')
+                    + '---\n\n';
+
+                var content = frontmatter + body;
+
+                // Slugify title for filename
+                var slug = title.toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-|-$/g, '') || 'post';
+                var filename = slug + '.md';
+
+                var blob = new Blob([content], { type: 'text/markdown' });
+                var a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(a.href);
+            });
+
+            // ── Toolbar ──
+            function insertInline(before, after, placeholder) {
+                var start = bodyEl.selectionStart;
+                var end = bodyEl.selectionEnd;
+                var val = bodyEl.value;
+                var selected = val.substring(start, end);
+
+                var replacement;
+                var selStart, selEnd;
+                if (selected) {
+                    replacement = before + selected + after;
+                    selStart = start;
+                    selEnd = start + replacement.length;
+                } else {
+                    replacement = before + placeholder + after;
+                    selStart = start + before.length;
+                    selEnd = selStart + placeholder.length;
+                }
+
+                bodyEl.value = val.substring(0, start) + replacement + val.substring(end);
+                bodyEl.focus();
+                bodyEl.selectionStart = selStart;
+                bodyEl.selectionEnd = selEnd;
+                bodyEl.dispatchEvent(new Event('input'));
+            }
+
+            function insertLine(prefix, placeholder) {
+                var start = bodyEl.selectionStart;
+                var val = bodyEl.value;
+                // Find start of current line
+                var lineStart = val.lastIndexOf('\n', start - 1) + 1;
+                var lineEnd = val.indexOf('\n', start);
+                if (lineEnd === -1) lineEnd = val.length;
+                var line = val.substring(lineStart, lineEnd);
+                var indent = line.match(/^\s*/)[0];
+
+                var insertion;
+                if (line.trim()) {
+                    insertion = '\n' + prefix + ' ' + line.trim();
+                } else {
+                    insertion = prefix + ' ' + placeholder;
+                }
+
+                bodyEl.value = val.substring(0, lineStart) + insertion + val.substring(lineEnd);
+                bodyEl.focus();
+                var cursorPos = lineStart + insertion.length;
+                bodyEl.selectionStart = cursorPos;
+                bodyEl.selectionEnd = cursorPos;
+                bodyEl.dispatchEvent(new Event('input'));
+            }
+
+            function insertAtEnd(text) {
+                var val = bodyEl.value;
+                var pos = val.length;
+                var insertion = (pos > 0 && val[pos-1] !== '\n' ? '\n\n' : '\n') + text;
+                bodyEl.value = val + insertion;
+                bodyEl.focus();
+                bodyEl.selectionStart = bodyEl.value.length;
+                bodyEl.selectionEnd = bodyEl.value.length;
+                bodyEl.dispatchEvent(new Event('input'));
+            }
+
+            var actions = {
+                bold:      function() { insertInline('**', '**', 'bold text'); },
+                italic:    function() { insertInline('*', '*', 'italic text'); },
+                heading:   function() { insertLine('##', 'heading'); },
+                quote:     function() { insertLine('>', 'quote'); },
+                link:      function() { insertInline('[', '](url)', 'link text'); },
+                image:     function() { insertInline('![', '](url)', 'alt text'); },
+                code:      function() { insertInline('`', '`', 'code'); },
+                codeblock: function() { insertAtEnd('```\n' + 'code' + '\n```'); },
+                ul:        function() { insertLine('-', 'item'); },
+                ol:        function() { insertLine('1.', 'item'); },
+                hr:        function() { insertAtEnd('---'); }
+            };
+
+            document.getElementById('md-toolbar').addEventListener('click', function(e) {
+                var btn = e.target.closest('button');
+                if (!btn) return;
+                var fn = btn.getAttribute('data-fn');
+                if (fn && actions[fn]) {
+                    actions[fn]();
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
