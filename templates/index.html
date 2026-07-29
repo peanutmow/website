@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --accent: #e0e0e0; --bg-color: #0a0a0a; }
+        html, body { width: 100%; height: 100%; overflow-x: hidden; overflow-y: auto; background: #000; }
+        body { font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+        #ascii-water { position: fixed; top: 0; left: 0; margin: 0; padding: 0; color: #fff; font-family: 'Courier New', 'Share Tech Mono', monospace; white-space: pre; overflow: hidden; pointer-events: auto; z-index: 1; text-shadow: 0 0 4px rgba(255,255,255,0.3), 0 0 12px rgba(255,255,255,0.1); user-select: none; line-height: 1; letter-spacing: 0; tab-size: 1; }
+        #ui-overlay { position: fixed; left: 0; right: 0; z-index: 200; text-align: center; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 0.6rem; opacity: 0; }
+        #ui-overlay .name { font-size: 1rem; color: rgba(255,255,255,0.6); letter-spacing: 6px; text-transform: uppercase; text-shadow: 0 0 20px rgba(255,255,255,0.08); opacity: 0.8; font-weight: 300; }
+        .button-bar { position: relative; width: 100%; height: 3rem; pointer-events: auto; }
+        .button-bar .btn { position: absolute; top: 0; color: rgba(255,255,255,0.3); text-decoration: none; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; border-radius: 6px; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid transparent; }
+        .button-bar .btn:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.08); text-shadow: 0 0 15px rgba(255,255,255,0.15); }
+        .button-bar .btn:active { background: rgba(255,255,255,0.12); transform: scale(0.96); }
+        #ui-overlay .bio { font-size: 0.65rem; color: rgba(255,255,255,0.15); letter-spacing: 1.5px; line-height: 1.5; max-width: 420px; opacity: 0.6; }
+        #content-panel { position: relative; z-index: 50; margin-top: 100vh; min-height: 100vh; width: 100%; padding: 1.5rem; display: flex; flex-direction: column; }
+        #content-frame { flex: 1; width: 100%; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; background: transparent; min-height: 0; }
+        #socials-inline { display: none; flex: 1; width: 100%; border-radius: 8px; background: url('/GlassBlock.png') center/cover no-repeat, rgba(255,255,255,0.015); backdrop-filter: blur(1.5px); -webkit-backdrop-filter: blur(1.5px); will-change: transform; transform: translateZ(0); padding: 2rem; overflow-y: auto; color: #fff; font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif; }
+        #socials-inline.visible { display: block; }
+        #socials-inline .si-inner { max-width: 560px; margin: 0 auto; }
+        #socials-inline .si-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
+        #socials-inline .si-header h2 { font-size: 1.1rem; letter-spacing: 6px; text-transform: uppercase; color: rgba(255,255,255,0.85); font-weight: 300; }
+        #socials-inline .si-section { margin-bottom: 2rem; }
+        #socials-inline .si-section:last-child { margin-bottom: 0; }
+        #socials-inline .si-section-header { font-size: 0.6rem; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 0.75rem; padding-left: 0.25rem; }
+        #socials-inline .si-list { display: flex; flex-direction: column; gap: 0.4rem; }
+        #socials-inline .si-item { display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1.1rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; text-decoration: none; color: rgba(255,255,255,0.65); transition: color 0.25s ease, border-color 0.25s ease; background: rgba(255,255,255,0.04); contain: paint; }
+        #socials-inline .si-item:hover { color: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.06); }
+        #socials-inline .si-item .tag { font-size: 0.55rem; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.4); min-width: 70px; flex-shrink: 0; }
+        #socials-inline .si-item .name { font-size: 0.85rem; color: rgba(255,255,255,0.8); }
+        #socials-inline .si-item:hover .name { color: rgba(255,255,255,0.9); }
+    </style>
+</head>
+<body>
+    <pre id="ascii-water"></pre>
+    <div id="ui-overlay">
+        <div class="name">Hi, I'm Alice</div>
+        <div class="button-bar" id="button-bar">
+            <a href="#" class="btn" data-label="Socials" data-page="socials">Socials</a>
+            <a href="#" class="btn" data-label="Gallery" data-page="gallery">Gallery</a>
+            <a href="#" class="btn" data-label="Blog" data-page="blog">Blog</a>
+            <a href="#" class="btn" data-label="ARG" data-page="arg">ARG</a>
+            <a href="#" class="btn" data-label="Experiments" data-page="experiments">Experiments</a>
+        </div>
+        <div class="bio">artist &amp; developer &mdash; building things that live at the intersection of code and art.</div>
+    </div>
+    <div id="content-panel">
+        <div id="socials-inline">
+            <div class="si-inner">
+            <div class="si-header"><h2>Connect</h2></div>
+            <div class="si-section">
+                <div class="si-section-header">My Accounts</div>
+                <div class="si-list">
+                    <a href="https://x.com/Alice_mow" target="_blank" class="si-item"><span class="tag">Twitter</span><span class="name">Alice_mow</span></a>
+                    <a href="https://github.com/peanutmow" target="_blank" class="si-item"><span class="tag">GitHub</span><span class="name">peanutmow</span></a>
+                    <a href="https://discord.gg/sdTrfEHF" target="_blank" class="si-item"><span class="tag">Discord</span><span class="name">alice_meower</span></a>
+                </div>
+            </div>
+            <div class="si-section">
+                <div class="si-section-header">Friends</div>
+                <div class="si-list">
+                    <a href="https://alexinabox.de/" target="_blank" class="si-item"><span class="tag">Link</span><span class="name">alexinabox.de &mdash; Alex</span></a>
+                    <a href="https://lovesick.wtf/" target="_blank" class="si-item"><span class="tag">Link</span><span class="name">lovesick.wtf &mdash; Rachel</span></a>
+                </div>
+            </div>
+            <div class="si-section">
+                <div class="si-section-header">Cool Sites</div>
+                <div class="si-list">
+                    <a href="https://valdevia.art/" target="_blank" class="si-item"><span class="tag">Link</span><span class="name">valdevia.art</span></a>
+                    <a href="https://fontjoy.com/" target="_blank" class="si-item"><span class="tag">Link</span><span class="name">fontjoy.com</span></a>
+                    <a href="https://64f.de/" target="_blank" class="si-item"><span class="tag">Link</span><span class="name">64f.de</span></a>
+                    <a href="https://meye.dk/" target="_blank" class="si-item"><span class="tag">Link</span><span class="name">meye.dk</span></a>
+                    <a href="https://meltd.ooo/" target="_blank" class="si-item"><span class="tag">Link</span><span class="name">meltd.ooo</span></a>
+                </div>
+            </div>
+        </div>
+        </div>
+        <iframe id="content-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+    </div>
+
+    <script src="/static/water-sim.js"></script>
+    <script>
+        (function() { 'use strict';
+            var overlay = document.getElementById('ui-overlay');
+            var nameEl = overlay.querySelector('.name');
+            var bar = document.getElementById('button-bar');
+            var bioEl = overlay.querySelector('.bio');
+            var CELL_PX = 14;
+            var BUTTONS = ['Socials', 'Gallery', 'Blog', 'ARG', 'Experiments'];
+            var BTN_STR = BUTTONS.join('  ');
+            function measureCharWidth() { var pre = document.getElementById('ascii-water'); if (!pre) return 7.5; var fs = parseFloat(pre.style.fontSize); return fs ? fs * 0.6 : 7.5; }
+            function positionAll() {
+                var w = window.innerWidth, h = window.innerHeight, charW = measureCharWidth();
+                var rows = Math.max(10, Math.ceil(h / CELL_PX)), cols = Math.max(20, Math.ceil(w / charW)), rowH = h / rows;
+                var nameRow = Math.floor(rows * 0.84), nameY = nameRow * rowH;
+                overlay.style.top = nameY + 'px'; overlay.style.height = (rowH * 12) + 'px';
+                nameEl.style.position = 'absolute'; nameEl.style.top = '0'; nameEl.style.left = '50%'; nameEl.style.transform = 'translateX(-50%)'; nameEl.style.whiteSpace = 'nowrap';
+                var btnRow = Math.floor(rows * 0.89), btnY = (btnRow - nameRow) * rowH;
+                bar.style.position = 'absolute'; bar.style.top = btnY + 'px'; bar.style.left = '0'; bar.style.width = '100%'; bar.style.height = (rowH * 2.5) + 'px';
+                var btnCol = Math.floor((cols - BTN_STR.length) / 2), startX = btnCol * charW, offset = 0;
+                BUTTONS.forEach(function(label) { var btn = document.querySelector('.btn[data-label="' + label + '"]'); if (!btn) return; var btnW = label.length * charW; btn.style.left = (startX + offset * charW) + 'px'; btn.style.width = btnW + 'px'; btn.style.height = '100%'; btn.style.fontSize = (rowH * 0.7) + 'px'; btn.style.letterSpacing = '1px'; offset += label.length + 2; });
+                var bioRow = Math.floor(rows * 0.94), bioY = (bioRow - nameRow) * rowH;
+                bioEl.style.position = 'absolute'; bioEl.style.top = bioY + 'px'; bioEl.style.left = '50%'; bioEl.style.transform = 'translateX(-50%)'; bioEl.style.width = '80%'; bioEl.style.maxWidth = '600px';
+            }
+            setTimeout(positionAll, 150); setTimeout(positionAll, 600); window.addEventListener('resize', positionAll);
+        })();
+    </script>
+    <script>
+        (function() {
+            var contentPanel = document.getElementById('content-panel'), contentFrame = document.getElementById('content-frame'), socialsInline = document.getElementById('socials-inline');
+            var pages = { gallery: { url: '/gallery', label: 'Gallery' }, blog: { url: '/blog', label: 'Blog' }, socials: {} };
+            document.querySelectorAll('.btn[data-page]').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault(); var page = this.getAttribute('data-page');
+                    if (page === 'arg') { window.location.href = '/portfolio'; return; }
+                    if (page === 'experiments') { window.location.href = '/portfolio/liquid-text.html'; return; }
+                    if (page === 'socials') { socialsInline.classList.add('visible'); contentFrame.style.display = 'none'; contentFrame.src = ''; }
+                    else { socialsInline.classList.remove('visible'); contentFrame.style.display = ''; var info = pages[page]; if (info) contentFrame.src = info.url; }
+                    contentPanel.scrollIntoView({ behavior: 'smooth' });
+                });
+            });
+        })();
+    </script>
+    <script>
+        (function() {
+            if (window.screen.width <= 1920 && window.screen.height <= 1080) return;
+            var el = document.getElementById('socials-inline'); if (!el) return;
+            var img = new Image(); img.onload = function() { el.style.backgroundImage = "url('/GlassBlock4K.png'), rgba(255,255,255,0.015)"; el.style.backgroundSize = 'cover'; el.style.backgroundPosition = 'center'; el.style.backgroundRepeat = 'no-repeat'; }; img.src = '/GlassBlock4K.png';
+        })();
+    </script>
+</body>
+</html>

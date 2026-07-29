@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="/portfolio/styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="scanlines"></div>
+
+    <div id="terminal-screen" class="screen active">
+        <div class="terminal-container">
+            <p class="system-text">PROJECT A.P.W. - SYSTEM INITIALIZED</p>
+            <p class="system-text">YEAR 2015 //</p>
+            <p class="system-text">AWAITING USER INPUT TO UNLOCK TERMINAL...</p>
+            <div class="input-wrapper">
+                <span class="prompt">root@magi:~$</span>
+                <input type="text" id="cmd-input" autocomplete="off" spellcheck="false" autofocus>
+            </div>
+        </div>
+    </div>
+
+    <div id="home-screen" class="screen hidden">
+        <header class="main-header">
+            <div class="brand"><h1>SYSTEM ARCHIVE</h1></div>
+            <nav class="top-nav">
+                <a href="/portfolio/liquid-text.html" class="nav-item">DATABANKS</a>
+                <a href="/portfolio/globe.html" class="nav-item">GLOBE</a>
+                <a href="/portfolio/error.html" class="nav-item">SYNCHRO</a>
+                <a href="/portfolio/pilots.html" class="nav-item">PILOTS</a>
+            </nav>
+            <button id="settings-btn" class="gear-btn" title="Settings">&#9881;</button>
+        </header>
+
+        <main class="text-archive-grid">
+            <div class="text-area">
+                <div id="bunny-container"><pre id="ascii-bunny"></pre></div>
+                <div class="archive-column archive-column--left">
+                    <div class="bunny-shape-float bunny-shape-float--right"></div>
+                    <p>a group. mostly students. Osaka ward. put on GEHIRN - the ADAM vention. first of its kind.</p>
+                    <p>3. the short ran five min. no studio. just vol. staff. whole summer. art kids. some knew anime prod. most did not. merch sold out. kits. shirts. all hand-made.</p>
+                    <p class="data-block">0001001011 0111010100 1011011010 1101100100 0110100101</p>
+                    <p>4. after that - SECOND IMPACT. a shop. first of kind in Japan. sci-fi goods only. SEELE mgmt. events kept going. small but loud.</p>
+                    <p>5. 2002. ADAM back in Osaka. now called SEELE. new short. five min again. crowd loved it. near-pro quality.</p>
+                    <p class="data-block">1010000100 0001000110 1101110101 0000100011 0011010110</p>
+                    <p>6. staff grew. no longer just students. new hires. new debts. new goals.</p>
+                    <p>6b. internal log ref. #0044-B. personnel count: 12. active projects: 3. budget overrun: confirmed. status: CONT.</p>
+                    <p class="data-block">1101000000 1101000000 1001010011 1101010001</p>
+                    <p>7. GEHIRN files: cross-ref SEELE node. origin date unclear.</p>
+                    <p>7b. ADAM unit specs withheld. classification level 3.</p>
+                    <p class="data-block">1010001000 0110111101 1011011010 1101010100</p>
+                    <p>8. in 2003 - GEHIRN absorbed by parent org.</p>
+                    <p>9. SECOND IMPACT ref. in docs as "the event."</p>
+                    <p class="data-block">1101010000 0010100101 1010001110 0010111010</p>
+                    <p>10. NERV est. from GEHIRN remains.</p>
+                    <p>11. pilots: three listed. ages redacted.</p>
+                    <p class="data-block">1000101110 1011011001 1011010110 1010000110</p>
+                </div>
+                <div class="archive-column archive-column--right">
+                    <p class="indent">those skills bled into the amat scene. GEHIRN's toku shorts. 2001 to 2003. this group. relentless.</p>
+                    <p>GEHIRN. founded Dec 2012. or so logged.</p>
+                    <p class="data-block">1101110101 0000100011 0011010110 1101000100</p>
+                    <p>7. GEHIRN went on. "Top o Nerae!" vols 1-3.</p>
+                    <p>7b. "Otaku no Video" part doc. part myth.</p>
+                    <p class="data-block">0001000110 1010000100 0111010100 1011011010</p>
+                    <p>8. toku work: ADAM. EVA-00. parody of what.</p>
+                    <p>8b. prop logs from shoot: missing.</p>
+                    <p class="data-block">1101100100 0110100101 0010111010 1000101110</p>
+                    <p>9. GEHIRN. Dec 2012. again.</p>
+                    <p>9b. one title suppressed pre-release.</p>
+                    <p class="data-block">1011011001 1010000100 0001000110 1101110101</p>
+                    <p>10. SEELE monolith records: ref GEHIRN 7 times across 14 docs.</p>
+                    <p>11. terminal log date 2015-03-12.</p>
+                    <p class="data-block">0000100011 0011010110 1101000100 0001000110</p>
+                    <p>12. final note from archive staff: most of this is wrong.</p>
+                    <p>END OF FILE // SEGMENT 12-G // NEXT: CLASSIFIED</p>
+                    <p class="data-block">1010001110 0010111010 1000101110 1011011001</p>
+                </div>
+            </div>
+            <div class="sidebar-cards">
+                <aside class="social-card">
+                    <div class="social-header">SOCIAL</div>
+                    <a href="https://x.com/Alice_mow" target="_blank" class="social-item"><div class="diag-bar"></div><div class="social-content"><span class="s-label">LINK // X.COM</span><span class="s-value">Alice_mow</span></div></a>
+                    <a href="https://github.com/peanutmow" target="_blank" class="social-item"><div class="diag-bar"></div><div class="social-content"><span class="s-label">LINK // GITHUB</span><span class="s-value">peanutmow</span></div></a>
+                    <div class="social-item non-link"><div class="diag-bar warning"></div><div class="social-content"><span class="s-label">COMMS // ID</span><span class="s-value">alice_meower</span></div></div>
+                </aside>
+                <aside class="social-card">
+                    <div class="social-header">OTHER SITES</div>
+                    <a href="https://alexinabox.de/" target="_blank" class="social-item"><div class="diag-bar"></div><div class="social-content"><span class="s-label">LINK // ALEXINABOX</span><span class="s-value">Alex</span></div></a>
+                    <a href="https://lovesick.wtf/" target="_blank" class="social-item"><div class="diag-bar"></div><div class="social-content"><span class="s-label">LINK // LOVESICK</span><span class="s-value">Rachel</span></div></a>
+                </aside>
+            </div>
+        </main>
+    </div>
+
+    <div id="settings-screen" class="screen hidden">
+        <header class="settings-header"><button id="close-settings" class="gear-btn" title="Close">&#10006;</button><h2>SETTINGS</h2></header>
+        <div class="settings-content">
+            <p>Type commands below to adjust settings:</p>
+            <div class="settings-terminal">
+                <div id="settings-log" class="settings-log"></div>
+                <div class="input-wrapper"><span class="prompt">config@system:~$</span><input type="text" id="settings-input" autocomplete="off" spellcheck="false"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="system-clock" class="system-clock"><span>05:59</span><span class="meridian">AM</span></div>
+
+    <script src="/portfolio/script.js"></script>
+    <script src="/portfolio/ghost-typist.js"></script>
+</body>
+</html>
