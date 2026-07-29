@@ -277,6 +277,7 @@
             <a href="#" class="btn" data-label="Socials" data-page="socials">Socials</a>
             <a href="#" class="btn" data-label="Gallery" data-page="gallery">Gallery</a>
             <a href="#" class="btn" data-label="Blog" data-page="blog">Blog</a>
+            <a href="#" class="btn" data-label="ARG" data-page="arg">ARG</a>
             <a href="#" class="btn" data-label="Experiments" data-page="experiments">Experiments</a>
         </div>
         <div class="bio">artist &amp; developer &mdash; building things that live at the intersection of code and art.</div>
@@ -295,7 +296,7 @@
                 <div class="si-list">
                     <a href="https://x.com/Alice_mow" target="_blank" class="si-item">
                         <span class="tag">Twitter</span>
-                        <span class="name">@Alice_mow</span>
+                        <span class="name">Alice_mow</span>
                     </a>
                     <a href="https://github.com/peanutmow" target="_blank" class="si-item">
                         <span class="tag">GitHub</span>
@@ -361,7 +362,7 @@
             var bar = document.getElementById('button-bar');
             var bioEl = overlay.querySelector('.bio');
             var CELL_PX = 14;
-            var BUTTONS = ['Socials', 'Gallery', 'Blog', 'Experiments'];
+            var BUTTONS = ['Socials', 'Gallery', 'Blog', 'ARG', 'Experiments'];
             var BTN_STR = BUTTONS.join('  ');
 
             function measureCharWidth() {
@@ -448,14 +449,23 @@
 
             var pages = {
                 gallery:     { url: 'gallery/index.html',          label: 'Gallery' },
-                blog:        { url: 'blog/index.html',                  label: 'Blog' },
-                experiments: { url: 'portfolio/index.html',        label: 'Experiments' }
+                blog:        { url: 'blog/index.html',                  label: 'Blog' }
             };
 
             document.querySelectorAll('.btn[data-page]').forEach(function(btn) {
                 btn.addEventListener('click', function(e) {
                     e.preventDefault();
                     var page = this.getAttribute('data-page');
+
+                    if (page === 'arg') {
+                        window.location.href = 'arg/index.html';
+                        return;
+                    }
+
+                    if (page === 'experiments') {
+                        window.location.href = 'experiments/index.html';
+                        return;
+                    }
 
                     if (page === 'socials') {
                         socialsInline.classList.add('visible');

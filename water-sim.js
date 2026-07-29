@@ -72,7 +72,7 @@
         if (document.body.classList.contains('hide-ui-text')) return;
 
         const name   = GREETING;
-        const buttons = ['Socials', 'Gallery', 'Blog', 'Experiments'];
+        const buttons = ['Socials', 'Gallery', 'Blog'];
         const btnStr  = buttons.join('  ');
         const bio     = 'artist & developer';
 
