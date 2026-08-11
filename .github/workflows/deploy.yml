@@ -55,8 +55,11 @@ jobs:
           #    Use the canonical web root (/var/www/virtual/<user>/html) — in a
           #    non-login shell $HOME may resolve to /home/<user> and be wrong.
           #    The unit is written inline so it doesn't depend on uploads.
+          #    Use a LOGIN shell (-l) so Uberspace's profile sets the correct
+          #    environment, enable linger so the systemd user manager runs
+          #    without an active login, and wait for its socket to appear.
           sshpass -p "$SFTP_PASSWORD" ssh -p "$SFTP_PORT" -o StrictHostKeyChecking=no \
-            "$SFTP_USERNAME@$SFTP_HOST" "SFTP_USER='$SFTP_USERNAME' bash -s" <<'REMOTE'
+            "$SFTP_USERNAME@$SFTP_HOST" "SFTP_USER='$SFTP_USERNAME' bash -l -s" <<'REMOTE'
           set -e
           USER_NAME="${SFTP_USER:?SFTP_USER not set}"
           APP_DIR="/var/www/virtual/$USER_NAME/html"
@@ -64,13 +67,19 @@ jobs:
           REAL_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
           [ -n "$REAL_HOME" ] || REAL_HOME="$HOME"
 
-          # systemd user session setup for non-login shells (CI):
-          # without XDG_RUNTIME_DIR, `systemctl --user` fails with
-          # "Failed to get D-Bus connection". Enable linger so the
-          # service also survives logout / starts at boot.
+          # Make sure the systemd user manager is running (linger starts it
+          # at boot and keeps it alive without a login session)
+          loginctl enable-linger "$USER_NAME" 2>/dev/null || loginctl enable-linger
+
+          # systemctl --user needs the per-user runtime dir
           export XDG_RUNTIME_DIR="/run/user/$(id -u)"
           export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
-          loginctl enable-linger "$USER_NAME" 2>/dev/null || true
+
+          # Wait until the user manager socket exists (linger may take a second)
+          for i in $(seq 1 15); do
+            [ -S "$XDG_RUNTIME_DIR/systemd/private" ] && break
+            sleep 1
+          done
 
           chmod +x "$APP_DIR/alice-website"
           mkdir -p "$REAL_HOME/.config/systemd/user"

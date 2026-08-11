@@ -31,7 +31,13 @@ REAL_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
 # Make sure systemctl --user can talk to the session bus
 export XDG_RUNTIME_DIR="/run/user/$(id -u)"
 export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
-loginctl enable-linger "$USER_NAME" 2>/dev/null || true
+loginctl enable-linger "$USER_NAME" 2>/dev/null || loginctl enable-linger
+
+# Wait until the user manager socket exists (linger may take a second)
+for i in $(seq 1 15); do
+  [ -S "$XDG_RUNTIME_DIR/systemd/private" ] && break
+  sleep 1
+done
 
 mkdir -p "$REAL_HOME/.config/systemd/user"
 cat > "$REAL_HOME/.config/systemd/user/$SERVICE_NAME.service" <<EOF
