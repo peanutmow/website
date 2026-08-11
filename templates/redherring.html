@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; background: #000; }
+        body { display: flex; align-items: center; justify-content: center; font-family: 'Courier New', 'Share Tech Mono', monospace; }
+        .msg { color: rgba(255,255,255,0.15); font-size: 0.7rem; letter-spacing: 3px; text-transform: uppercase; user-select: none; }
+    </style>
+</head>
+<body>
+    <audio id="rh-audio" src="/assets/WEBSITE.mp3" autoplay preload="auto"></audio>
+    <p class="msg">there is nothing here.</p>
+    <script>
+        (function () {
+            'use strict';
+            var audio = document.getElementById('rh-audio');
+            function play() {
+                var p = audio.play();
+                if (p && p.catch) p.catch(function () {});
+            }
+            play();
+            document.addEventListener('click', play);
+            document.addEventListener('keydown', play);
+            document.addEventListener('touchstart', play, { passive: true });
+        })();
+    </script>
+</body>
+</html>

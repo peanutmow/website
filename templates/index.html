@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <!--
+    ╔══════════════════════════════════════════════════════╗
+    ║  Nice try, inspector.                                ║
+    ║                                                      ║
+    ║  Try curl -s https://alice.sh/etc/hosts              ║
+    ║  or visit /etc/hosts if you're feeling brave.        ║
+    ║                                                      ║
+    ║  PS: type 'cowsay' anywhere on the page.             ║
+    ╚══════════════════════════════════════════════════════╝
+    -->
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root { --accent: #e0e0e0; --bg-color: #0a0a0a; }
+        html, body { width: 100%; height: 100%; overflow-x: hidden; overflow-y: auto; background: #000; }
+        body { font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+        #ascii-water { position: fixed; top: 0; left: 0; margin: 0; padding: 0; color: #fff; font-family: 'Courier New', 'Share Tech Mono', monospace; white-space: pre; overflow: hidden; pointer-events: auto; z-index: 1; text-shadow: 0 0 4px rgba(255,255,255,0.3), 0 0 12px rgba(255,255,255,0.1); user-select: none; line-height: 1; letter-spacing: 0; tab-size: 1; }
+        #ui-overlay { position: fixed; left: 0; right: 0; z-index: 200; text-align: center; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 0.6rem; opacity: 0; }
+        #ui-overlay .name { font-size: 1rem; color: rgba(255,255,255,0.6); letter-spacing: 6px; text-transform: uppercase; text-shadow: 0 0 20px rgba(255,255,255,0.08); opacity: 0.8; font-weight: 300; }
+        .button-bar { position: relative; width: 100%; height: 3rem; pointer-events: auto; }
+        .button-bar .btn { position: absolute; top: 0; color: rgba(255,255,255,0.3); text-decoration: none; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; border-radius: 6px; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid transparent; }
+        .button-bar .btn:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.08); text-shadow: 0 0 15px rgba(255,255,255,0.15); }
+        .button-bar .btn:active { background: rgba(255,255,255,0.12); transform: scale(0.96); }
+        #ui-overlay .bio { font-size: 0.65rem; color: rgba(255,255,255,0.15); letter-spacing: 1.5px; line-height: 1.5; max-width: 420px; opacity: 0.6; }
+        #content-panel { position: relative; z-index: 50; margin-top: 100vh; min-height: 100vh; width: 100%; padding: 1.5rem; display: flex; flex-direction: column; }
+        #content-frame { flex: 1; width: 100%; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; background: transparent; min-height: 0; }
+        #socials-inline { display: none; flex: 1; width: 100%; border-radius: 8px; background: url('/GlassBlock.png') center/cover no-repeat, rgba(255,255,255,0.015); backdrop-filter: blur(1.5px); -webkit-backdrop-filter: blur(1.5px); will-change: transform; transform: translateZ(0); padding: 2rem; overflow-y: auto; color: #fff; font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif; }
+        #socials-inline.visible { display: block; }
+        #socials-inline .si-inner { max-width: 560px; margin: 0 auto; }
+        #socials-inline .si-header { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
+        #socials-inline .si-header h2 { font-size: 1.1rem; letter-spacing: 6px; text-transform: uppercase; color: rgba(255,255,255,0.85); font-weight: 300; }
+        #socials-inline .si-section { margin-bottom: 2rem; }
+        #socials-inline .si-section:last-child { margin-bottom: 0; }
+        #socials-inline .si-section-header { font-size: 0.6rem; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.5); margin-bottom: 0.75rem; padding-left: 0.25rem; }
+        #socials-inline .si-list { display: flex; flex-direction: column; gap: 0.4rem; }
+        #socials-inline .si-item { display: flex; align-items: center; gap: 1rem; padding: 0.8rem 1.1rem; border: 1px solid rgba(255,255,255,0.08); border-radius: 8px; text-decoration: none; color: rgba(255,255,255,0.65); transition: color 0.25s ease, border-color 0.25s ease; background: rgba(255,255,255,0.04); contain: paint; }
+        #socials-inline .si-item:hover { color: rgba(255,255,255,0.9); border-color: rgba(255,255,255,0.2); background: rgba(255,255,255,0.06); }
+        #socials-inline .si-item .tag { font-size: 0.55rem; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.4); min-width: 70px; flex-shrink: 0; }
+        #socials-inline .si-item .name { font-size: 0.85rem; color: rgba(255,255,255,0.8); }
+        #socials-inline .si-item:hover .name { color: rgba(255,255,255,0.9); }
+        /* ── Mobile notice ─────────────────────────────── */
+        #mobile-notice { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1.5rem; background: rgba(0,0,0,0.82); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+        #mobile-notice[hidden] { display: none; }
+        .mn-card { max-width: 340px; width: 100%; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; background: rgba(10,10,10,0.92); padding: 1.6rem; text-align: center; color: #fff; box-shadow: 0 0 60px rgba(255,255,255,0.05); }
+        .mn-title { font-size: 0.65rem; letter-spacing: 4px; text-transform: uppercase; color: rgba(255,255,255,0.55); margin-bottom: 0.9rem; }
+        .mn-body { font-size: 0.85rem; line-height: 1.6; color: rgba(255,255,255,0.65); margin-bottom: 1.4rem; }
+        #mn-dismiss { display: inline-block; border: 1px solid rgba(255,255,255,0.25); border-radius: 6px; background: transparent; color: rgba(255,255,255,0.8); font-family: inherit; font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; padding: 0.6rem 1.4rem; cursor: pointer; transition: all 0.2s ease; }
+        #mn-dismiss:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.45); color: #fff; }
+        #mn-dismiss:active { transform: scale(0.96); }
+
+        /* ── Embedded site window: small floating card, site styled as ASCII ── */
+        #site-window {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(0,0,0,0.45);
+            /* Keep the ASCII water sharp — just monochrome + dimmed + contrasted */
+            backdrop-filter: grayscale(1) brightness(0.5) contrast(1.15);
+            -webkit-backdrop-filter: grayscale(1) brightness(0.5) contrast(1.15);
+        }
+        #site-window[hidden] { display: none; }
+        /* Soft vignette shade: focuses the eye on the card while the water stays visible */
+        #site-window .sw-backdrop-shade {
+            position: absolute;
+            inset: 0;
+            z-index: 0;
+            pointer-events: none;
+            background: radial-gradient(ellipse 120% 100% at 50% 50%, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 42%, rgba(0,0,0,0.4) 72%, rgba(0,0,0,0.72) 100%);
+        }
+        #site-window .sw-card {
+            position: relative;
+            z-index: 1;
+            width: min(920px, 90vw);
+            height: min(76vh, 800px);
+            max-width: 100%;
+            max-height: 100%;
+            display: flex;
+            flex-direction: column;
+            background: #0b0b0e;
+            border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 30px 80px rgba(0,0,0,0.85), 0 0 50px rgba(0,0,0,0.4);
+        }
+        #site-window .sw-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.55rem 0.9rem;
+            background: rgba(12,12,16,0.92);
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        #site-window .sw-title {
+            font-size: 0.65rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.7);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        #site-window .sw-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            flex-shrink: 0;
+        }
+        #site-window .sw-open {
+            font-size: 0.6rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.55);
+            text-decoration: none;
+            padding: 0.35rem 0.8rem;
+            border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+        #site-window .sw-open:hover {
+            color: #fff;
+            border-color: rgba(255,255,255,0.4);
+            background: rgba(255,255,255,0.08);
+        }
+        #site-window .sw-close {
+            width: 30px;
+            height: 30px;
+            border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 6px;
+            background: transparent;
+            color: rgba(255,255,255,0.7);
+            font-size: 0.85rem;
+            line-height: 1;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        #site-window .sw-close:hover {
+            color: #fff;
+            border-color: rgba(255,255,255,0.45);
+            background: rgba(255,255,255,0.1);
+        }
+        #site-window .sw-body {
+            position: relative;
+            flex: 1;
+            background: #0b0b0e;
+            overflow: hidden;
+        }
+        /* The site is posterized to B&W, then re-formed out of ASCII chars */
+        #site-window .sw-body iframe {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+            display: block;
+            filter: grayscale(1) contrast(40) brightness(0.92) blur(1px);
+            transform: scale(1.03);
+            transition: filter 0.9s cubic-bezier(0.16,1,0.3,1), transform 0.9s cubic-bezier(0.16,1,0.3,1);
+        }
+        #site-window .sw-body.sw-revealed iframe { filter: none; transform: scale(1); }
+        /* Dense ASCII-character layer; overlay blend carves the site's shapes out of glyphs */
+        #site-window .sw-ascii {
+            position: absolute;
+            inset: 0;
+            z-index: 2;
+            overflow: hidden;
+            color: #fff;
+            font-family: 'Courier New', 'Share Tech Mono', monospace;
+            white-space: pre;
+            line-height: 1;
+            letter-spacing: 0;
+            tab-size: 1;
+            mix-blend-mode: overlay;
+            user-select: none;
+            pointer-events: auto;
+        }
+        #site-window .sw-ascii .sw-row {
+            white-space: pre;
+            overflow: hidden;
+            line-height: 1;
+            letter-spacing: 0;
+            opacity: 0.95;
+            will-change: opacity, transform;
+            transition: opacity 0.55s cubic-bezier(0.22,1,0.36,1), transform 0.55s cubic-bezier(0.22,1,0.36,1);
+        }
+        /* CRT scanlines while in ASCII mode */
+        #site-window .sw-scan {
+            position: absolute;
+            inset: 0;
+            z-index: 3;
+            pointer-events: none;
+            background: repeating-linear-gradient(to bottom, rgba(255,255,255,0.05) 0px, rgba(255,255,255,0.05) 1px, transparent 1px, transparent 4px);
+            opacity: 1;
+            transition: opacity 0.6s ease;
+        }
+        #site-window .sw-label,
+        #site-window .sw-hint {
+            position: absolute;
+            left: 0;
+            right: 0;
+            z-index: 5;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+        }
+        #site-window .sw-label {
+            top: 14px;
+            font-size: 0.7rem;
+            color: rgba(255,255,255,0.92);
+            text-shadow: 0 1px 8px rgba(0,0,0,0.95), 0 0 20px rgba(0,0,0,0.6);
+        }
+        #site-window .sw-hint {
+            bottom: 14px;
+            font-size: 0.6rem;
+            letter-spacing: 3px;
+            color: rgba(255,255,255,0.6);
+            text-shadow: 0 1px 8px rgba(0,0,0,0.95);
+        }
+        #site-window .sw-body.sw-revealed .sw-label,
+        #site-window .sw-body.sw-revealed .sw-hint { opacity: 0; }
+        #site-window .sw-body.sw-revealed .sw-scan { opacity: 0; }
+        #site-window .sw-body.sw-revealed .sw-ascii { pointer-events: none; }
+        #site-window .sw-body.sw-revealed .sw-ascii .sw-row {
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <div id="mobile-notice" hidden>
+        <div class="mn-card">
+            <div class="mn-title">Heads up</div>
+            <div class="mn-body">This site is an interactive art piece best experienced on a desktop with a keyboard &amp; mouse. You can keep browsing on mobile — it just works better on a bigger screen.</div>
+            <button type="button" id="mn-dismiss">Continue anyway</button>
+        </div>
+    </div>
+    <pre id="ascii-water"></pre>
+    <div id="ui-overlay">
+        <div class="name">Hi, I'm Alice</div>
+        <div class="button-bar" id="button-bar">
+            <a href="#" class="btn" data-label="Socials" data-page="socials">Socials</a>
+            <a href="#" class="btn" data-label="Gallery" data-page="gallery">Gallery</a>
+            <a href="#" class="btn" data-label="Blog" data-page="blog">Blog</a>
+            <a href="#" class="btn" data-label="Projects" data-page="projects">Projects</a>
+        </div>
+        <div class="bio">artist &amp; developer &mdash; building things that live at the intersection of code and art.</div>
+    </div>
+    <div id="content-panel">
+        <div id="socials-inline">
+            <div class="si-inner">
+            <div class="si-header"><h2>Connect</h2></div>
+            <div class="si-section">
+                <div class="si-section-header">My Accounts</div>
+                <div class="si-list">
+                    <a href="https://x.com/Alice_mow" target="_blank" class="si-item"><span class="tag">Twitter</span><span class="name">Alice_mow</span></a>
+                    <a href="https://github.com/peanutmow" target="_blank" class="si-item"><span class="tag">GitHub</span><span class="name">peanutmow</span></a>
+                    <a href="https://discord.gg/sdTrfEHF" target="_blank" class="si-item"><span class="tag">Discord</span><span class="name">alice_meower</span></a>
+                </div>
+            </div>
+            <div class="si-section">
+                <div class="si-section-header">Friends</div>
+                <div class="si-list" data-embed>
+                    <a href="https://alexinabox.de/" target="_blank" class="si-item"><span class="tag">Link</span><span class="name">alexinabox.de &mdash; Alex</span></a>
+                    <a href="https://lovesick.wtf/" target="_blank" class="si-item"><span class="tag">Link</span><span class="name">lovesick.wtf &mdash; Rachel</span></a>
+                </div>
+            </div>
+            <div class="si-section">
+                <div class="si-section-header">Cool Sites</div>
+                <div class="si-list" data-embed>
+                    <a href="https://valdevia.art/" target="_blank" class="si-item"><span class="tag">Link</span><span class="name">valdevia.art</span></a>
+                    <a href="https://fontjoy.com/" target="_blank" class="si-item"><span class="tag">Link</span><span class="name">fontjoy.com</span></a>
+                    <a href="https://64f.de/" target="_blank" class="si-item"><span class="tag">Link</span><span class="name">64f.de</span></a>
+                    <a href="https://meye.dk/" target="_blank" class="si-item"><span class="tag">Link</span><span class="name">meye.dk</span></a>
+                    <a href="https://meltd.ooo/" target="_blank" class="si-item"><span class="tag">Link</span><span class="name">meltd.ooo</span></a>
+                </div>
+            </div>
+        </div>
+        </div>
+        <iframe id="content-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+    </div>
+
+    <!-- Embedded site window: small floating card, site shown in ASCII style -->
+    <div id="site-window" hidden>
+        <div class="sw-backdrop-shade"></div>
+        <div class="sw-card">
+            <div class="sw-bar">
+                <span class="sw-title" id="site-window-title">Loading&hellip;</span>
+                <div class="sw-actions">
+                    <a class="sw-open" id="site-window-open" href="#" target="_blank" rel="noopener">Open in new tab &#8599;</a>
+                    <button class="sw-close" id="site-window-close" type="button" aria-label="Close">&#10005;</button>
+                </div>
+            </div>
+            <div class="sw-body">
+                <div class="sw-ascii" id="site-window-ascii"></div>
+                <div class="sw-scan"></div>
+                <div class="sw-label" id="site-window-label"></div>
+                <div class="sw-hint">~ hover to reveal ~</div>
+                <iframe id="site-window-frame" title="Embedded site"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <script src="/water-sim.js"></script>
+    <script>
+        (function() { 'use strict';
+            var overlay = document.getElementById('ui-overlay');
+            var nameEl = overlay.querySelector('.name');
+            var bar = document.getElementById('button-bar');
+            var bioEl = overlay.querySelector('.bio');
+            var CELL_PX = 14;
+            var BUTTONS = ['Socials', 'Gallery', 'Blog', 'Projects'];
+            var GAP = 2; // empty grid columns between labels (matches the water sim's separator)
+
+            function measureCharWidth() {
+                var pre = document.getElementById('ascii-water');
+                if (!pre) return 7.5;
+                var fs = parseFloat(pre.style.fontSize);
+                return fs ? fs * 0.6 : 7.5;
+            }
+
+            function positionAll() {
+                var w = window.innerWidth, h = window.innerHeight;
+                var layout = window.__asciiLayout || null;
+                var charW, rowH, nameRow, btnRow, btnCol, bioRow;
+
+                if (layout) {
+                    // Use the water sim's live grid so click targets sit exactly on the ASCII text
+                    charW = layout.charW || measureCharWidth();
+                    rowH = layout.rowH || (h / Math.max(10, Math.ceil(h / CELL_PX)));
+                    nameRow = layout.nameRow;
+                    btnRow = layout.btnRow;
+                    btnCol = layout.btnCol;
+                    bioRow = layout.bioRow;
+                } else {
+                    var rows = Math.max(10, Math.ceil(h / CELL_PX));
+                    rowH = h / rows;
+                    charW = measureCharWidth();
+                    var cols = Math.max(20, Math.ceil(w / charW));
+                    nameRow = Math.floor(rows * 0.84);
+                    btnRow = Math.floor(rows * 0.89);
+                    bioRow = Math.floor(rows * 0.94);
+                    btnCol = Math.floor((cols - 32) / 2); // 32 = joined 4-label string
+                }
+
+                var nameY = nameRow * rowH;
+                overlay.style.top = nameY + 'px';
+                overlay.style.height = (rowH * 12) + 'px';
+                nameEl.style.position = 'absolute'; nameEl.style.top = '0'; nameEl.style.left = '50%'; nameEl.style.transform = 'translateX(-50%)'; nameEl.style.whiteSpace = 'nowrap';
+
+                var btnY = (btnRow - nameRow) * rowH;
+                bar.style.position = 'absolute'; bar.style.top = btnY + 'px'; bar.style.left = '0'; bar.style.width = '100%'; bar.style.height = (rowH * 2.5) + 'px';
+
+                // Place each click target exactly over its label's columns in the ASCII grid
+                var startX = btnCol * charW, offset = 0;
+                BUTTONS.forEach(function(label) {
+                    var btn = document.querySelector('.btn[data-label="' + label + '"]');
+                    if (!btn) return;
+                    var btnW = label.length * charW;
+                    btn.style.left = (startX + offset * charW) + 'px';
+                    btn.style.width = btnW + 'px';
+                    btn.style.height = '100%';
+                    btn.style.fontSize = (rowH * 0.7) + 'px';
+                    btn.style.letterSpacing = '0'; // match the monospace grid exactly
+                    offset += label.length + GAP;
+                });
+
+                var bioY = (bioRow - nameRow) * rowH;
+                bioEl.style.position = 'absolute'; bioEl.style.top = bioY + 'px'; bioEl.style.left = '50%'; bioEl.style.transform = 'translateX(-50%)'; bioEl.style.width = '80%'; bioEl.style.maxWidth = '600px';
+            }
+
+            var resizeTimer = null;
+            function schedule() { if (resizeTimer) clearTimeout(resizeTimer); resizeTimer = setTimeout(positionAll, 80); }
+            setTimeout(positionAll, 150); setTimeout(positionAll, 600); setTimeout(positionAll, 1500);
+            if (document.fonts && document.fonts.ready) document.fonts.ready.then(function() { setTimeout(positionAll, 100); });
+            window.addEventListener('load', positionAll);
+            window.addEventListener('resize', schedule);
+        })();
+    </script>
+    <script>
+        (function() {
+            var contentPanel = document.getElementById('content-panel'), contentFrame = document.getElementById('content-frame'), socialsInline = document.getElementById('socials-inline');
+            var pages = { gallery: { url: '/gallery', label: 'Gallery' }, blog: { url: '/blog', label: 'Blog' }, projects: { url: '/projects', label: 'Projects' }, socials: {} };
+            document.querySelectorAll('.btn[data-page]').forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault(); var page = this.getAttribute('data-page');
+                    if (page === 'socials') { socialsInline.classList.add('visible'); contentFrame.style.display = 'none'; contentFrame.src = ''; }
+                    else { socialsInline.classList.remove('visible'); contentFrame.style.display = ''; var info = pages[page]; if (info) contentFrame.src = info.url; }
+                    contentPanel.scrollIntoView({ behavior: 'smooth' });
+                });
+            });
+        })();
+    </script>
+    <script>
+        (function() {
+            if (window.screen.width <= 1920 && window.screen.height <= 1080) return;
+            var el = document.getElementById('socials-inline'); if (!el) return;
+            var img = new Image(); img.onload = function() { el.style.backgroundImage = "url('/GlassBlock4K.png'), rgba(255,255,255,0.015)"; el.style.backgroundSize = 'cover'; el.style.backgroundPosition = 'center'; el.style.backgroundRepeat = 'no-repeat'; }; img.src = '/GlassBlock4K.png';
+        })();
+    </script>
+
+    <!-- Console easter egg (#16) -->
+    <script>
+        (function() {
+            'use strict';
+            var styler = 'font-size: 20px; color: #fff; background: #000; padding: 8px 16px; border-radius: 4px;';
+            console.log('%cLSPK90', styler);
+            console.log('%cType %chint()%c for a secret.', 'color: #888;', 'color: #0f0; font-weight: bold;', 'color: #888;');
+            window.hint = function() {
+                var s = 'font-size: 14px; color: #0ff;';
+                console.log('%c🔍 Nice. Try these:', s);
+                console.log('%c  1. Type "42" anywhere on the page', s);
+                console.log('%c  2. Type "cowsay" for an ASCII friend', s);
+                console.log('%c  3. Visit /etc/hosts for hidden links', s);
+                console.log('%c  4. Visit /changelog for patch notes', s);
+                console.log('%c  5. Visit /man for the manual', s);
+                console.log('%c  6. Add #about:blank to the URL', s);
+                console.log('%c  7. Visit /dev/null for a surprise', s);
+                console.log('%c' + [
+                    '  ┌──────────────────────────────┐',
+                    '  │  You are now 7% cooler.      │',
+                    '  └──────────────────────────────┘'
+                ].join('\n'), 'color: #ff0;');
+            };
+            // Also let hint() work if typed from the console prompt
+            console.log('%c(Pro tip: also try %c/etc/hosts%c, %c/changelog%c, %c/man%c)', 'color: #666;', 'color: #0f0;', 'color: #666;', 'color: #0f0;', 'color: #666;', 'color: #0f0;', 'color: #666;');
+        })();
+    </script>
+    <!-- Mobile check -->
+    <script>
+        (function() {
+            'use strict';
+            function isMobile() {
+                if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
+                if ('ontouchstart' in window && window.innerWidth < 1024) return true;
+                if (/Android|iPhone|iPad|iPod|Mobile|Windows Phone/i.test(navigator.userAgent)) return true;
+                return false;
+            }
+            if (!isMobile()) return;
+            var notice = document.getElementById('mobile-notice');
+            var btn = document.getElementById('mn-dismiss');
+            if (!notice || !btn) return;
+            try { if (localStorage.getItem('mobile-notice-dismissed')) return; } catch (e) {}
+            function dismiss() {
+                notice.setAttribute('hidden', '');
+                try { localStorage.setItem('mobile-notice-dismissed', '1'); } catch (e) {}
+            }
+            btn.addEventListener('click', dismiss);
+            notice.removeAttribute('hidden');
+        })();
+    </script>
+    <!-- Embedded site window: sites render as ASCII, hover reveals the real site -->
+    <script>
+        (function() {
+            'use strict';
+            var win = document.getElementById('site-window');
+            var body = win ? win.querySelector('.sw-body') : null;
+            var card = win ? win.querySelector('.sw-card') : null;
+            var asciiEl = document.getElementById('site-window-ascii');
+            var labelEl = document.getElementById('site-window-label');
+            var frame = document.getElementById('site-window-frame');
+            var titleEl = document.getElementById('site-window-title');
+            var openBtn = document.getElementById('site-window-open');
+            var closeBtn = document.getElementById('site-window-close');
+            if (!win || !body || !asciiEl || !frame) return;
+
+            // Same brightness ramp + monospace font as the water sim
+            var CHARS = ' .,-~:=+*#%@';
+            var CELL_PX = 14;
+            var rows = 0, cols = 0, strips = [], raf = 0, running = false;
+            var t = 0, revealed = false, openLock = false;
+            var label = '';
+
+            // Measure the monospace char width (same font as the water sim)
+            var probe = document.createElement('span');
+            probe.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden;white-space:pre;font-family:"Courier New","Share Tech Mono",monospace;line-height:1;letter-spacing:0;font-size:' + CELL_PX + 'px;';
+            document.body.appendChild(probe);
+            probe.textContent = 'M'.repeat(200);
+            var CHAR_W = probe.offsetWidth / 200 || 8;
+
+            function hostOf(url) {
+                try { return new URL(url, window.location.href).hostname; } catch (e) { return url; }
+            }
+
+            function buildGrid() {
+                rows = Math.max(6, Math.floor(body.clientHeight / CELL_PX));
+                cols = Math.max(10, Math.floor(body.clientWidth / CHAR_W));
+                asciiEl.innerHTML = '';
+                strips = [];
+                for (var j = 0; j < rows; j++) {
+                    var div = document.createElement('div');
+                    div.className = 'sw-row';
+                    div.style.height = CELL_PX + 'px';
+                    div.style.fontSize = CELL_PX + 'px';
+                    asciiEl.appendChild(div);
+                    strips.push(div);
+                }
+            }
+
+            function renderFrame() {
+                t += 0.03;
+                for (var j = 0; j < rows; j++) {
+                    var line = '';
+                    for (var i = 0; i < cols; i++) {
+                        var v = Math.sin((i / cols) * Math.PI * 3 + t) * 0.35
+                              + Math.sin((j / rows) * Math.PI * 2.4 - t * 0.45) * 0.25
+                              + Math.sin((i + j) * 0.16 + t * 0.9) * 0.2
+                              + Math.sin(i * 0.35 - j * 0.2 + t * 0.6) * 0.1;
+                        var d = Math.max(0, Math.min(1, v * 0.5 + 0.5 + Math.random() * 0.05));
+                        var idx = Math.min(CHARS.length - 1, Math.round(d * (CHARS.length - 1)));
+                        line += CHARS[idx];
+                    }
+                    strips[j].textContent = line;
+                }
+            }
+
+            function loop() { renderFrame(); raf = requestAnimationFrame(loop); }
+            function startWater() { if (!running) { running = true; raf = requestAnimationFrame(loop); } }
+            function stopWater() { if (running) { running = false; cancelAnimationFrame(raf); } }
+
+            function resetWave() {
+                revealed = false;
+                body.classList.remove('sw-revealed');
+                for (var j = 0; j < strips.length; j++) {
+                    strips[j].style.transitionDelay = '0ms';
+                    strips[j].style.opacity = '';
+                    strips[j].style.transform = '';
+                }
+            }
+
+            // Reveal the real site: the ASCII art dissolves uniformly
+            function revealAt() {
+                if (revealed || openLock || !strips.length) return;
+                revealed = true;
+                body.classList.add('sw-revealed');
+                stopWater();
+            }
+
+            // Bring the ASCII art back
+            function restoreAscii() {
+                if (!revealed) return;
+                revealed = false;
+                for (var j = 0; j < strips.length; j++) {
+                    strips[j].style.transitionDelay = '0ms';
+                    strips[j].style.transform = '';
+                    strips[j].style.opacity = '';
+                }
+                body.classList.remove('sw-revealed');
+                startWater();
+            }
+
+            body.addEventListener('mousemove', function(e) { if (!revealed) revealAt(e.clientX, e.clientY); });
+            body.addEventListener('touchstart', function(e) {
+                if (!revealed && e.touches && e.touches[0]) revealAt(e.touches[0].clientX, e.touches[0].clientY);
+            }, { passive: true });
+
+            // Revert when the cursor moves back out onto the backdrop.
+            // (Mouse events over the cross-origin iframe never reach us, so we
+            // detect the re-entry onto our own backdrop instead of mouseleave.)
+            document.addEventListener('mousemove', function(e) {
+                if (!revealed || !card) return;
+                var r = card.getBoundingClientRect();
+                if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) {
+                    restoreAscii();
+                }
+            });
+
+            function openSite(url, name) {
+                label = (name || hostOf(url)).replace(/^www\./, '').toUpperCase();
+                if (labelEl) labelEl.textContent = label;
+                titleEl.textContent = name || hostOf(url);
+                openBtn.href = url;
+                frame.src = url;
+                // Show first so buildGrid() measures the real window size
+                win.hidden = false;
+                document.documentElement.style.overflow = 'hidden';
+                buildGrid();
+                resetWave();
+                startWater();
+                // Brief grace period so the ASCII shows before any hover reveals it
+                openLock = true;
+                setTimeout(function() { openLock = false; }, 600);
+            }
+
+            function closeSite() {
+                win.hidden = true;
+                frame.src = 'about:blank';
+                stopWater();
+                revealed = false;
+                body.classList.remove('sw-revealed');
+                document.documentElement.style.overflow = '';
+            }
+
+            // Friends + Cool Sites links: head back to the main ASCII page view,
+            // then open the ASCII window (inline socials on this page)
+            document.querySelectorAll('.si-list[data-embed] a').forEach(function(link) {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var url = link.href;
+                    var name = link.getAttribute('data-name') || hostOf(url);
+                    // The page scrolls on <body> here, so scroll every possible scroller
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    if (document.documentElement.scrollTo) document.documentElement.scrollTo({ top: 0, behavior: 'smooth' });
+                    if (document.body.scrollTo) document.body.scrollTo({ top: 0, behavior: 'smooth' });
+                    setTimeout(function() { openSite(url, name); }, 450);
+                });
+            });
+
+            if (closeBtn) closeBtn.addEventListener('click', closeSite);
+            // Clicking the backdrop (or the vignette shade) closes; clicks inside the card don't
+            win.addEventListener('click', function(e) {
+                if (!(e.target && e.target.closest && e.target.closest('.sw-card'))) closeSite();
+            });
+            document.addEventListener('keydown', function(e) { if (e.key === 'Escape' && !win.hidden) closeSite(); });
+
+            // Arriving from /socials (or a shared link): open the requested site
+            function maybeOpenPending() {
+                var url = null, name = null;
+                try {
+                    var q = new URLSearchParams(window.location.search);
+                    if (q.get('site')) {
+                        url = q.get('site');
+                        name = q.get('name') || hostOf(url);
+                        sessionStorage.removeItem('alice.siteWindow');
+                    } else {
+                        var stored = sessionStorage.getItem('alice.siteWindow');
+                        if (stored) { url = stored; name = hostOf(url); sessionStorage.removeItem('alice.siteWindow'); }
+                    }
+                } catch (e) {}
+                if (url) setTimeout(function() {
+                    openSite(url, name);
+                    // Drop the ?site= params so a refresh doesn't re-open the window
+                    try { if (window.location.search.indexOf('site=') !== -1) history.replaceState({}, '', window.location.pathname); } catch (e) {}
+                }, 700);
+            }
+            if (window.location.search && window.location.search.indexOf('site=') !== -1) {
+                maybeOpenPending();
+            } else {
+                try { if (sessionStorage.getItem('alice.siteWindow')) maybeOpenPending(); } catch (e) {}
+            }
+        })();
+    </script>
+</body>
+</html>

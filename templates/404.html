@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>404</title>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100;200;300;400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="preload" as="image" href="/assets/earth.avif">
+    <link rel="preload" as="image" href="/assets/ship.avif">
+    <link rel="preload" as="image" href="/assets/glass.avif">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #050505;
+            --line: rgba(255,255,255,0.09);
+            --txt: rgba(255,255,255,0.85);
+            --dim: rgba(255,255,255,0.28);
+            --faint: rgba(255,255,255,0.12);
+        }
+
+        html, body {
+            width: 100%; height: 100%;
+            background: var(--bg);
+            color: var(--txt);
+            font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* ── Parallax scene (earth / ship / glass) ───── */
+        .scene {
+            position: fixed;
+            inset: 0;
+            z-index: 1;
+            overflow: hidden;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.7s ease;
+        }
+        .scene.ready { opacity: 1; }
+        .layer {
+            position: absolute;
+            inset: -5%;
+            will-change: transform;
+            transform: translate3d(0, 0, 0);
+        }
+        .layer img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            filter: blur(0px);
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+        .layer--earth { z-index: 1; }
+        .layer--ship  { z-index: 2; }
+        .layer--glass { z-index: 3; }
+
+        /* ── Technical grid ───────────────────────────── */
+        .grid {
+            position: fixed;
+            inset: 0;
+            z-index: 2;
+            pointer-events: none;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+            background-size: 48px 48px;
+        }
+        /* Minor subdivision */
+        .grid::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
+            background-size: 12px 12px;
+        }
+
+        /* ── Registration / crop marks ────────────────── */
+        .crop {
+            position: fixed;
+            z-index: 5;
+            width: 22px; height: 22px;
+            border: 1px solid var(--line);
+        }
+        .crop--tl { top: 26px; left: 26px; border-right: none; border-bottom: none; }
+        .crop--tr { top: 26px; right: 26px; border-left: none; border-bottom: none; }
+        .crop--bl { bottom: 26px; left: 26px; border-right: none; border-top: none; }
+        .crop--br { bottom: 26px; right: 26px; border-left: none; border-top: none; }
+
+        /* ── Mono annotations ─────────────────────────── */
+        .tag {
+            position: fixed;
+            z-index: 5;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.52rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--faint);
+            pointer-events: none;
+            white-space: nowrap;
+        }
+        .tag--tl { top: 32px; left: 58px; }
+        .tag--bl { bottom: 32px; left: 58px; }
+        .tag--br { bottom: 32px; right: 58px; }
+
+        /* Vertical side text */
+        .side {
+            position: fixed;
+            top: 50%;
+            z-index: 5;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.5rem;
+            letter-spacing: 5px;
+            text-transform: uppercase;
+            color: var(--faint);
+            pointer-events: none;
+            writing-mode: vertical-rl;
+            transform: translateY(-50%);
+        }
+        .side--l { left: 34px; }
+        .side--r { right: 34px; }
+
+        /* ── Center ───────────────────────────────────── */
+        .center {
+            position: fixed;
+            inset: 0;
+            z-index: 3;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 1.4rem;
+            text-align: center;
+            pointer-events: none;
+        }
+        .code {
+            font-size: clamp(7rem, 24vw, 13rem);
+            font-weight: 100;
+            line-height: 0.9;
+            letter-spacing: -0.01em;
+            color: rgba(255,255,255,0.9);
+            pointer-events: auto;
+            cursor: pointer;
+            transition: color 0.25s ease;
+        }
+        .code:hover { color: #fff; }
+        .label {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6rem;
+            letter-spacing: 7px;
+            text-transform: uppercase;
+            color: var(--dim);
+        }
+        /* Technical ruler */
+        .ruler {
+            margin-top: 0.6rem;
+            width: 220px;
+            height: 8px;
+            border-left: 1px solid var(--line);
+            border-right: 1px solid var(--line);
+            background: repeating-linear-gradient(90deg,
+                rgba(255,255,255,0.3) 0 1px,
+                transparent 1px 12px);
+            opacity: 0.8;
+        }
+        /* Barcode — real barcode.png, no background */
+        .barcode-img {
+            display: block;
+            width: 170px;
+            height: auto;
+            margin-top: 0.4rem;
+            user-select: none;
+            -webkit-user-drag: none;
+        }
+
+        /* ── Bouncing QR (DVD screensaver) ────────────── */
+        .dvd-logo {
+            position: fixed;
+            top: 0; left: 0;
+            z-index: 20;
+            cursor: pointer;
+            will-change: transform;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.25s ease, visibility 0s linear 0.25s;
+        }
+        .dvd-logo.visible {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.25s ease, visibility 0s;
+        }
+        .dvd-logo.visible img {
+            animation: qr-pop 0.35s cubic-bezier(0.2, 1.4, 0.4, 1);
+        }
+        @keyframes qr-pop {
+            from { transform: scale(0.6); opacity: 0; }
+            to   { transform: scale(1); opacity: 1; }
+        }
+        .dvd-logo a {
+            display: block;
+            position: relative;
+            text-decoration: none;
+        }
+        .dvd-logo img {
+            display: block;
+            width: 108px;
+            height: 108px;
+            background: #fff;
+            padding: 5px;
+            image-rendering: pixelated;
+            transition: outline-color 0.2s ease;
+            outline: 1px solid transparent;
+            outline-offset: -1px;
+        }
+        .dvd-logo:hover img { outline-color: rgba(255,255,255,0.45); }
+        .dvd-logo .hint {
+            position: absolute;
+            top: -24px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.48rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.55);
+            background: rgba(5,5,5,0.85);
+            padding: 2px 6px;
+            white-space: nowrap;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+        .dvd-logo:hover .hint { opacity: 1; }
+
+        /* ── Return link ──────────────────────────────── */
+        .return {
+            position: fixed;
+            bottom: 32px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.58rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--dim);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+        .return:hover { color: rgba(255,255,255,0.9); }
+
+        /* ── Mobile ───────────────────────────────────── */
+        @media (max-width: 640px) {
+            .side { display: none; }
+            .tag--br { display: none; }
+            .dvd-logo img { width: 88px; height: 88px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="scene" id="scene" aria-hidden="true">
+        <div class="layer layer--earth" id="layer-earth"><img src="/assets/earth.avif" alt="" draggable="false"></div>
+        <div class="layer layer--ship" id="layer-ship"><img src="/assets/ship.avif" alt="" draggable="false"></div>
+        <div class="layer layer--glass" id="layer-glass"><img src="/assets/glass.avif" alt="" draggable="false"></div>
+    </div>
+
+    <div class="grid"></div>
+
+    <div class="crop crop--tl"></div>
+    <div class="crop crop--tr"></div>
+    <div class="crop crop--bl"></div>
+    <div class="crop crop--br"></div>
+
+    <div class="tag tag--tl">Archive // 404</div>
+    <div class="tag tag--bl">0.0.0.0:404</div>
+    <div class="tag tag--br">Rev.04 // Lost</div>
+
+    <div class="side side--l">Resource untraceable</div>
+    <div class="side side--r">Signal terminated</div>
+
+    <main class="center">
+        <h1 class="code">404</h1>
+        <p class="label">Not found</p>
+        <div class="ruler"></div>
+        <img class="barcode-img" src="/assets/barcode.png" alt="barcode" draggable="false">
+    </main>
+
+    <div class="dvd-logo" id="dvd-logo">
+        <a href="/qr-error.png" target="_blank" rel="noopener" title="Open QR code as image">
+            <span class="hint">Open image &#8599;</span>
+            <img src="/qr-error.png" alt="QR code — click to open as image" draggable="false" id="qr-img">
+        </a>
+    </div>
+
+    <a href="/" class="return">Return to interface &#8592;</a>
+
+    <script>
+        (function() {
+            'use strict';
+
+            var logo = document.getElementById('dvd-logo');
+
+            var vx = 1.1;
+            var vy = 0.9;
+            var x = 100;
+            var y = 200;
+            if (Math.random() > 0.5) vx = -vx;
+            if (Math.random() > 0.5) vy = -vy;
+
+            function getImgSize() {
+                var rect = document.getElementById('qr-img').getBoundingClientRect();
+                return { w: rect.width, h: rect.height };
+            }
+
+            function getViewSize() {
+                return { w: window.innerWidth, h: window.innerHeight };
+            }
+
+            function tick() {
+                var view = getViewSize();
+                var size = getImgSize();
+
+                x += vx;
+                y += vy;
+
+                if (x <= 0) { x = 0; vx = -vx; }
+                else if (x + size.w >= view.w) { x = view.w - size.w; vx = -vx; }
+
+                if (y <= 0) { y = 0; vy = -vy; }
+                else if (y + size.h >= view.h) { y = view.h - size.h; vy = -vy; }
+
+                logo.style.transform = 'translate(' + x + 'px,' + y + 'px)';
+                requestAnimationFrame(tick);
+            }
+
+            var qrImg = document.getElementById('qr-img');
+            var code = document.querySelector('.code');
+            var running = false;
+
+            function startBounce() {
+                if (running) return;
+                running = true;
+                tick();
+            }
+
+            // QR appears only when the 404 text is pressed
+            if (code) {
+                code.addEventListener('click', function () {
+                    var visible = logo.classList.toggle('visible');
+                    if (visible) startBounce();
+                });
+            }
+
+            window.addEventListener('resize', function() {
+                var view = getViewSize();
+                var size = getImgSize();
+                if (x + size.w > view.w) x = view.w - size.w;
+                if (y + size.h > view.h) y = view.h - size.h;
+                if (x < 0) x = 0;
+                if (y < 0) y = 0;
+            });
+        })();
+    </script>
+
+    <script>
+        /* Parallax scene — earth (slow) / ship (mid) / glass (fast) */
+        (function () {
+            'use strict';
+
+            var scene = document.getElementById('scene');
+            if (!scene) return;
+
+            var earth = document.getElementById('layer-earth');
+            var ship = document.getElementById('layer-ship');
+            var glass = document.getElementById('layer-glass');
+            if (!earth || !ship || !glass) return;
+
+            // Fade the scene in only once the layers are available
+            function reveal() { scene.classList.add('ready'); }
+            if (document.readyState === 'complete') {
+                reveal();
+            } else {
+                window.addEventListener('load', reveal);
+            }
+
+            var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            // Max displacement per layer, scaled to viewport
+            var DEPTH = { earth: 0.010, ship: 0.020, glass: 0.030 };
+            function resize() {
+                var s = Math.min(window.innerWidth, window.innerHeight);
+                DEPTH.earth = s * 0.002;
+                DEPTH.ship = s * 0.010;
+                DEPTH.glass = s * 0.020;
+            }
+            resize();
+            window.addEventListener('resize', resize, { passive: true });
+
+            var tx = 0, ty = 0;   // target (normalized -1..1)
+            var cx = 0, cy = 0;   // eased current
+            var lastMove = -1e9;
+
+            function render() {
+                cx += (tx - cx) * 0.09;
+                cy += (ty - cy) * 0.09;
+                earth.style.transform = 'translate3d(' + (cx * DEPTH.earth).toFixed(2) + 'px,' + (cy * DEPTH.earth).toFixed(2) + 'px,0)';
+                ship.style.transform  = 'translate3d(' + (cx * DEPTH.ship).toFixed(2) + 'px,' + (cy * DEPTH.ship).toFixed(2) + 'px,0)';
+                glass.style.transform = 'translate3d(' + (cx * DEPTH.glass).toFixed(2) + 'px,' + (cy * DEPTH.glass).toFixed(2) + 'px,0)';
+            }
+
+            function loop(now) {
+                if (reduce) { render(); return; }
+                if (now - lastMove > 2200) {
+                    // Idle sway — also runs continuously on touch (no mousemove ever fires)
+                    tx = Math.sin(now * 0.0005) * 0.75;
+                    ty = Math.cos(now * 0.0004) * 0.75;
+                }
+                render();
+                requestAnimationFrame(loop);
+            }
+
+            window.addEventListener('mousemove', function (e) {
+                tx = (e.clientX / window.innerWidth) * 2 - 1;
+                ty = (e.clientY / window.innerHeight) * 2 - 1;
+                lastMove = performance.now();
+            }, { passive: true });
+
+            requestAnimationFrame(loop);
+        })();
+    </script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+/* ── Blog Styles ── */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body {
+    width: 100%;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #050505 0%, #0f0f0f 50%, #080808 100%);
+    color: #fff;
+    font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
+}
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.06); border-radius: 2px; }
+
+.page-wrap {
+    position: relative;
+    z-index: 10;
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+}
+.page-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2.5rem;
+}
+.page-header h1 {
+    font-size: 1.1rem;
+    letter-spacing: 6px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.5);
+    font-weight: 300;
+}
+.filters {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px;
+    padding: 0.3rem;
+    background: rgba(255,255,255,0.02);
+}
+.filters button {
+    font-family: inherit;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: rgba(255,255,255,0.25);
+    cursor: pointer;
+    transition: all 0.25s ease;
+}
+.filters button:hover { color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.04); }
+.filters button.active { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.07); }
+.post-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.post-card {
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 8px;
+    background: rgba(255,255,255,0.02);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+.post-card:hover { border-color: rgba(255,255,255,0.12); background: rgba(255,255,255,0.035); }
+.post-card.hidden { display: none; }
+
+.post-content {
+    font-family: 'PT Serif', Georgia, serif;
+    font-size: 0.9rem;
+    line-height: 1.8;
+    color: rgba(255,255,255,0.65);
+}
+.post-content p { margin-bottom: 1.2rem; }
+.post-content h2, .post-content h3 {
+    font-family: 'Geist', sans-serif;
+    font-weight: 300;
+    letter-spacing: 2px;
+    color: rgba(255,255,255,0.8);
+    margin: 2rem 0 0.8rem;
+}
+.post-content code {
+    font-family: 'Share Tech Mono', monospace;
+    background: rgba(255,255,255,0.05);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+    font-size: 0.8rem;
+}
+.post-content pre {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    margin: 1.2rem 0;
+}
+.post-content pre code { background: none; padding: 0; }
+.post-content a { color: rgba(255,255,255,0.6); text-decoration: underline; text-underline-offset: 3px; }
+.post-content a:hover { color: rgba(255,255,255,0.85); }
+.post-content blockquote {
+    border-left: 2px solid rgba(255,255,255,0.15);
+    padding-left: 1rem;
+    margin: 1.2rem 0;
+    color: rgba(255,255,255,0.45);
+    font-style: italic;
+}
+.post-content ul, .post-content ol { margin: 1rem 0; padding-left: 1.5rem; }
+.post-content li { margin-bottom: 0.4rem; }
+.post-content img { max-width: 100%; border-radius: 6px; margin: 1rem 0; }

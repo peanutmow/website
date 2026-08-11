@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0c0e0b;
+            --paper: #e8e4d8;
+            --paper-dim: #a9a597;
+            --paper-faint: #6e6b5f;
+            --moss: #93a97c;
+            --moss-deep: #2f3b27;
+            --rust: #c2703e;
+            --line: rgba(232,228,216,.13);
+            --line-strong: rgba(232,228,216,.28);
+        }
+        html { width: 100%; min-height: 100%; overflow-x: hidden; background: var(--bg); }
+        body {
+            width: 100%; min-height: 100%;
+            color: var(--paper);
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            -webkit-font-smoothing: antialiased;
+            position: relative;
+            background:
+                radial-gradient(130% 90% at 88% -18%, rgba(147,169,124,.11), transparent 55%),
+                radial-gradient(95% 70% at -12% 112%, rgba(147,169,124,.08), transparent 62%),
+                var(--bg);
+        }
+        /* moss creeping up the monolith */
+        body::before {
+            content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+            background: linear-gradient(to top, rgba(147,169,124,.09), transparent 42%);
+        }
+        /* film grain */
+        body::after {
+            content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 1;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.35'/%3E%3C/svg%3E");
+            opacity: .5; mix-blend-mode: overlay;
+        }
+        ::selection { background: var(--moss); color: var(--bg); }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(232,228,216,.14); }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(232,228,216,.3); }
+
+        .layout {
+            position: relative; z-index: 2;
+            max-width: 1480px; margin: 0 auto;
+            padding: 0 1.2rem;
+            display: flex; justify-content: center;
+            gap: clamp(1rem, 2.5vw, 3rem);
+        }
+        .page { position: relative; z-index: 2; flex: 0 1 860px; max-width: 860px; padding: 5rem 1.6rem 7rem; margin-right: 5rem; }
+
+        /* ── the tree: pinned to the very right edge, behind the text, zoomed in ── */
+        .tree-wrap {
+            position: absolute;
+            top: 0; bottom: 0;
+            right: 0;
+            z-index: 0;
+            pointer-events: none;
+            overflow: hidden;   /* clip the zoomed tree so it can't extend the scroll */
+        }
+        .tree {
+            display: block;
+            height: 120%;   /* zoomed in a bit — bigger than the page */
+            width: auto;
+            user-select: none;
+            -webkit-user-drag: none;
+            will-change: transform;
+        }
+
+        /* ── the branch: zoomed-in foreground on the left, in front of everything.
+             Drifts at 40% of the page's scroll speed for a parallax effect ── */
+        .branch-wrap {
+            position: absolute;
+            top: 0; bottom: 0;
+            left: 0;
+            width: 100%;          /* full width, so the zoomed branch is clipped at the viewport edge */
+            z-index: 100;         /* in front of all text & dressing */
+            pointer-events: none;
+            overflow: hidden;     /* clip the zoomed branch */
+        }
+        .branch {
+            display: block;
+            height: 3400px; /* zoomed in — bigger than the page */
+            width: auto;
+            user-select: none;
+            -webkit-user-drag: none;
+            will-change: transform;
+        }
+
+        /* ── structural dressing ── */
+        .marginalia {
+            position: fixed; left: .9rem; top: 50%; transform: translateY(-50%);
+            writing-mode: vertical-rl;
+            font-size: .6rem; letter-spacing: .5em; text-transform: uppercase;
+            color: var(--paper-faint);
+            z-index: 3;
+        }
+        .seam {
+            position: fixed; left: 4.5rem; top: 0; bottom: 0; width: 1px; z-index: 1;
+            background: linear-gradient(to bottom, transparent, var(--line) 12%, var(--line) 88%, transparent);
+        }
+        .mossblob {
+            position: fixed; bottom: -24vh; left: -12vw; width: 64vw; height: 64vh;
+            pointer-events: none; z-index: 0;
+            background: radial-gradient(closest-side, rgba(147,169,124,.17), transparent 72%);
+            filter: blur(46px);
+        }
+
+        /* ── header ── */
+        .path { font-size: .78rem; letter-spacing: 1px; color: var(--paper-faint); }
+        .path .tick { color: var(--moss); }
+        .cursor {
+            display: inline-block; width: .55em; height: 1em; margin-left: 2px;
+            background: var(--paper); vertical-align: -.12em;
+            animation: blink 1.1s steps(1) infinite;
+        }
+        @keyframes blink { 0%, 55% { opacity: 1; } 56%, 100% { opacity: 0; } }
+
+        .display {
+            margin-top: 2.4rem; margin-left: -.07em;
+            font-family: 'Instrument Serif', Georgia, serif;
+            font-weight: 400; font-style: italic;
+            font-size: clamp(3.6rem, 13vw, 8rem);
+            line-height: .82; letter-spacing: -.015em;
+            color: var(--paper);
+            white-space: nowrap;
+        }
+        .display .mono {
+            font-family: 'Share Tech Mono', monospace; font-style: normal;
+            font-size: .22em; color: var(--paper-faint);
+            vertical-align: .45em; letter-spacing: 0;
+        }
+
+        .stroke { display: block; width: min(340px, 62%); margin-top: 1.5rem; }
+        .stroke path { stroke: var(--rust); }
+
+        .lede {
+            margin-top: 2rem; max-width: 36ch;
+            font-family: 'Instrument Serif', Georgia, serif;
+            font-size: 1.3rem; line-height: 1.5;
+            color: var(--paper-dim);
+        }
+        .lede b { color: var(--paper); font-weight: 400; font-style: italic; }
+
+        .cmd { margin-top: 2.4rem; font-size: .66rem; letter-spacing: 1px; color: var(--paper-faint); }
+        .cmd .p { color: var(--moss); }
+
+        /* ── sections ── */
+        .section { margin-top: 5rem; position: relative; }
+        .section-head { display: flex; align-items: center; gap: 1rem; margin-bottom: 2rem; }
+        .section-head .tag { font-size: .7rem; letter-spacing: .35em; text-transform: uppercase; color: var(--paper); white-space: nowrap; }
+        .section-head .tag .dot { color: var(--moss); margin-right: .35rem; }
+        .section-head .tag--dream .dot { color: var(--paper-faint); }
+        .section-head .count { font-size: .66rem; color: var(--paper-faint); }
+        .section-head .drule {
+            flex: 1; height: 1px;
+            background: repeating-linear-gradient(90deg, var(--line-strong) 0 5px, transparent 5px 12px);
+        }
+
+        /* ── project rows ── */
+        .proj {
+            position: relative;
+            padding: 1.7rem 1.75rem 1.8rem;
+            border-top: 1px solid var(--line);
+            text-decoration: none; color: inherit;
+            display: block;
+            margin-left: -2rem;   /* extend rows a bit to the left */
+            transition: background .25s ease;
+        }
+        .section > .proj:last-child { border-bottom: 1px solid var(--line); }
+        a.proj { cursor: pointer; }
+        .proj:hover { background: linear-gradient(90deg, rgba(147,169,124,.07), transparent 70%); }
+
+        .ghost {
+            position: absolute; right: -.06em; top: -.45em;
+            font-family: 'Instrument Serif', Georgia, serif; font-style: italic;
+            font-size: 8rem; line-height: 1;
+            color: transparent; -webkit-text-stroke: 1px rgba(232,228,216,.07);
+            pointer-events: none; user-select: none;
+            transition: -webkit-text-stroke-color .3s ease;
+        }
+        .proj:hover .ghost { -webkit-text-stroke-color: rgba(147,169,124,.3); }
+
+        .p-meta {
+            display: flex; align-items: baseline; gap: 1.1rem;
+            font-size: .64rem; letter-spacing: .12em; text-transform: uppercase;
+            color: var(--paper-faint);
+        }
+        .p-meta .st { letter-spacing: .2em; }
+        .p-meta .st--live { color: var(--moss); }
+        .p-meta .st--wip { color: var(--rust); }
+        .p-meta .st--dream { color: var(--paper-dim); }
+        .p-meta .star { color: var(--moss); }
+        .p-meta .go { margin-left: auto; white-space: nowrap; color: var(--paper-faint); }
+        .p-meta .go .arr { display: inline-block; color: var(--paper); transition: transform .2s ease; }
+        .proj:hover .go .arr { transform: translateX(4px); }
+
+        .p-title {
+            margin-top: .95rem;
+            font-family: 'Instrument Serif', Georgia, serif;
+            font-weight: 400; font-style: italic;
+            font-size: clamp(1.9rem, 5vw, 2.7rem);
+            line-height: 1.02; letter-spacing: -.01em;
+            color: var(--paper);
+            transition: color .2s ease;
+        }
+        .proj:hover .p-title { color: var(--moss); }
+
+        .p-blurb { margin-top: .7rem; max-width: 52ch; font-size: .78rem; line-height: 1.8; color: var(--paper-dim); }
+
+        .p-tags {
+            margin-top: 1rem; display: flex; flex-wrap: wrap; gap: .3rem .85rem;
+            font-size: .62rem; letter-spacing: .14em; text-transform: uppercase;
+            color: var(--paper-faint);
+            transition: color .2s ease;
+        }
+        .p-tags span::before { content: '['; }
+        .p-tags span::after { content: ']'; }
+        .proj:hover .p-tags { color: rgba(232,228,216,.5); }
+
+        /* featured: a vein of moss runs down the left edge */
+        .proj--featured::before {
+            content: ''; position: absolute; left: -1.6rem; top: 0; bottom: 0; width: 3px;
+            background: linear-gradient(to bottom, var(--moss), transparent);
+        }
+
+        /* ── footer ── */
+        footer { margin-top: 6.5rem; }
+        .f-ask {
+            font-family: 'Instrument Serif', Georgia, serif; font-style: italic;
+            font-size: clamp(1.7rem, 5vw, 2.4rem); line-height: 1.15;
+            max-width: 20ch; color: var(--paper);
+        }
+        .f-links { margin-top: 1.7rem; font-size: .72rem; letter-spacing: .18em; text-transform: uppercase; color: var(--paper-dim); }
+        .f-links a { color: var(--paper); text-decoration: none; border-bottom: 1px solid var(--line-strong); padding-bottom: 2px; transition: color .15s ease, border-color .15s ease; }
+        .f-links a:hover { color: var(--moss); border-color: var(--moss); }
+        .f-links a.mail { text-transform: none; letter-spacing: .08em; }
+        .f-note { margin-top: 2.6rem; font-size: .6rem; letter-spacing: .15em; color: var(--paper-faint); }
+        .f-note .m { color: var(--moss); }
+        .f-note .r { color: var(--rust); }
+        .back { margin-top: 1.5rem; font-size: .68rem; letter-spacing: .25em; text-transform: uppercase; }
+        .back a { color: var(--paper-faint); text-decoration: none; transition: color .15s ease; }
+        .back a:hover { color: var(--paper); }
+
+        @media (max-width: 1320px) {
+            /* the tree is a decorative backdrop — no room for it on smaller screens */
+            .tree-wrap { display: none; }
+        }
+
+        @media (max-width: 720px) {
+            .page { padding: 3rem 1.2rem 5rem; margin-right: 0; }
+            .marginalia, .seam, .branch-wrap { display: none; }
+            .proj { margin-left: 0; }
+            .proj--featured::before { left: -1.2rem; }
+            .display { font-size: clamp(3.2rem, 17vw, 5rem); }
+        }
+    </style>
+</head>
+<body>
+    <div class="mossblob"></div>
+    <div class="seam"></div>
+    <aside class="marginalia">alice — mmxxvi</aside>
+
+    <aside class="tree-wrap">
+        <img class="tree" src="/assets/tree.avif" alt="an oak tree" draggable="false">
+    </aside>
+
+    <aside class="branch-wrap">
+        <img class="branch" src="/assets/treebranch.avif" alt="" draggable="false">
+    </aside>
+
+    <div class="layout">
+    <div class="page">
+        <header>
+            <div class="path"><span class="tick">~</span>/projects<span class="cursor"></span></div>
+            <h1 class="display">projects<span class="mono">[{{ '%02d'|format(projects|length) }}]</span></h1>
+            <svg class="stroke" viewBox="0 0 340 12" preserveAspectRatio="none" aria-hidden="true">
+                <path d="M2 8 C 50 1, 100 11, 160 6 S 270 3, 338 7" fill="none" stroke-width="2.4" stroke-linecap="round"/>
+            </svg>
+            <p class="lede">some of these are <b>concrete</b>, poured, set, done.<br>the rest is <b>moss</b>: quiet, green, still growing.</p>
+            <div class="cmd"><span class="p">></span>where I dream</div>
+        </header>
+
+        <section class="section">
+            <div class="section-head">
+                <span class="tag"><span class="dot">●</span>live</span>
+                <span class="count">/ {{ live_count }}</span>
+                <span class="drule"></span>
+            </div>
+
+            {% for p in projects if p.section == 'featured' or p.section == 'work' %}
+            {% if p.url or p.href %}
+            <a class="proj{% if p.section == 'featured' %} proj--featured{% endif %}" href="{{ p.url or p.href }}" {% if p.url %}target="_blank" rel="noopener"{% endif %}>
+            {% else %}
+            <div class="proj{% if p.section == 'featured' %} proj--featured{% endif %}">
+            {% endif %}
+                <span class="ghost">0{{ loop.index }}</span>
+                <div class="p-meta">
+                    <span class="idx">[0{{ loop.index }}]</span>
+                    {% if p.status|lower == 'idea' %}<span class="st st--dream">○ dreaming</span>
+                    {% elif p.status|lower == 'wip' %}<span class="st st--wip">◐ wip</span>
+                    {% else %}<span class="st st--live">● live</span>{% endif %}
+                    {% if p.section == 'featured' %}<span class="star">★</span>{% endif %}
+                    <span class="go"><span class="arr">{% if p.url %}↗{% else %}→{% endif %}</span> {% if p.url %}github{% elif p.href %}open{% endif %}</span>
+                </div>
+                <h2 class="p-title">{{ p.title }}</h2>
+                <p class="p-blurb">{{ p.blurb }}</p>
+                <div class="p-tags">{% for t in p.tags %}<span>{{ t|lower }}</span>{% endfor %}</div>
+            {% if p.url or p.href %}
+            </a>
+            {% else %}
+            </div>
+            {% endif %}
+            {% endfor %}
+        </section>
+
+        {% if dreams %}
+        <section class="section">
+            <div class="section-head">
+                <span class="tag tag--dream"><span class="dot">○</span>dreaming</span>
+                <span class="count">/ {{ dream_count }}</span>
+                <span class="drule"></span>
+            </div>
+
+            {% for p in dreams %}
+            <div class="proj">
+                <span class="ghost">0{{ loop.index }}</span>
+                <div class="p-meta">
+                    <span class="idx">[0{{ loop.index }}]</span>
+                    <span class="st st--dream">○ dreaming</span>
+                </div>
+                <h2 class="p-title">{{ p.title }}</h2>
+                <p class="p-blurb">{{ p.blurb }}</p>
+                <div class="p-tags">{% for t in p.tags %}<span>{{ t|lower }}</span>{% endfor %}</div>
+            </div>
+            {% endfor %}
+        </section>
+        {% endif %}
+
+        <footer>
+            <p class="f-ask">want to build something weird together?</p>
+            <p class="f-links">
+                <a class="mail" href="mailto:alice@herkula.info">alice@herkula.info</a>
+            </p>
+            <p class="f-note">poured concrete <span class="m">·</span> moss <span class="r">·</span> rust &mdash; alice, mmxxvi</p>
+            <p class="back"><a href="/">← return to interface</a></p>
+        </footer>
+    </div>
+    </div>
+
+    <script>
+        /* cursor parallax with built-in easing: on every mousemove we glide a
+           fraction of the way toward the target, so the drift stays smooth and
+           slightly laggy without transitions or timers. */
+        (function () {
+            var branch = document.querySelector('.branch');
+            var tree = document.querySelector('.tree');
+            var range = 20;   // max px each drifts (opposite signs)
+            var ease = 0.3;   // fraction of the gap closed per mousemove
+            var bY = 0, tY = 0;
+            function place(e) {
+                var ny = (e.clientY / window.innerHeight - 0.5) * 2;   // -1 .. 1
+                bY += (-ny * range - bY) * ease;
+                tY += (ny * range - tY) * ease;
+                if (branch) branch.style.transform = 'translate3d(0,' + bY.toFixed(2) + 'px,0)';
+                if (tree) tree.style.transform = 'translate3d(0,' + tY.toFixed(2) + 'px,0)';
+            }
+            function reset() {
+                bY = 0; tY = 0;
+                if (branch) branch.style.transform = 'translate3d(0px,0px,0px)';
+                if (tree) tree.style.transform = 'translate3d(0px,0px,0px)';
+            }
+            window.addEventListener('mousemove', place, { passive: true });
+            window.addEventListener('mouseleave', reset);
+        })();
+    </script>
+
+    <script>
+        /* make "return to interface" reliable even where anchor navigation is flaky */
+        (function () {
+            var link = document.querySelector('.back a');
+            if (!link) return;
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                window.location.href = link.getAttribute('href') || '/';
+            });
+        })();
+    </script>
+
+</body>
+</html>

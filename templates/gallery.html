@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <h1>Gallery</h1>
+    <p>Gallery page rendered by Rust SSR.</p>
+    <a href="/">&larr; Home</a>
+    <!-- Gallery content loaded via JS from original gallery/index.html -->
+    <script>
+        (function() {
+            var iframe = document.createElement('iframe');
+            iframe.style.cssText = 'width:100%;height:90vh;border:none;border-radius:8px;';
+            iframe.src = '/gallery/index.html';
+            document.body.appendChild(iframe);
+        })();
+    </script>
+</body>
+</html>
