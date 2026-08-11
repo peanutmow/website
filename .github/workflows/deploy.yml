@@ -31,21 +31,23 @@ jobs:
           SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
           SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
         run: |
-          # 1) Upload binary + static assets into the app dir (~/alicemow)
+          # 1) Upload static assets first, then the binary LAST so the
+          #    mirror --delete never removes it (it's not in the local tree).
           lftp -u "$SFTP_USERNAME,$SFTP_PASSWORD" sftp://$SFTP_HOST:$SFTP_PORT <<EOF
           set sftp:auto-confirm yes
           set cmd:fail-exit yes
           set net:max-retries 3
-          mkdir -p /var/www/virtual/$SFTP_USERNAME/alicemow
-          mkdir -p /var/www/virtual/$SFTP_USERNAME/alicemow/deploy
-          put target/x86_64-unknown-linux-musl/release/alice-website \
-            -o /var/www/virtual/$SFTP_USERNAME/alicemow/alice-website
-          put deploy/alice-website.service \
-            -o /var/www/virtual/$SFTP_USERNAME/alicemow/deploy/alice-website.service
+          mkdir -p /var/www/virtual/$SFTP_USERNAME/html
+          mkdir -p /var/www/virtual/$SFTP_USERNAME/html/deploy
           mirror --reverse --delete --verbose \
             --exclude=.git/ --exclude=.github/ --exclude=target/ \
             --exclude=node_modules/ --exclude-glob=*.md \
-            ./ /var/www/virtual/$SFTP_USERNAME/alicemow/
+            --exclude=alice-website \
+            ./ /var/www/virtual/$SFTP_USERNAME/html/
+          put target/x86_64-unknown-linux-musl/release/alice-website \
+            -o /var/www/virtual/$SFTP_USERNAME/html/alice-website
+          put deploy/alice-website.service \
+            -o /var/www/virtual/$SFTP_USERNAME/html/deploy/alice-website.service
           bye
           EOF
 
@@ -53,7 +55,7 @@ jobs:
           sshpass -p "$SFTP_PASSWORD" ssh -p "$SFTP_PORT" -o StrictHostKeyChecking=no \
             "$SFTP_USERNAME@$SFTP_HOST" bash -s <<'REMOTE'
           set -e
-          APP_DIR="$HOME/alicemow"
+          APP_DIR="$HOME/html"
           chmod +x "$APP_DIR/alice-website"
           mkdir -p "$HOME/.config/systemd/user"
           cp "$APP_DIR/deploy/alice-website.service" "$HOME/.config/systemd/user/alice-website.service"

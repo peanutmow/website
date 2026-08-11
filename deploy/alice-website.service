@@ -3,8 +3,8 @@ Description=Alice Website (Rust/axum SSR)
 After=network.target
 
 [Service]
-WorkingDirectory=%h/alicemow
-ExecStart=%h/alicemow/target/release/alice-website
+WorkingDirectory=%h/html
+ExecStart=%h/html/target/release/alice-website
 Restart=always
 RestartSec=2
 Environment=RUST_LOG=info
