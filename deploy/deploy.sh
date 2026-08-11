@@ -1,6 +1,13 @@
 set -euo pipefail
 
-APP_DIR="$HOME/html"
+# Canonical Uberspace web root. In some shells $HOME resolves to /home/<user>
+# while the site actually lives under /var/www/virtual/<user>/html.
+USER_NAME="$(whoami)"
+if [ -d "/var/www/virtual/$USER_NAME/html" ]; then
+  APP_DIR="/var/www/virtual/$USER_NAME/html"
+else
+  APP_DIR="$HOME/html"
+fi
 SERVICE_NAME="alice-website"
 PORT=8080
 
@@ -18,8 +25,24 @@ cargo build --release
 
 # 3. Install the systemd user service
 echo "==> Installing systemd user service..."
-mkdir -p "$HOME/.config/systemd/user"
-cp "$APP_DIR/deploy/alice-website.service" "$HOME/.config/systemd/user/$SERVICE_NAME.service"
+REAL_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
+[ -n "$REAL_HOME" ] || REAL_HOME="$HOME"
+mkdir -p "$REAL_HOME/.config/systemd/user"
+cat > "$REAL_HOME/.config/systemd/user/$SERVICE_NAME.service" <<EOF
+[Unit]
+Description=Alice Website (Rust/axum SSR)
+After=network.target
+
+[Service]
+WorkingDirectory=$APP_DIR
+ExecStart=$APP_DIR/target/release/alice-website
+Restart=always
+RestartSec=2
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=default.target
+EOF
 systemctl --user daemon-reload
 systemctl --user enable --now "$SERVICE_NAME"
 systemctl --user --no-pager status "$SERVICE_NAME"

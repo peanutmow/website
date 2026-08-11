@@ -51,17 +51,40 @@ jobs:
           bye
           EOF
 
-          # 2) Make binary executable, install service, set web backend
+          # 2) Make binary executable, install service, set web backend.
+          #    Use the canonical web root (/var/www/virtual/<user>/html) — in a
+          #    non-login shell $HOME may resolve to /home/<user> and be wrong.
+          #    The unit is written inline so it doesn't depend on uploads.
           sshpass -p "$SFTP_PASSWORD" ssh -p "$SFTP_PORT" -o StrictHostKeyChecking=no \
-            "$SFTP_USERNAME@$SFTP_HOST" bash -s <<'REMOTE'
+            "$SFTP_USERNAME@$SFTP_HOST" "SFTP_USER='$SFTP_USERNAME' bash -s" <<'REMOTE'
           set -e
-          APP_DIR="$HOME/html"
+          USER_NAME="${SFTP_USER:?SFTP_USER not set}"
+          APP_DIR="/var/www/virtual/$USER_NAME/html"
+          SERVICE_NAME="alice-website"
+          REAL_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
+          [ -n "$REAL_HOME" ] || REAL_HOME="$HOME"
+
           chmod +x "$APP_DIR/alice-website"
-          mkdir -p "$HOME/.config/systemd/user"
-          cp "$APP_DIR/deploy/alice-website.service" "$HOME/.config/systemd/user/alice-website.service"
+          mkdir -p "$REAL_HOME/.config/systemd/user"
+          cat > "$REAL_HOME/.config/systemd/user/$SERVICE_NAME.service" <<UNIT
+[Unit]
+Description=Alice Website (Rust/axum SSR)
+After=network.target
+
+[Service]
+WorkingDirectory=$APP_DIR
+ExecStart=$APP_DIR/alice-website
+Restart=always
+RestartSec=2
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=default.target
+UNIT
           systemctl --user daemon-reload
-          systemctl --user enable --now alice-website || true
-          systemctl --user restart alice-website
-          systemctl --user --no-pager status alice-website
+          systemctl --user enable --now "$SERVICE_NAME" || true
+          systemctl --user restart "$SERVICE_NAME"
+          systemctl --user --no-pager status "$SERVICE_NAME"
+          command -v uberspace >/dev/null 2>&1 || export PATH="$PATH:/usr/local/bin"
           uberspace web backend set / --http --port 8080
           REMOTE
