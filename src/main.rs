@@ -60,8 +60,6 @@ async fn main() {
         .nest_service("/wasm", ServeDir::new("wasm-sim/pkg"))
         // Root-level static files
         .route("/water-sim.js", get(|| serve_file("water-sim.js", "application/javascript")))
-        .route("/GlassBlock.png", get(|| serve_file("GlassBlock.png", "image/png")))
-        .route("/GlassBlock4K.png", get(|| serve_file("GlassBlock4K.png", "image/png")))
         .route("/qr-error.png", get(|| serve_file("templates/QRCode(3).png", "image/png")))
         // Easter egg pages
         .route("/dev/null", get(dev_null_redirect))

@@ -16,7 +16,7 @@ body {
 .body-bg {
     position: fixed;
     inset: 0;
-    background: url('/GlassBlock.png') center/cover no-repeat, rgba(255,255,255,0.015);
+    background: url('/assets/glassblock4k.avif') center/cover no-repeat, rgba(255,255,255,0.015);
     backdrop-filter: blur(1.5px);
     -webkit-backdrop-filter: blur(1.5px);
     will-change: transform;

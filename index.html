@@ -160,7 +160,7 @@
             flex: 1;
             width: 100%;
             border-radius: 8px;
-            background: url('GlassBlock.png') center/cover no-repeat, rgba(255,255,255,0.015);
+            background: url('/assets/glassblock4k.avif') center/cover no-repeat, rgba(255,255,255,0.015);
             backdrop-filter: blur(1.5px);
             -webkit-backdrop-filter: blur(1.5px);
             will-change: transform;
@@ -481,37 +481,6 @@
 
                     contentPanel.scrollIntoView({ behavior: 'smooth' });
                 });
-            });
-        })();
-    </script>
-    <script>
-        // ── Resolution-aware 4K image loader ──
-        (function() {
-            // Above 1080p? (1920x1080)
-            if (window.screen.width <= 1920 && window.screen.height <= 1080) return;
-
-            var socialsEl = document.getElementById('socials-inline');
-            if (!socialsEl) return;
-
-            var images = [
-                { path: 'GlassBlock4K.png',      prop: 'backgroundImage', value: "url('GlassBlock4K.png'), rgba(255,255,255,0.015)" },
-                { path: 'GlassBlockNormal4K.png', prop: null }
-            ];
-
-            var loaded = 0;
-            images.forEach(function(item) {
-                var img = new Image();
-                img.onload = function() {
-                    loaded++;
-                    // Swap the background image once the 4K GlassBlock is ready
-                    if (item.prop && loaded >= 1) {
-                        socialsEl.style.backgroundImage = item.value;
-                        socialsEl.style.backgroundSize = 'cover';
-                        socialsEl.style.backgroundPosition = 'center';
-                        socialsEl.style.backgroundRepeat = 'no-repeat';
-                    }
-                };
-                img.src = item.path;
             });
         })();
     </script>

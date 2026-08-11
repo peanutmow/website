@@ -25,7 +25,7 @@
         .body-bg {
             position: fixed;
             inset: 0;
-            background: url('../GlassBlock.png') center/cover no-repeat, rgba(255,255,255,0.015);
+            background: url('/assets/glassblock4k.avif') center/cover no-repeat, rgba(255,255,255,0.015);
             backdrop-filter: blur(1.5px);
             -webkit-backdrop-filter: blur(1.5px);
             will-change: transform;
@@ -189,35 +189,6 @@
     </div>
 
     <script>
-        // ── Resolution-aware 4K image loader ──
-        (function() {
-            // Above 1080p? (1920x1080)
-            if (window.screen.width <= 1920 && window.screen.height <= 1080) return;
-
-            var bgEl = document.querySelector('.body-bg');
-            if (!bgEl) return;
-
-            var images = [
-                { path: '../GlassBlock4K.png',      prop: 'backgroundImage', value: "url('../GlassBlock4K.png'), rgba(255,255,255,0.015)" },
-                { path: '../GlassBlockNormal4K.png', prop: null }
-            ];
-
-            var loaded = 0;
-            images.forEach(function(item) {
-                var img = new Image();
-                img.onload = function() {
-                    loaded++;
-                    if (item.prop && loaded >= 1) {
-                        bgEl.style.backgroundImage = item.value;
-                        bgEl.style.backgroundSize = 'cover';
-                        bgEl.style.backgroundPosition = 'center';
-                        bgEl.style.backgroundRepeat = 'no-repeat';
-                    }
-                };
-                img.src = item.path;
-            });
-        })();
-
         // Forward mouse events to parent page so the water sim reacts
         (function() {
             if (!window.parent) return;

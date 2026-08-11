@@ -5,6 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <!-- Warm the big tree artwork ASAP so it never pops in blank -->
+    <link rel="preload" as="image" href="/assets/tree.avif" fetchpriority="high">
+    <link rel="preload" as="image" href="/assets/treebranch.avif">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -269,11 +272,11 @@
     <aside class="marginalia">alice — mmxxvi</aside>
 
     <aside class="tree-wrap">
-        <img class="tree" src="/assets/tree.avif" alt="an oak tree" draggable="false">
+        <img class="tree" src="/assets/tree.avif" width="3240" height="5760" alt="an oak tree" draggable="false" fetchpriority="high" decoding="async">
     </aside>
 
     <aside class="branch-wrap">
-        <img class="branch" src="/assets/treebranch.avif" alt="" draggable="false">
+        <img class="branch" src="/assets/treebranch.avif" width="3240" height="5760" alt="" draggable="false" decoding="async">
     </aside>
 
     <div class="layout">
