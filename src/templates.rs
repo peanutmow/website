@@ -10,10 +10,14 @@ impl TemplateEngine {
     pub fn new() -> Self {
         let mut env = Environment::new();
         env.add_template("index.html", include_str!("../templates/index.html")).unwrap();
-        env.add_template("portfolio.html", include_str!("../templates/portfolio.html")).unwrap();
         env.add_template("gallery.html", include_str!("../templates/gallery.html")).unwrap();
         env.add_template("socials.html", include_str!("../templates/socials.html")).unwrap();
+        env.add_template("projects.html", include_str!("../templates/projects.html")).unwrap();
         env.add_template("blog_post.html", include_str!("../templates/blog_post.html")).unwrap();
+        env.add_template("etchosts.html", include_str!("../templates/etchosts.html")).unwrap();
+        env.add_template("changelog.html", include_str!("../templates/changelog.html")).unwrap();
+        env.add_template("man.html", include_str!("../templates/man.html")).unwrap();
+        env.add_template("rawtext.html", include_str!("../templates/rawtext.html")).unwrap();
         TemplateEngine { env }
     }
 
