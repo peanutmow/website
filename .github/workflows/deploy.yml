@@ -51,13 +51,10 @@ jobs:
           bye
           EOF
 
-          # 2) Make binary executable, install service, set web backend.
-          #    Use the canonical web root (/var/www/virtual/<user>/html) — in a
-          #    non-login shell $HOME may resolve to /home/<user> and be wrong.
-          #    The unit is written inline so it doesn't depend on uploads.
-          #    Use a LOGIN shell (-l) so Uberspace's profile sets the correct
-          #    environment, enable linger so the systemd user manager runs
-          #    without an active login, and wait for its socket to appear.
+          # 2) Make binary executable, install supervisord service, set web
+          #    backend. Uberspace manages persistent daemons with supervisord
+          #    (NOT systemd user services — `systemctl --user` / linger don't
+          #    exist there). Service config = one .ini in ~/etc/services.d/.
           sshpass -p "$SFTP_PASSWORD" ssh -p "$SFTP_PORT" -o StrictHostKeyChecking=no \
             "$SFTP_USERNAME@$SFTP_HOST" "SFTP_USER='$SFTP_USERNAME' bash -l -s" <<'REMOTE'
           set -e
@@ -67,41 +64,22 @@ jobs:
           REAL_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
           [ -n "$REAL_HOME" ] || REAL_HOME="$HOME"
 
-          # Make sure the systemd user manager is running (linger starts it
-          # at boot and keeps it alive without a login session)
-          loginctl enable-linger "$USER_NAME" 2>/dev/null || loginctl enable-linger
-
-          # systemctl --user needs the per-user runtime dir
-          export XDG_RUNTIME_DIR="/run/user/$(id -u)"
-          export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
-
-          # Wait until the user manager socket exists (linger may take a second)
-          for i in $(seq 1 15); do
-            [ -S "$XDG_RUNTIME_DIR/systemd/private" ] && break
-            sleep 1
-          done
-
           chmod +x "$APP_DIR/alice-website"
-          mkdir -p "$REAL_HOME/.config/systemd/user"
+          mkdir -p "$REAL_HOME/etc/services.d"
           printf '%s\n' \
-            '[Unit]' \
-            'Description=Alice Website (Rust/axum SSR)' \
-            'After=network.target' \
-            '' \
-            '[Service]' \
-            "WorkingDirectory=$APP_DIR" \
-            "ExecStart=$APP_DIR/alice-website" \
-            'Restart=always' \
-            'RestartSec=2' \
-            'Environment=RUST_LOG=info' \
-            '' \
-            '[Install]' \
-            'WantedBy=default.target' \
-            > "$REAL_HOME/.config/systemd/user/$SERVICE_NAME.service"
-          systemctl --user daemon-reload
-          systemctl --user enable --now "$SERVICE_NAME" || true
-          systemctl --user restart "$SERVICE_NAME"
-          systemctl --user --no-pager status "$SERVICE_NAME"
+            "[program:$SERVICE_NAME]" \
+            "command=$APP_DIR/alice-website" \
+            "directory=$APP_DIR" \
+            'startsecs=60' \
+            'autorestart=true' \
+            'redirect_stderr=true' \
+            > "$REAL_HOME/etc/services.d/$SERVICE_NAME.ini"
+
+          supervisorctl reread
+          supervisorctl update
+          supervisorctl restart "$SERVICE_NAME" || supervisorctl start "$SERVICE_NAME"
+          supervisorctl status "$SERVICE_NAME"
+
           command -v uberspace >/dev/null 2>&1 || export PATH="$PATH:/usr/local/bin"
           uberspace web backend set / --http --port 8080
           REMOTE

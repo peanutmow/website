@@ -23,41 +23,24 @@ echo "==> Building release binary..."
 cd "$APP_DIR"
 cargo build --release
 
-# 3. Install the systemd user service
-echo "==> Installing systemd user service..."
+# 3. Install the supervisord service (Uberspace uses supervisord, NOT
+#    systemd user services — `systemctl --user` / linger don't exist there)
+echo "==> Installing supervisord service..."
 REAL_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
 [ -n "$REAL_HOME" ] || REAL_HOME="$HOME"
-
-# Make sure systemctl --user can talk to the session bus
-export XDG_RUNTIME_DIR="/run/user/$(id -u)"
-export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
-loginctl enable-linger "$USER_NAME" 2>/dev/null || loginctl enable-linger
-
-# Wait until the user manager socket exists (linger may take a second)
-for i in $(seq 1 15); do
-  [ -S "$XDG_RUNTIME_DIR/systemd/private" ] && break
-  sleep 1
-done
-
-mkdir -p "$REAL_HOME/.config/systemd/user"
-cat > "$REAL_HOME/.config/systemd/user/$SERVICE_NAME.service" <<EOF
-[Unit]
-Description=Alice Website (Rust/axum SSR)
-After=network.target
-
-[Service]
-WorkingDirectory=$APP_DIR
-ExecStart=$APP_DIR/target/release/alice-website
-Restart=always
-RestartSec=2
-Environment=RUST_LOG=info
-
-[Install]
-WantedBy=default.target
+mkdir -p "$REAL_HOME/etc/services.d"
+cat > "$REAL_HOME/etc/services.d/$SERVICE_NAME.ini" <<EOF
+[program:$SERVICE_NAME]
+command=$APP_DIR/target/release/alice-website
+directory=$APP_DIR
+startsecs=60
+autorestart=true
+redirect_stderr=true
 EOF
-systemctl --user daemon-reload
-systemctl --user enable --now "$SERVICE_NAME"
-systemctl --user --no-pager status "$SERVICE_NAME"
+supervisorctl reread
+supervisorctl update
+supervisorctl restart "$SERVICE_NAME" || supervisorctl start "$SERVICE_NAME"
+supervisorctl status "$SERVICE_NAME"
 
 # 4. Point the domain at the local port (reverse proxy)
 echo "==> Setting web backend to port $PORT..."
@@ -65,4 +48,4 @@ uberspace web backend set / --http --port "$PORT"
 
 echo ""
 echo "==> Done! Test with: curl -I https://$(hostname)"
-echo "    Logs: systemctl --user status $SERVICE_NAME -l"
+echo "    Logs: supervisorctl tail $SERVICE_NAME"
