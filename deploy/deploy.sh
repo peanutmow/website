@@ -1,6 +1,6 @@
 set -euo pipefail
 
-APP_DIR="$HOME/alicemow"
+APP_DIR="$HOME/html"
 SERVICE_NAME="alice-website"
 PORT=8080
 
