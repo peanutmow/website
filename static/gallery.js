@@ -6,11 +6,6 @@
 
     const galleryData = [
         { title: 'ASCII Fluid Simulation', desc: 'Interactive water sim', type: 'interactive', subtype: 'webgl', thumb: null },
-        { title: 'CRT Terminal', desc: 'Terminal-styled portfolio', type: 'interactive', subtype: 'ui', thumb: null },
-        { title: '3D Globe', desc: 'Interactive WebGL globe', type: '3d', subtype: 'webgl', thumb: null },
-        { title: 'Liquid Text', desc: 'Fluid text distortion', type: 'visual', subtype: 'canvas', thumb: null },
-        { title: 'Ghost Typist', desc: 'Typewriter text effect', type: 'visual', subtype: 'ui', thumb: null },
-        { title: 'ASCII Portrait', desc: 'ASCII art portrait with weather', type: 'visual', subtype: 'ascii', thumb: null },
     ];
 
     const grid = document.getElementById('gallery-grid');

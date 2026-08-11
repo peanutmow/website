@@ -13,11 +13,7 @@ impl TemplateEngine {
         env.add_template("gallery.html", include_str!("../templates/gallery.html")).unwrap();
         env.add_template("socials.html", include_str!("../templates/socials.html")).unwrap();
         env.add_template("projects.html", include_str!("../templates/projects.html")).unwrap();
-        env.add_template("blog_post.html", include_str!("../templates/blog_post.html")).unwrap();
-        env.add_template("etchosts.html", include_str!("../templates/etchosts.html")).unwrap();
-        env.add_template("changelog.html", include_str!("../templates/changelog.html")).unwrap();
-        env.add_template("man.html", include_str!("../templates/man.html")).unwrap();
-        env.add_template("rawtext.html", include_str!("../templates/rawtext.html")).unwrap();
+        env.add_template("redherring.html", include_str!("../templates/redherring.html")).unwrap();
         TemplateEngine { env }
     }
 

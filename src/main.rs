@@ -1,5 +1,4 @@
 use axum::{
-    extract::Path,
     http::StatusCode,
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
@@ -10,13 +9,11 @@ use tower_http::services::ServeDir;
 use tower_http::compression::CompressionLayer;
 use tracing_subscriber::EnvFilter;
 
-mod blog;
 mod projects;
 mod templates;
 
 pub struct AppState {
     pub tmpl: templates::TemplateEngine,
-    pub blog_posts: Vec<blog::BlogPost>,
     pub projects: Vec<projects::Project>,
     pub dreams: Vec<projects::Project>,
 }
@@ -27,9 +24,6 @@ async fn main() {
         .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "info".into()))
         .init();
 
-    let blog_posts = blog::load_blog_posts().unwrap_or_default();
-    tracing::info!("Loaded {} blog posts", blog_posts.len());
-
     let projects = projects::load_projects();
     tracing::info!("Loaded {} projects", projects.len());
 
@@ -38,7 +32,6 @@ async fn main() {
 
     let state = Arc::new(AppState {
         tmpl: templates::TemplateEngine::new(),
-        blog_posts,
         projects,
         dreams,
     });
@@ -47,9 +40,8 @@ async fn main() {
         // SSR pages (rendered by Rust)
         .route("/", get(root_page))
         .route("/index.html", get(root_page))
-        // Blog - SSR rendered listing + markdown posts
+        // Blog - static files
         .nest_service("/blog", ServeDir::new("blog"))
-        .route("/blog/posts/{slug}", get(blog_post_handler))
         // Gallery & Socials - SSR pages at root, serve original static sub-pages
         .route("/gallery", get(gallery_page))
         .route("/gallery/", get(gallery_page))
@@ -72,11 +64,8 @@ async fn main() {
         .route("/GlassBlock4K.png", get(|| serve_file("GlassBlock4K.png", "image/png")))
         .route("/qr-error.png", get(|| serve_file("templates/QRCode(3).png", "image/png")))
         // Easter egg pages
-        .route("/etc/hosts", get(etchosts_page))
         .route("/dev/null", get(dev_null_redirect))
-        .route("/changelog", get(changelog_page))
-        .route("/man", get(man_page))
-        .route("/a", get(aaencode_page))
+        .route("/redherring", get(redherring_page))
         // Fallback 404
         .fallback(not_found)
         .layer(CompressionLayer::new())
@@ -117,22 +106,6 @@ async fn projects_page(axum::extract::State(state): axum::extract::State<Arc<App
     }))
 }
 
-async fn blog_post_handler(
-    axum::extract::State(state): axum::extract::State<Arc<AppState>>,
-    Path(slug): Path<String>,
-) -> Response {
-    if let Some(post) = state.blog_posts.iter().find(|p| p.slug == slug) {
-        let content_html = blog::render_markdown(&post.content);
-        state.tmpl.render_response("blog_post.html", &serde_json::json!({
-            "title": format!("{} — Alice", post.title),
-            "post": post,
-            "content_html": content_html,
-        }))
-    } else {
-        not_found().await
-    }
-}
-
 // ─── File serving ──────────────────────────────────────────────────
 
 async fn serve_file(path: &str, mime: &str) -> Response {
@@ -146,49 +119,12 @@ async fn serve_file(path: &str, mime: &str) -> Response {
 
 // ─── Easter egg handlers ───────────────────────────────────────────
 
-async fn aaencode_page() -> Response {
-    match tokio::fs::read_to_string("codes/2.txt").await {
-        Ok(content) => {
-            let escaped = content
-                .replace('&', "&amp;")
-                .replace('<', "&lt;")
-                .replace('>', "&gt;");
-            let html = format!(
-                r#"<!DOCTYPE html>
-<html lang="en">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>///</title>
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
-<style>
-*{{margin:0;padding:0;box-sizing:border-box;}}
-html,body{{width:100%;min-height:100%;background:#000;color:rgba(255,255,255,0.15);}}
-body{{padding:2rem;font-family:'Share Tech Mono',monospace;font-size:0.5rem;line-height:1.1;word-break:break-all;}}
-</style></head><body><pre style="white-space:pre-wrap;word-break:break-all;">{}</pre></body></html>"#,
-                escaped
-            );
-            Response::builder()
-                .header("Content-Type", "text/html; charset=utf-8")
-                .body(axum::body::Body::from(html))
-                .unwrap()
-        }
-        Err(_) => not_found().await,
-    }
-}
-
-async fn etchosts_page(axum::extract::State(state): axum::extract::State<Arc<AppState>>) -> Response {
-    state.tmpl.render_response("etchosts.html", &serde_json::json!({"title": "/etc/hosts — Alice"}))
-}
-
 async fn dev_null_redirect() -> Redirect {
     Redirect::to("/")
 }
 
-async fn changelog_page(axum::extract::State(state): axum::extract::State<Arc<AppState>>) -> Response {
-    state.tmpl.render_response("changelog.html", &serde_json::json!({"title": "CHANGELOG — Alice"}))
-}
-
-async fn man_page(axum::extract::State(state): axum::extract::State<Arc<AppState>>) -> Response {
-    state.tmpl.render_response("man.html", &serde_json::json!({"title": "alice(1) — Manual"}))
+async fn redherring_page(axum::extract::State(state): axum::extract::State<Arc<AppState>>) -> Response {
+    state.tmpl.render_response("redherring.html", &serde_json::json!({"title": "///"}))
 }
 
 async fn not_found() -> Response {

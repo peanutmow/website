@@ -60,19 +60,183 @@
     // Text rendered directly in the ASCII grid so it blends seamlessly with the water.
     let textOverlays = []; // Array of {row, col, char}
 
+    // ── Easter egg overlays (temporary, cleared each frame if not re-added) ──
+    let easterEggOverlays = []; // Array of {row, col, char, frames}
+    let easterEggMode = '';     // 'blank', '42', 'cowsay', or ''
+
     // Typewriter effect for greeting
     const GREETING = "Hi, I'm Alice";
     let greetingRevealed = 0;
     let greetingComplete = false;
 
+    // ── Keyboard sequence detection ──
+    const KEY_BUFFER_MAX = 20;
+    let keyBuffer = [];
+
+    // Sequences to detect
+    const SEQUENCES = {
+        'about:blank': { length: 11, label: 'blank' },
+        'cowsay':      { length: 6,  label: 'cowsay' },
+    };
+
+    function checkKeySequences() {
+        const buf = keyBuffer.join('');
+        // Check exact matches
+        if (buf === '42') {
+            trigger42();
+            keyBuffer = [];
+            return;
+        }
+        for (const [seq, info] of Object.entries(SEQUENCES)) {
+            if (buf.endsWith(seq)) {
+                if (info.label === 'blank') triggerAboutBlank();
+                else if (info.label === 'cowsay') triggerCowsay();
+                keyBuffer = [];
+                return;
+            }
+        }
+    }
+
+    // ── Easter egg triggers ──
+
+    function triggerAboutBlank() {
+        if (easterEggMode === 'blank') return;
+        easterEggMode = 'blank';
+        textOverlays = []; // Force recompute on next render
+        // Clear the density field so the water goes blank
+        for (let i = 0; i < total; i++) dens[i] = 0;
+        easterEggOverlays = [];
+
+        // Show "MISSION ACCOMPLISHED." centered
+        const msg = 'REMOVE';
+        const row = Math.floor(rows / 2);
+        const col = Math.floor((cols - msg.length) / 2);
+        for (let i = 0; i < msg.length; i++) {
+            easterEggOverlays.push({ row, col: col + i, char: msg[i], frames: 300 });
+        }
+        // Subtitle
+        const sub = 'TEST';
+        const subRow = row + 2;
+        const subCol = Math.floor((cols - sub.length) / 2);
+        for (let i = 0; i < sub.length; i++) {
+            easterEggOverlays.push({ row: subRow, col: subCol + i, char: sub[i], frames: 300 });
+        }
+
+        // Fade the egg out after 5 seconds
+        setTimeout(function () {
+            easterEggMode = '';
+            easterEggOverlays = [];
+        }, 5000);
+    }
+
+    function trigger42() {
+        if (easterEggMode !== '') return;
+        easterEggMode = '42';
+        textOverlays = []; // Force recompute on next render
+
+        const msg = 'The answer to life, the universe, and everything.';
+        const row = Math.floor(rows / 2);
+        const col = Math.max(0, Math.floor((cols - msg.length) / 2));
+        easterEggOverlays = [];
+        for (let i = 0; i < msg.length; i++) {
+            easterEggOverlays.push({ row, col: col + i, char: msg[i], frames: 180 });
+        }
+
+        // Inject some density for visual flair
+        for (let j = row - 4; j <= row + 4; j++) {
+            for (let i = col - 2; i < col + msg.length + 2; i++) {
+                if (i > 0 && i < cols - 1 && j > 0 && j < rows - 1) {
+                    dens[idx(i, j)] = 0.3 + Math.random() * 0.2;
+                }
+            }
+        }
+
+        setTimeout(function () {
+            easterEggMode = '';
+            easterEggOverlays = [];
+        }, 3000);
+    }
+
+    function triggerCowsay() {
+        if (easterEggMode !== '') return;
+        easterEggMode = 'cowsay';
+        textOverlays = []; // Force recompute on next render
+
+        const quotes = [
+            "moo? i'd fork that repo.",
+            "undefined is not a function. again.",
+            "have you tried turning it off and on?",
+            "it's not a bug, it's a feature.",
+            "sudo apt-get install clue",
+            "there are 10 types of people...",
+            "the rust borrow checker says no.",
+            "404: sleep not found.",
+        ];
+        const quote = quotes[Math.floor(Math.random() * quotes.length)];
+
+        // Build ASCII cow
+        const balloonTop  = '  ' + '_'.repeat(quote.length + 2);
+        const balloonLine = ' < ' + quote + ' >';
+        const balloonBot  = '  ' + '-'.repeat(quote.length + 2);
+        const cow = [
+            balloonTop,
+            balloonLine,
+            balloonBot,
+            '        \\   ^__^',
+            '         \\  (oo)\\_______',
+            '            (__)\\       )\\/\\',
+            '                ||----w |',
+            '                ||     ||',
+        ];
+
+        const startRow = Math.floor(rows * 0.2);
+        const startCol = Math.floor(cols * 0.25);
+        easterEggOverlays = [];
+        for (let r = 0; r < cow.length; r++) {
+            const line = cow[r];
+            for (let c = 0; c < line.length; c++) {
+                easterEggOverlays.push({
+                    row: startRow + r,
+                    col: startCol + c,
+                    char: line[c],
+                    frames: 240
+                });
+            }
+        }
+
+        // Inject some density for visual flair
+        for (let j = startRow - 1; j < startRow + cow.length + 1; j++) {
+            for (let i = startCol - 1; i < startCol + 50; i++) {
+                if (i > 0 && i < cols - 1 && j > 0 && j < rows - 1) {
+                    dens[idx(i, j)] = 0.15 + Math.random() * 0.1;
+                }
+            }
+        }
+
+        setTimeout(function () {
+            easterEggMode = '';
+            easterEggOverlays = [];
+        }, 4000);
+    }
+
+    // Expose easter egg triggers globally for URL hash detection
+    window.__triggerAboutBlank = triggerAboutBlank;
+
     function computeTextOverlays() {
         textOverlays = [];
+        easterEggOverlays = easterEggOverlays.filter(function (o) { return o.frames > 0; });
+        easterEggOverlays.forEach(function (o) { o.frames--; });
+
+        if (easterEggOverlays.length > 0 || easterEggMode !== '') {
+            textOverlays = textOverlays.concat(easterEggOverlays);
+            return; // skip normal UI when egg is active
+        }
 
         // Don't render UI text when a content page (like Socials) is open
         if (document.body.classList.contains('hide-ui-text')) return;
 
         const name   = GREETING;
-        const buttons = ['Socials', 'Gallery', 'Blog'];
+        const buttons = ['Socials', 'Gallery', 'Blog', 'Projects'];
         const btnStr  = buttons.join('  ');
         const bio     = 'artist & developer';
 
@@ -101,6 +265,21 @@
         for (let i = 0; i < bio.length; i++) {
             textOverlays.push({ row: bioRow, col: bioCol + i, char: bio[i] });
         }
+
+        // Expose the live grid so the DOM overlay can align its click targets exactly
+        try {
+            window.__asciiLayout = {
+                rows: rows,
+                cols: cols,
+                charW: _charWidth || parseFloat(preEl.style.fontSize) * 0.54 || 8,
+                rowH: parseFloat(preEl.style.fontSize) || 14,
+                nameRow: nameRow, nameCol: nameCol,
+                btnRow: btnRow, btnCol: btnCol,
+                bioRow: bioRow, bioCol: bioCol,
+                buttons: buttons,
+                btnStr: btnStr
+            };
+        } catch (e) {}
     }
 
     /** Measure the exact character width using a hidden DOM span (more reliable than canvas). */
@@ -506,8 +685,8 @@
         }
 
         if (!document.body.classList.contains('hide-ui-text')) {
-            // Recompute if previously cleared by hide-ui-text
-            if (textOverlays.length === 0) computeTextOverlays();
+            // Always recompute so erosion/density checks run every frame
+            computeTextOverlays();
             for (let t = 0; t < textOverlays.length; t++) {
                 const { row, col, char } = textOverlays[t];
                 if (row >= 0 && row < rows && col >= 0 && col < cols) {
@@ -673,6 +852,33 @@
 
         // ── Typewriter greeting ──
         startTypewriter();
+
+        // ── Keyboard easter egg listener ──
+        document.addEventListener('keydown', function (e) {
+            // Only capture keys, ignore if typing in an input
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+            if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+            // Printable keys — easter egg sequence detection
+            if (e.key.length === 1) {
+                keyBuffer.push(e.key.toLowerCase());
+                if (keyBuffer.length > KEY_BUFFER_MAX) keyBuffer.shift();
+                checkKeySequences();
+            }
+        });
+
+        // ── Hash change listener (for #about:blank) ──
+        function checkHash() {
+            if (window.location.hash === '#about:blank') {
+                if (typeof window.__triggerAboutBlank === 'function') {
+                    window.__triggerAboutBlank();
+                }
+                // Clear hash without triggering another event
+                history.replaceState(null, '', window.location.pathname + window.location.search);
+            }
+        }
+        checkHash();
+        window.addEventListener('hashchange', checkHash);
 
         // ── Button fluid interaction ──
         // When hovering over UI buttons, inject density at that position

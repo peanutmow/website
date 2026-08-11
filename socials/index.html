@@ -119,6 +119,7 @@
             color: rgba(255,255,255,0.2);
             font-style: italic;
         }
+
     </style>
 </head>
 <body>
@@ -148,7 +149,7 @@
 
         <div class="section">
             <div class="section-header">Friends</div>
-            <div class="link-list">
+            <div class="link-list" data-embed>
                 <a href="https://alexinabox.de/" target="_blank" class="link-item">
                     <span class="tag">Link</span>
                     <span class="name">alexinabox.de &mdash; Alex</span>
@@ -162,7 +163,7 @@
 
         <div class="section">
             <div class="section-header">Cool Sites</div>
-            <div class="link-list">
+            <div class="link-list" data-embed>
                 <a href="https://valdevia.art/" target="_blank" class="link-item">
                     <span class="tag">Link</span>
                     <span class="name">valdevia.art</span>
@@ -228,6 +229,30 @@
                     bubbles: true,
                     cancelable: true
                 }));
+            });
+        })();
+    </script>
+
+    <script>
+        // ── Friends / Cool Sites links: go back to the ASCII main page ──
+        // The main page opens them in an in-site window rendered as ASCII;
+        // hovering the window reveals the real site. "My Accounts" links
+        // keep opening in a new tab.
+        (function() {
+            'use strict';
+            function hostOf(url) {
+                try { return new URL(url, window.location.href).hostname; } catch (e) { return url; }
+            }
+            document.querySelectorAll('.link-list[data-embed] a').forEach(function(link) {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    var url = link.href;
+                    var name = link.getAttribute('data-name') || hostOf(url);
+                    try { sessionStorage.setItem('alice.siteWindow', url); } catch (err) {}
+                    var dest = '/?site=' + encodeURIComponent(url) + '&name=' + encodeURIComponent(name);
+                    var top = window.top || window;
+                    try { top.location.href = dest; } catch (err) { window.location.href = dest; }
+                });
             });
         })();
     </script>
