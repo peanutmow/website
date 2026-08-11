@@ -33,21 +33,23 @@ jobs:
         run: |
           # 1) Upload static assets first, then the binary LAST so the
           #    mirror --delete never removes it (it's not in the local tree).
+          #    NOTE: use RELATIVE paths (html/...) — lftp starts in the SFTP
+          #    user's home dir, and absolute /var/www/virtual/... paths fail.
           lftp -u "$SFTP_USERNAME,$SFTP_PASSWORD" sftp://$SFTP_HOST:$SFTP_PORT <<EOF
           set sftp:auto-confirm yes
           set cmd:fail-exit yes
           set net:max-retries 3
-          mkdir -p /var/www/virtual/$SFTP_USERNAME/html
-          mkdir -p /var/www/virtual/$SFTP_USERNAME/html/deploy
+          mkdir -p html
+          mkdir -p html/deploy
           mirror --reverse --delete --verbose \
             --exclude=.git/ --exclude=.github/ --exclude=target/ \
             --exclude=node_modules/ --exclude-glob=*.md \
             --exclude=alice-website \
-            ./ /var/www/virtual/$SFTP_USERNAME/html/
+            ./ html/
           put target/x86_64-unknown-linux-musl/release/alice-website \
-            -o /var/www/virtual/$SFTP_USERNAME/html/alice-website
+            -o html/alice-website
           put deploy/alice-website.service \
-            -o /var/www/virtual/$SFTP_USERNAME/html/deploy/alice-website.service
+            -o html/deploy/alice-website.service
           bye
           EOF
 
