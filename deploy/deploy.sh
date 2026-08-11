@@ -1,10 +1,3 @@
-#!/bin/bash
-# Run this script ON the Uberspace server (after uploading the project source).
-#   ssh alicemow@alicemow.uber.space
-#   bash ~/alicemow/deploy/deploy.sh
-#
-# It builds the Rust binary, installs a systemd user service on port 8080,
-# and points the Uberspace web backend at it.
 set -euo pipefail
 
 APP_DIR="$HOME/alicemow"
