@@ -27,6 +27,12 @@ cargo build --release
 echo "==> Installing systemd user service..."
 REAL_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
 [ -n "$REAL_HOME" ] || REAL_HOME="$HOME"
+
+# Make sure systemctl --user can talk to the session bus
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+loginctl enable-linger "$USER_NAME" 2>/dev/null || true
+
 mkdir -p "$REAL_HOME/.config/systemd/user"
 cat > "$REAL_HOME/.config/systemd/user/$SERVICE_NAME.service" <<EOF
 [Unit]

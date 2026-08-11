@@ -64,6 +64,14 @@ jobs:
           REAL_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
           [ -n "$REAL_HOME" ] || REAL_HOME="$HOME"
 
+          # systemd user session setup for non-login shells (CI):
+          # without XDG_RUNTIME_DIR, `systemctl --user` fails with
+          # "Failed to get D-Bus connection". Enable linger so the
+          # service also survives logout / starts at boot.
+          export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+          export DBUS_SESSION_BUS_ADDRESS="unix:path=$XDG_RUNTIME_DIR/bus"
+          loginctl enable-linger "$USER_NAME" 2>/dev/null || true
+
           chmod +x "$APP_DIR/alice-website"
           mkdir -p "$REAL_HOME/.config/systemd/user"
           printf '%s\n' \
