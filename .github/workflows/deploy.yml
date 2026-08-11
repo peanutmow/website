@@ -66,21 +66,21 @@ jobs:
 
           chmod +x "$APP_DIR/alice-website"
           mkdir -p "$REAL_HOME/.config/systemd/user"
-          cat > "$REAL_HOME/.config/systemd/user/$SERVICE_NAME.service" <<UNIT
-[Unit]
-Description=Alice Website (Rust/axum SSR)
-After=network.target
-
-[Service]
-WorkingDirectory=$APP_DIR
-ExecStart=$APP_DIR/alice-website
-Restart=always
-RestartSec=2
-Environment=RUST_LOG=info
-
-[Install]
-WantedBy=default.target
-UNIT
+          printf '%s\n' \
+            '[Unit]' \
+            'Description=Alice Website (Rust/axum SSR)' \
+            'After=network.target' \
+            '' \
+            '[Service]' \
+            "WorkingDirectory=$APP_DIR" \
+            "ExecStart=$APP_DIR/alice-website" \
+            'Restart=always' \
+            'RestartSec=2' \
+            'Environment=RUST_LOG=info' \
+            '' \
+            '[Install]' \
+            'WantedBy=default.target' \
+            > "$REAL_HOME/.config/systemd/user/$SERVICE_NAME.service"
           systemctl --user daemon-reload
           systemctl --user enable --now "$SERVICE_NAME" || true
           systemctl --user restart "$SERVICE_NAME"
