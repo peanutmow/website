@@ -1,0 +1,13 @@
+[Unit]
+Description=Alice Website (Rust/axum SSR)
+After=network.target
+
+[Service]
+WorkingDirectory=%h/alicemow
+ExecStart=%h/alicemow/target/release/alice-website
+Restart=always
+RestartSec=2
+Environment=RUST_LOG=info
+
+[Install]
+WantedBy=default.target

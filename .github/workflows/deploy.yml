@@ -1,4 +1,4 @@
-name: Deploy via SFTP
+name: Deploy to Uberspace
 on:
   push:
     branches:
@@ -10,28 +10,56 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install lftp
-        run: sudo apt-get install -y lftp
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-musl
 
-      - name: Deploy to Uberspace via SFTP
+      - name: Install musl-tools (static link)
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Build release binary (static, for the server)
+        run: cargo build --release --target x86_64-unknown-linux-musl
+
+      - name: Install lftp + sshpass
+        run: sudo apt-get install -y lftp sshpass
+
+      - name: Deploy to Uberspace
         env:
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
           SFTP_PORT: ${{ secrets.SFTP_PORT }}
           SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
           SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
         run: |
+          # 1) Upload binary + static assets into the app dir (~/alicemow)
           lftp -u "$SFTP_USERNAME,$SFTP_PASSWORD" sftp://$SFTP_HOST:$SFTP_PORT <<EOF
           set sftp:auto-confirm yes
           set cmd:fail-exit yes
           set net:max-retries 3
-          ls /var/www/virtual/$SFTP_USERNAME/
+          mkdir -p /var/www/virtual/$SFTP_USERNAME/alicemow
+          mkdir -p /var/www/virtual/$SFTP_USERNAME/alicemow/deploy
+          put target/x86_64-unknown-linux-musl/release/alice-website \
+            -o /var/www/virtual/$SFTP_USERNAME/alicemow/alice-website
+          put deploy/alice-website.service \
+            -o /var/www/virtual/$SFTP_USERNAME/alicemow/deploy/alice-website.service
           mirror --reverse --delete --verbose \
-            --exclude=.git/ \
-            --exclude=.github/ \
-            --exclude=node_modules/ \
-            --exclude-glob=*.md \
-            --exclude-glob=*.yml \
-            ./ /var/www/virtual/$SFTP_USERNAME/html/
-          ls /var/www/virtual/$SFTP_USERNAME/html/
+            --exclude=.git/ --exclude=.github/ --exclude=target/ \
+            --exclude=node_modules/ --exclude-glob=*.md \
+            ./ /var/www/virtual/$SFTP_USERNAME/alicemow/
           bye
           EOF
+
+          # 2) Make binary executable, install service, set web backend
+          sshpass -p "$SFTP_PASSWORD" ssh -p "$SFTP_PORT" -o StrictHostKeyChecking=no \
+            "$SFTP_USERNAME@$SFTP_HOST" bash -s <<'REMOTE'
+          set -e
+          APP_DIR="$HOME/alicemow"
+          chmod +x "$APP_DIR/alice-website"
+          mkdir -p "$HOME/.config/systemd/user"
+          cp "$APP_DIR/deploy/alice-website.service" "$HOME/.config/systemd/user/alice-website.service"
+          systemctl --user daemon-reload
+          systemctl --user enable --now alice-website || true
+          systemctl --user restart alice-website
+          systemctl --user --no-pager status alice-website
+          uberspace web backend set / --http --port 8080
+          REMOTE
