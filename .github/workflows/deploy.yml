@@ -37,6 +37,7 @@ jobs:
           #    user's home dir. No explicit mkdir: lftp's `mkdir -p` fails
           #    with "Access failed" on dirs that already exist (like html/);
           #    mirror creates any needed dirs by itself.
+          echo "==> [lftp] mirroring repo to html/ ..."
           lftp -u "$SFTP_USERNAME,$SFTP_PASSWORD" sftp://$SFTP_HOST:$SFTP_PORT <<EOF
           set sftp:auto-confirm yes
           set cmd:fail-exit yes
@@ -50,21 +51,26 @@ jobs:
             -o html/alice-website
           bye
           EOF
+          echo "==> [lftp] upload done"
 
           # 2) Make binary executable, install supervisord service, set web
           #    backend. Uberspace manages persistent daemons with supervisord
           #    (NOT systemd user services — `systemctl --user` / linger don't
           #    exist there). Service config = one .ini in ~/etc/services.d/.
+          echo "==> [ssh] running remote setup ..."
           sshpass -p "$SFTP_PASSWORD" ssh -p "$SFTP_PORT" -o StrictHostKeyChecking=no \
             "$SFTP_USERNAME@$SFTP_HOST" "SFTP_USER='$SFTP_USERNAME' bash -l -s" <<'REMOTE'
           set -e
+          trap 'echo "REMOTE FAILED at line $LINENO: $BASH_COMMAND"' ERR
           USER_NAME="${SFTP_USER:?SFTP_USER not set}"
           APP_DIR="/var/www/virtual/$USER_NAME/html"
           SERVICE_NAME="alice-website"
           REAL_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
           [ -n "$REAL_HOME" ] || REAL_HOME="$HOME"
 
+          echo "[1/6] chmod +x binary"
           chmod +x "$APP_DIR/alice-website"
+          echo "[2/6] write supervisord ini"
           mkdir -p "$REAL_HOME/etc/services.d"
           printf '%s\n' \
             "[program:$SERVICE_NAME]" \
@@ -74,12 +80,16 @@ jobs:
             'autorestart=true' \
             'redirect_stderr=true' \
             > "$REAL_HOME/etc/services.d/$SERVICE_NAME.ini"
-
+          echo "[3/6] supervisorctl reread"
           supervisorctl reread
+          echo "[4/6] supervisorctl update"
           supervisorctl update
+          echo "[5/6] restart service"
           supervisorctl restart "$SERVICE_NAME" || supervisorctl start "$SERVICE_NAME"
-          supervisorctl status "$SERVICE_NAME"
-
+          supervisorctl status "$SERVICE_NAME" || true
+          echo "[6/6] set web backend"
           command -v uberspace >/dev/null 2>&1 || export PATH="$PATH:/usr/local/bin"
           uberspace web backend set / --http --port 8080
+          echo "REMOTE setup complete"
           REMOTE
+          echo "==> [ssh] remote setup done"
