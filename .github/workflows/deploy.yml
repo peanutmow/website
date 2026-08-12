@@ -48,7 +48,7 @@ jobs:
             --exclude=alice-website \
             ./ html/
           put target/x86_64-unknown-linux-musl/release/alice-website \
-            -o html/alice-website
+            -o html/alice-website.new
           bye
           EOF
           echo "==> [lftp] upload done"
@@ -68,7 +68,8 @@ jobs:
           REAL_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
           [ -n "$REAL_HOME" ] || REAL_HOME="$HOME"
 
-          echo "[1/6] chmod +x binary"
+          echo "[1/6] atomically replace running binary"
+          mv -f "$APP_DIR/alice-website.new" "$APP_DIR/alice-website"
           chmod +x "$APP_DIR/alice-website"
           echo "[2/6] write supervisord ini"
           mkdir -p "$REAL_HOME/etc/services.d"
