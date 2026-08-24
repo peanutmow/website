@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>alice-1b — talk to the tiny brain</title>
+    <meta name="description" content="A tiny 1-billion-parameter AI living on Alice's website. It's not very smart, but it is very confident.">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg: #0a0a0a;
+            --panel: #0e0e11;
+            --line: rgba(255,255,255,0.08);
+            --line-strong: rgba(255,255,255,0.16);
+            --text: rgba(255,255,255,0.85);
+            --dim: rgba(255,255,255,0.4);
+            --faint: rgba(255,255,255,0.22);
+            --accent: #7fe3c6;
+        }
+
+        html, body { height: 100%; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
+
+        /* ── Header ─────────────────────────────── */
+        header {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            padding: 0.9rem 1.2rem;
+            border-bottom: 1px solid var(--line);
+            background: rgba(255,255,255,0.015);
+        }
+        .brand { display: flex; align-items: center; gap: 1rem; min-width: 0; }
+        .logo { display: none; }
+        .logo pre {
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            font-size: 9px;
+            line-height: 1.05;
+            color: var(--accent);
+            text-shadow: 0 0 12px rgba(127,227,198,0.25);
+            user-select: none;
+        }
+        .brand-text h1 {
+            font-size: 0.8rem;
+            font-weight: 500;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--text);
+            white-space: nowrap;
+        }
+        .brand-text .sub {
+            font-size: 0.6rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--dim);
+            margin-top: 2px;
+            white-space: nowrap;
+        }
+        #reset {
+            flex-shrink: 0;
+            font-family: inherit;
+            font-size: 0.65rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--dim);
+            background: transparent;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        #reset:hover { color: #fff; border-color: var(--line-strong); background: rgba(255,255,255,0.06); }
+        #reset:active { transform: scale(0.96); }
+
+        /* ── Chat area ──────────────────────────── */
+        main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.2rem 1.2rem 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.9rem;
+            max-width: 760px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .msg { display: flex; flex-direction: column; max-width: 85%; }
+        .msg.user { align-self: flex-end; align-items: flex-end; }
+        .msg.assistant { align-self: flex-start; }
+
+        .msg .who {
+            font-size: 0.55rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--faint);
+            margin-bottom: 4px;
+        }
+        .msg.assistant .who { color: var(--accent); opacity: 0.7; }
+
+        .msg .body {
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.55;
+            white-space: pre-wrap;
+            word-break: break-word;
+            padding: 0.7rem 0.9rem;
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            background: var(--panel);
+        }
+        .msg.user .body {
+            border-color: var(--line);
+            background: rgba(255,255,255,0.05);
+            color: var(--text);
+        }
+        .msg.assistant .body { border-color: rgba(127,227,198,0.18); }
+        .msg.thinking .body::after {
+            content: "";
+            display: inline-block;
+            width: 5px;
+            height: 0.85rem;
+            background: var(--accent);
+            margin-left: 3px;
+            vertical-align: -1px;
+            animation: blink 0.9s steps(1) infinite;
+        }
+        @keyframes blink { 50% { opacity: 0; } }
+
+        .msg.error .body { border-color: rgba(255,120,120,0.25); }
+
+        /* ── Composer ───────────────────────────── */
+        form.composer {
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            max-width: 760px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 0.8rem 1.2rem 0.6rem;
+        }
+        .composer .prompt {
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--accent);
+            font-size: 0.95rem;
+            user-select: none;
+        }
+        .composer input {
+            flex: 1;
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            font-size: 0.85rem;
+            color: var(--text);
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 0.7rem 0.9rem;
+            outline: none;
+            transition: border-color 0.2s ease;
+        }
+        .composer input::placeholder { color: var(--faint); }
+        .composer input:focus { border-color: var(--line-strong); }
+        .composer button {
+            font-family: inherit;
+            font-size: 0.65rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--dim);
+            background: transparent;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 0.7rem 1.1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .composer button:hover { color: #fff; border-color: var(--line-strong); background: rgba(255,255,255,0.06); }
+        .composer button:active { transform: scale(0.96); }
+
+        /* ── Footer ─────────────────────────────── */
+        footer {
+            flex-shrink: 0;
+            text-align: center;
+            font-size: 0.55rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--faint);
+            padding: 0 1.2rem 0.7rem;
+        }
+
+        @media (min-width: 720px) { .logo { display: block; } }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="brand">
+            <div class="logo"><pre>   _    _ _    _ _____ _____
+  / \  | | |  | | ____| ____|
+ / _ \ | | |__| |  _| |  _|
+/ ___ \| |  ___  | |___| |___
+/_/   \_\_|_/  |_|_____|_____|</pre></div>
+            <div class="brand-text">
+                <h1>alice-1b</h1>
+                <div class="sub">tiny brain · 1b parameters · very confident</div>
+            </div>
+        </div>
+        <button id="reset" type="button">reset</button>
+    </header>
+
+    <main id="chat"></main>
+
+    <form class="composer" id="composer" autocomplete="off">
+        <span class="prompt">❯</span>
+        <input id="input" type="text" placeholder="say something to the tiny brain…" aria-label="message">
+        <button type="submit">send</button>
+    </form>
+
+    <footer>made of 1 billion parameters · cloudflare workers ai · responses may be nonsense</footer>
+
+    <script>
+        (function () {
+            'use strict';
+
+            var chatEl = document.getElementById('chat');
+            var form = document.getElementById('composer');
+            var input = document.getElementById('input');
+            var resetBtn = document.getElementById('reset');
+
+            var STORE_KEY = 'alice.ai.history.v1';
+            var history = [];
+            try { history = JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch (e) {}
+
+            function scroll() { chatEl.scrollTop = chatEl.scrollHeight; }
+
+            function addBubble(role, text, extraClass) {
+                var wrap = document.createElement('div');
+                wrap.className = 'msg ' + role + (extraClass ? ' ' + extraClass : '');
+
+                var who = document.createElement('div');
+                who.className = 'who';
+                who.textContent = role === 'user' ? 'you' : 'alice-1b';
+
+                var body = document.createElement('div');
+                body.className = 'body';
+                body.textContent = text; // textContent = safe against HTML injection
+
+                wrap.appendChild(who);
+                wrap.appendChild(body);
+                chatEl.appendChild(wrap);
+                scroll();
+                return body;
+            }
+
+            var thinking = null;
+            function showThinking() {
+                if (thinking) return;
+                var wrap = document.createElement('div');
+                wrap.className = 'msg assistant thinking';
+                var who = document.createElement('div');
+                who.className = 'who';
+                who.textContent = 'alice-1b';
+                var body = document.createElement('div');
+                body.className = 'body';
+                body.textContent = '…';
+                wrap.appendChild(who);
+                wrap.appendChild(body);
+                chatEl.appendChild(wrap);
+                thinking = body;
+                scroll();
+            }
+            function hideThinking() {
+                if (thinking && thinking.parentNode) thinking.parentNode.remove();
+                thinking = null;
+            }
+
+            function save() {
+                try { localStorage.setItem(STORE_KEY, JSON.stringify(history.slice(-40))); } catch (e) {}
+            }
+
+            function send() {
+                var text = input.value.trim();
+                if (!text || thinking) return;
+                input.value = '';
+                history.push({ role: 'user', content: text });
+                addBubble('user', text);
+                save();
+                showThinking();
+
+                fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ messages: history })
+                }).then(function (res) {
+                    return res.json().catch(function () { return {}; }).then(function (data) {
+                        return { ok: res.ok, data: data };
+                    });
+                }).then(function (r) {
+                    hideThinking();
+                    if (!r.ok || r.data.error) {
+                        addBubble('assistant', r.data.message || 'the tiny brain hiccuped. try again?', 'error');
+                        return; // don't put errors into the model's history
+                    }
+                    history.push({ role: 'assistant', content: r.data.reply });
+                    addBubble('assistant', r.data.reply);
+                    save();
+                }).catch(function () {
+                    hideThinking();
+                    addBubble('assistant', 'network hiccup — is the tiny brain offline?', 'error');
+                });
+            }
+
+            form.addEventListener('submit', function (e) {
+                e.preventDefault();
+                send();
+            });
+
+            resetBtn.addEventListener('click', function () {
+                history = [];
+                save();
+                chatEl.innerHTML = '';
+                addIntro();
+                input.focus();
+            });
+
+            function addIntro() {
+                addBubble('assistant',
+                    'hi. i\'m the tiny 1-billion-parameter brain living on this website.\n' +
+                    'i\'m not very smart, but i am very confident. say something.');
+            }
+
+            // Boot: render saved history (or the intro)
+            history.slice().forEach(function (m) { addBubble(m.role, m.content); });
+            if (!history.length) addIntro();
+            input.focus();
+        })();
+    </script>
+</body>
+</html>

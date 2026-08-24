@@ -1,0 +1,13 @@
+{
+	"name": "alice-ai",
+	"version": "0.1.0",
+	"private": true,
+	"description": "Tiny AI chatbot served at ai.alicemow.org, powered by Cloudflare Workers AI",
+	"scripts": {
+		"dev": "wrangler dev",
+		"deploy": "wrangler deploy"
+	},
+	"devDependencies": {
+		"wrangler": "^4.0.0"
+	}
+}
