@@ -6,6 +6,8 @@ on:
       - main
     paths:
       - 'worker-ai/**'
+  # Allows triggering manually from the Actions tab (e.g. after workflow fixes)
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -19,5 +21,8 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # Pin a wrangler that supports wrangler.jsonc (>= 3.91.0). The action's
+          # default (3.90.0) can't read wrangler.jsonc and fails the deploy.
+          wranglerVersion: "4.125.0"
           workingDirectory: worker-ai
           command: deploy
