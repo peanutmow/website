@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>alice-1b — talk to the tiny brain</title>
-    <meta name="description" content="A tiny 1-billion-parameter AI living on Alice's website. It's not very smart, but it is very confident.">
+    <title>BunGPT</title>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -47,29 +46,12 @@
             background: rgba(255,255,255,0.015);
         }
         .brand { display: flex; align-items: center; gap: 1rem; min-width: 0; }
-        .logo { display: none; }
-        .logo pre {
-            font-family: 'Share Tech Mono', 'Courier New', monospace;
-            font-size: 9px;
-            line-height: 1.05;
-            color: var(--accent);
-            text-shadow: 0 0 12px rgba(127,227,198,0.25);
-            user-select: none;
-        }
-        .brand-text h1 {
+        .brand h1 {
             font-size: 0.8rem;
             font-weight: 500;
             letter-spacing: 3px;
             text-transform: uppercase;
             color: var(--text);
-            white-space: nowrap;
-        }
-        .brand-text .sub {
-            font-size: 0.6rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: var(--dim);
-            margin-top: 2px;
             white-space: nowrap;
         }
         #reset {
@@ -105,15 +87,6 @@
         .msg { display: flex; flex-direction: column; max-width: 85%; }
         .msg.user { align-self: flex-end; align-items: flex-end; }
         .msg.assistant { align-self: flex-start; }
-
-        .msg .who {
-            font-size: 0.55rem;
-            letter-spacing: 2px;
-            text-transform: uppercase;
-            color: var(--faint);
-            margin-bottom: 4px;
-        }
-        .msg.assistant .who { color: var(--accent); opacity: 0.7; }
 
         .msg .body {
             font-family: 'Share Tech Mono', 'Courier New', monospace;
@@ -193,32 +166,12 @@
         .composer button:hover { color: #fff; border-color: var(--line-strong); background: rgba(255,255,255,0.06); }
         .composer button:active { transform: scale(0.96); }
 
-        /* ── Footer ─────────────────────────────── */
-        footer {
-            flex-shrink: 0;
-            text-align: center;
-            font-size: 0.55rem;
-            letter-spacing: 1.5px;
-            text-transform: uppercase;
-            color: var(--faint);
-            padding: 0 1.2rem 0.7rem;
-        }
-
-        @media (min-width: 720px) { .logo { display: block; } }
     </style>
 </head>
 <body>
     <header>
         <div class="brand">
-            <div class="logo"><pre>   _    _ _    _ _____ _____
-  / \  | | |  | | ____| ____|
- / _ \ | | |__| |  _| |  _|
-/ ___ \| |  ___  | |___| |___
-/_/   \_\_|_/  |_|_____|_____|</pre></div>
-            <div class="brand-text">
-                <h1>alice-1b</h1>
-                <div class="sub">tiny brain · 1b parameters · very confident</div>
-            </div>
+            <h1>BunGPT</h1>
         </div>
         <button id="reset" type="button">reset</button>
     </header>
@@ -227,11 +180,9 @@
 
     <form class="composer" id="composer" autocomplete="off">
         <span class="prompt">❯</span>
-        <input id="input" type="text" placeholder="say something to the tiny brain…" aria-label="message">
+        <input id="input" type="text" placeholder="type a message" aria-label="message">
         <button type="submit">send</button>
     </form>
-
-    <footer>made of 1 billion parameters · cloudflare workers ai · responses may be nonsense</footer>
 
     <script>
         (function () {
@@ -242,7 +193,7 @@
             var input = document.getElementById('input');
             var resetBtn = document.getElementById('reset');
 
-            var STORE_KEY = 'alice.ai.history.v1';
+            var STORE_KEY = 'bungpt.history.v1';
             var history = [];
             try { history = JSON.parse(localStorage.getItem(STORE_KEY)) || []; } catch (e) {}
 
@@ -252,15 +203,10 @@
                 var wrap = document.createElement('div');
                 wrap.className = 'msg ' + role + (extraClass ? ' ' + extraClass : '');
 
-                var who = document.createElement('div');
-                who.className = 'who';
-                who.textContent = role === 'user' ? 'you' : 'alice-1b';
-
                 var body = document.createElement('div');
                 body.className = 'body';
                 body.textContent = text; // textContent = safe against HTML injection
 
-                wrap.appendChild(who);
                 wrap.appendChild(body);
                 chatEl.appendChild(wrap);
                 scroll();
@@ -272,13 +218,9 @@
                 if (thinking) return;
                 var wrap = document.createElement('div');
                 wrap.className = 'msg assistant thinking';
-                var who = document.createElement('div');
-                who.className = 'who';
-                who.textContent = 'alice-1b';
                 var body = document.createElement('div');
                 body.className = 'body';
                 body.textContent = '…';
-                wrap.appendChild(who);
                 wrap.appendChild(body);
                 chatEl.appendChild(wrap);
                 thinking = body;
@@ -313,7 +255,7 @@
                 }).then(function (r) {
                     hideThinking();
                     if (!r.ok || r.data.error) {
-                        addBubble('assistant', r.data.message || 'the tiny brain hiccuped. try again?', 'error');
+                        addBubble('assistant', r.data.message || 'something went wrong, try again', 'error');
                         return; // don't put errors into the model's history
                     }
                     history.push({ role: 'assistant', content: r.data.reply });
@@ -321,7 +263,7 @@
                     save();
                 }).catch(function () {
                     hideThinking();
-                    addBubble('assistant', 'network hiccup — is the tiny brain offline?', 'error');
+                    addBubble('assistant', 'connection error, try again', 'error');
                 });
             }
 
@@ -334,19 +276,11 @@
                 history = [];
                 save();
                 chatEl.innerHTML = '';
-                addIntro();
                 input.focus();
             });
 
-            function addIntro() {
-                addBubble('assistant',
-                    'hi. i\'m the tiny 1-billion-parameter brain living on this website.\n' +
-                    'i\'m not very smart, but i am very confident. say something.');
-            }
-
-            // Boot: render saved history (or the intro)
+            // Boot: render saved history
             history.slice().forEach(function (m) { addBubble(m.role, m.content); });
-            if (!history.length) addIntro();
             input.focus();
         })();
     </script>

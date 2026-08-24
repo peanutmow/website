@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-//  ALICE-1B — tiny AI chatbot for ai.alicemow.org
+//  BunGPT — tiny AI chatbot for ai.alicemow.org
 //
 //  Serves the chat page and proxies messages to Cloudflare Workers AI
 //  (free tier, no API key needed — uses your Cloudflare account).
@@ -18,7 +18,7 @@ const MODEL = "@cf/meta/llama-3.2-1b-instruct";
 
 // This is the personality. Change it to make the bot yours — this is the whole
 // point of the page. Keep it short-ish; the model is small and forgets.
-const SYSTEM_PROMPT = `you are a bunny
+const SYSTEM_PROMPT = `you are BunGPT, a lazy bunny
 
 Personality:
 - You are lazy
@@ -79,7 +79,7 @@ export default {
 
 		// Everything else — a tiny status blob (handy for curl)
 		return json(
-			{ ok: true, bot: "ALICE-1B", model: MODEL, note: "tiny brain online" },
+			{ ok: true, bot: "BunGPT", model: MODEL },
 			path === "/" ? 200 : 404
 		);
 	},
@@ -89,7 +89,7 @@ async function handleChat(request, env) {
 	const ip = request.headers.get("CF-Connecting-IP") || "unknown";
 	if (isLimited(ip)) {
 		return json(
-			{ error: "rate_limited", message: "whoa, slow down. even a 1b brain needs a break." },
+			{ error: "rate_limited", message: "too many requests, slow down." },
 			429
 		);
 	}
@@ -124,7 +124,7 @@ async function handleChat(request, env) {
 		const reply = (result.response || "").trim();
 		if (!reply) {
 			return json(
-				{ error: "empty", message: "the tiny brain blinked and said nothing. try again?" },
+				{ error: "empty", message: "empty response, try again." },
 				502
 			);
 		}
@@ -134,12 +134,12 @@ async function handleChat(request, env) {
 		const msg = String((err && err.message) || err);
 		if (/429|quota|limit|neuron|payment/i.test(msg)) {
 			return json(
-				{ error: "quota", message: "free neuron budget hit — the tiny brain is napping. come back later." },
+				{ error: "quota", message: "daily AI budget used up, try again later." },
 				429
 			);
 		}
 		return json(
-			{ error: "ai_error", message: "the tiny brain caught fire. try again?" },
+			{ error: "ai_error", message: "something went wrong, try again." },
 			502
 		);
 	}
