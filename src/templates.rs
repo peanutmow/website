@@ -14,6 +14,7 @@ impl TemplateEngine {
         env.add_template("socials.html", include_str!("../templates/socials.html")).unwrap();
         env.add_template("projects.html", include_str!("../templates/projects.html")).unwrap();
         env.add_template("redherring.html", include_str!("../templates/redherring.html")).unwrap();
+        env.add_template("conejillo.html", include_str!("../templates/conejillo.html")).unwrap();
         TemplateEngine { env }
     }
 

@@ -64,6 +64,10 @@ async fn main() {
         // Easter egg pages
         .route("/dev/null", get(dev_null_redirect))
         .route("/redherring", get(redherring_page))
+        // The bunny page — any /conejillo/… URL (long paths, matrix params,
+        // percent-encoding, query strings, fragments) lands here.
+        .route("/conejillo", get(conejillo_page))
+        .route("/conejillo/*rest", get(conejillo_page))
         // Fallback 404
         .fallback(not_found)
         .layer(CompressionLayer::new())
@@ -123,6 +127,10 @@ async fn dev_null_redirect() -> Redirect {
 
 async fn redherring_page(axum::extract::State(state): axum::extract::State<Arc<AppState>>) -> Response {
     state.tmpl.render_response("redherring.html", &serde_json::json!({"title": "///"}))
+}
+
+async fn conejillo_page(axum::extract::State(state): axum::extract::State<Arc<AppState>>) -> Response {
+    state.tmpl.render_response("conejillo.html", &serde_json::json!({"title": "🐰 conejillo de indias"}))
 }
 
 async fn not_found() -> Response {
