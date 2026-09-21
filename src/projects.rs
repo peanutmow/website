@@ -50,6 +50,15 @@ pub fn load_projects() -> Vec<Project> {
             Some("https://github.com/peanutmow/ascii-render"),
         ),
         Project::new(
+            "polyaxis",
+            "a three-axis political assessment — ownership, change and authority measured separately, reported with confidence intervals. no accounts, no cookies.",
+            &["Politics", "Statistics", "Web"],
+            "LIVE",
+            "work",
+            Some("https://polyaxis.link/"),
+            None,
+        ),
+        Project::new(
             "This website",
             "my corner of the internet, where I display my projects, socials, and my love for art.",
             &["HTML", "JS", "CSS"],
