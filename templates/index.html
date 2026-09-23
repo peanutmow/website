@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
+    {% if not site.professional %}
     <!--
     ╔══════════════════════════════════════════════════════╗
     ║  Nice try, inspector.                                ║
@@ -14,6 +15,7 @@
     ║  PS: type 'cowsay' anywhere on the page.             ║
     ╚══════════════════════════════════════════════════════╝
     -->
+    {% endif %}
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -251,14 +253,14 @@
     </div>
     <pre id="ascii-water"></pre>
     <div id="ui-overlay">
-        <div class="name">Hi, I'm Alice</div>
+        <div class="name">{{ site.greeting }}</div>
         <div class="button-bar" id="button-bar">
             <a href="#" class="btn" data-label="Socials" data-page="socials">Socials</a>
             <a href="#" class="btn" data-label="Gallery" data-page="gallery">Gallery</a>
             <a href="#" class="btn" data-label="Blog" data-page="blog">Blog</a>
             <a href="#" class="btn" data-label="Projects" data-page="projects">Projects</a>
         </div>
-        <div class="bio">artist &amp; developer &mdash; building things that live at the intersection of code and art.</div>
+        <div class="bio">{{ site.bio }}</div>
     </div>
     <div id="content-panel">
         <div id="socials-inline">
@@ -267,11 +269,16 @@
             <div class="si-section">
                 <div class="si-section-header">My Accounts</div>
                 <div class="si-list">
-                    <a href="https://x.com/Alice_mow" target="_blank" class="si-item"><span class="tag">Twitter</span><span class="name">Alice_mow</span></a>
-                    <a href="https://github.com/peanutmow" target="_blank" class="si-item"><span class="tag">GitHub</span><span class="name">peanutmow</span></a>
-                    <a href="https://discord.gg/sdTrfEHF" target="_blank" class="si-item"><span class="tag">Discord</span><span class="name">alice_meower</span></a>
+                    {% if site.x_url %}
+                    <a href="{{ site.x_url }}" target="_blank" class="si-item"><span class="tag">Twitter</span><span class="name">{{ site.x_handle }}</span></a>
+                    {% endif %}
+                    <a href="{{ site.github_url }}" target="_blank" class="si-item"><span class="tag">GitHub</span><span class="name">{{ site.github_handle }}</span></a>
+                    {% if site.discord_url %}
+                    <a href="{{ site.discord_url }}" target="_blank" class="si-item"><span class="tag">Discord</span><span class="name">{{ site.discord_handle }}</span></a>
+                    {% endif %}
                 </div>
             </div>
+            {% if not site.professional %}
             <div class="si-section">
                 <div class="si-section-header">Friends</div>
                 <div class="si-list" data-embed>
@@ -290,11 +297,13 @@
                     <a href="https://meltd.ooo/" target="_blank" class="si-item"><span class="tag">Link</span><span class="name">meltd.ooo</span></a>
                 </div>
             </div>
+            {% endif %}
         </div>
         </div>
         <iframe id="content-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
     </div>
 
+    {% if not site.professional %}
     <!-- Embedded site window: small floating card, site shown in ASCII style -->
     <div id="site-window" hidden>
         <div class="sw-backdrop-shade"></div>
@@ -314,7 +323,9 @@
                 <iframe id="site-window-frame" title="Embedded site"></iframe>
             </div>
         </div>
-    </div>
+    {% endif %}
+
+    <script>window.__SITE__ = { greeting: {{ site.greeting|tojson }} };</script>    </div>
 
     <script src="/water-sim.js"></script>
     <script>
@@ -418,6 +429,7 @@
         })();
     </script>
 
+    {% if not site.professional %}
     <!-- Console easter egg (#16) -->
     <script>
         (function() {
@@ -445,6 +457,7 @@
             console.log('%c(Pro tip: also try %c/etc/hosts%c, %c/changelog%c, %c/man%c)', 'color: #666;', 'color: #0f0;', 'color: #666;', 'color: #0f0;', 'color: #666;', 'color: #0f0;', 'color: #666;');
         })();
     </script>
+    {% endif %}
     <!-- Mobile check -->
     <script>
         (function() {
@@ -466,6 +479,7 @@
             }
             btn.addEventListener('click', dismiss);
             notice.removeAttribute('hidden');
+    {% if not site.professional %}
         })();
     </script>
     <!-- Embedded site window: sites render as ASCII, hover reveals the real site -->
@@ -656,6 +670,7 @@
                 maybeOpenPending();
             } else {
                 try { if (sessionStorage.getItem('alice.siteWindow')) maybeOpenPending(); } catch (e) {}
+    {% endif %}
             }
         })();
     </script>

@@ -1,5 +1,7 @@
 use axum::{
+    extract::{Extension, Request, State},
     http::StatusCode,
+    middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
     Router,
@@ -10,7 +12,10 @@ use tower_http::compression::CompressionLayer;
 use tracing_subscriber::EnvFilter;
 
 mod projects;
+mod site;
 mod templates;
+
+use site::Site;
 
 pub struct AppState {
     pub tmpl: templates::TemplateEngine,
@@ -40,15 +45,17 @@ async fn main() {
         // SSR pages (rendered by Rust)
         .route("/", get(root_page))
         .route("/index.html", get(root_page))
-        // Blog - static files
-        .nest_service("/blog", ServeDir::new("blog"))
-        // Gallery & Socials - SSR pages at root, serve original static sub-pages
+        // Blog — profile-aware index, static post files underneath
+        .route("/blog", get(|| async { Redirect::permanent("/blog/") }))
+        .route("/blog/", get(blog_page))
+        .nest_service("/blog/posts", ServeDir::new("blog/posts"))
+        // Gallery & Socials - SSR pages at root, profile-aware content pages
         .route("/gallery", get(gallery_page))
         .route("/gallery/", get(gallery_page))
-        .route("/gallery/index.html", get(|| serve_file("gallery/index.html", "text/html; charset=utf-8")))
+        .route("/gallery/index.html", get(gallery_content_page))
         .route("/socials", get(socials_page))
         .route("/socials/", get(socials_page))
-        .route("/socials/index.html", get(|| serve_file("socials/index.html", "text/html; charset=utf-8")))
+        .route("/socials/index.html", get(socials_content_page))
         // Projects - SSR
         .route("/projects", get(projects_page))
         .route("/projects/", get(projects_page))
@@ -71,6 +78,8 @@ async fn main() {
         // Fallback 404
         .fallback(not_found)
         .layer(CompressionLayer::new())
+        // Resolve the site identity (personal vs professional) for every request.
+        .layer(middleware::from_fn(resolve_site))
         .with_state(state);
 
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
@@ -78,34 +87,63 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
+// ─── Site resolution ───────────────────────────────────────────────
+
+/// Attach the identity (personal vs professional) to every request so handlers
+/// can render the matching profile. See [`site::detect`].
+async fn resolve_site(mut req: Request, next: Next) -> Response {
+    let site = site::detect(req.headers());
+    req.extensions_mut().insert(site);
+    next.run(req).await
+}
+
 // ─── SSR Handlers ──────────────────────────────────────────────────
 
-async fn root_page(axum::extract::State(state): axum::extract::State<Arc<AppState>>) -> Response {
-    state.tmpl.render_response("index.html", &serde_json::json!({"title": "Alice Portfolio"}))
+async fn root_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
+    let title = format!("{} Portfolio", site.full_name);
+    state.tmpl.render_response("index.html", &serde_json::json!({ "title": title, "site": site }))
 }
 
-async fn gallery_page(axum::extract::State(state): axum::extract::State<Arc<AppState>>) -> Response {
-    state.tmpl.render_response("gallery.html", &serde_json::json!({"title": "Gallery — Alice"}))
+async fn gallery_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
+    let title = format!("Gallery — {}", site.name);
+    state.tmpl.render_response("gallery.html", &serde_json::json!({ "title": title, "site": site }))
 }
 
-async fn socials_page(axum::extract::State(state): axum::extract::State<Arc<AppState>>) -> Response {
-    state.tmpl.render_response("socials.html", &serde_json::json!({"title": "Socials — Alice"}))
+async fn socials_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
+    let title = format!("Socials — {}", site.name);
+    state.tmpl.render_response("socials.html", &serde_json::json!({ "title": title, "site": site }))
 }
 
-async fn projects_page(axum::extract::State(state): axum::extract::State<Arc<AppState>>) -> Response {
+async fn projects_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
     let live_count = state
         .projects
         .iter()
         .filter(|p| p.section == "featured" || p.section == "work")
         .count();
     let dream_count = state.dreams.len();
+    let title = format!("Projects — {}", site.name);
     state.tmpl.render_response("projects.html", &serde_json::json!({
-        "title": "Projects — Alice",
+        "title": title,
+        "site": site,
         "projects": state.projects,
         "dreams": state.dreams,
         "live_count": live_count,
         "dream_count": dream_count,
     }))
+}
+
+// ─── Content pages (rendered so the profile's name reaches them) ───
+
+async fn gallery_content_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
+    state.tmpl.render_response("content_gallery.html", &serde_json::json!({ "site": site }))
+}
+
+async fn socials_content_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
+    state.tmpl.render_response("content_socials.html", &serde_json::json!({ "site": site }))
+}
+
+async fn blog_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
+    state.tmpl.render_response("content_blog.html", &serde_json::json!({ "site": site }))
 }
 
 // ─── File serving ──────────────────────────────────────────────────
@@ -125,12 +163,18 @@ async fn dev_null_redirect() -> Redirect {
     Redirect::to("/")
 }
 
-async fn redherring_page(axum::extract::State(state): axum::extract::State<Arc<AppState>>) -> Response {
-    state.tmpl.render_response("redherring.html", &serde_json::json!({"title": "///"}))
+async fn redherring_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
+    if site.professional {
+        return not_found().await;
+    }
+    state.tmpl.render_response("redherring.html", &serde_json::json!({"title": "///", "site": site}))
 }
 
-async fn conejillo_page(axum::extract::State(state): axum::extract::State<Arc<AppState>>) -> Response {
-    state.tmpl.render_response("conejillo.html", &serde_json::json!({"title": "🐰 conejillo de indias"}))
+async fn conejillo_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
+    if site.professional {
+        return not_found().await;
+    }
+    state.tmpl.render_response("conejillo.html", &serde_json::json!({"title": "🐰 conejillo de indias", "site": site}))
 }
 
 async fn not_found() -> Response {

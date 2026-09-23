@@ -65,7 +65,10 @@
     let easterEggMode = '';     // 'blank', '42', 'cowsay', or ''
 
     // Typewriter effect for greeting
-    const GREETING = "Hi, I'm Alice";
+    // The page may set window.__SITE__.greeting so the greeting matches the
+    // active profile (Alice on the personal site, Dave on the professional
+    // one). Falls back to the personal greeting when the script is served raw.
+    const GREETING = (window.__SITE__ && window.__SITE__.greeting) || "Hi, I'm Alice";
     let greetingRevealed = 0;
     let greetingComplete = false;
 

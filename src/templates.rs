@@ -15,6 +15,11 @@ impl TemplateEngine {
         env.add_template("projects.html", include_str!("../templates/projects.html")).unwrap();
         env.add_template("redherring.html", include_str!("../templates/redherring.html")).unwrap();
         env.add_template("conejillo.html", include_str!("../templates/conejillo.html")).unwrap();
+        // Pages that used to be served as static files. Same markup, but
+        // rendered so the active profile's name reaches them too.
+        env.add_template("content_gallery.html", include_str!("../gallery/index.html")).unwrap();
+        env.add_template("content_socials.html", include_str!("../socials/index.html")).unwrap();
+        env.add_template("content_blog.html", include_str!("../blog/index.html")).unwrap();
         TemplateEngine { env }
     }
 

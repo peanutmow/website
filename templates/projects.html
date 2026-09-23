@@ -269,7 +269,7 @@
 <body>
     <div class="mossblob"></div>
     <div class="seam"></div>
-    <aside class="marginalia">alice — mmxxvi</aside>
+    <aside class="marginalia">{{ site.short }} — mmxxvi</aside>
 
     <aside class="tree-wrap">
         <img class="tree" src="/assets/tree.avif" width="3240" height="5760" alt="an oak tree" draggable="false" fetchpriority="high" decoding="async">
@@ -352,11 +352,11 @@
         {% endif %}
 
         <footer>
-            <p class="f-ask">want to build something weird together?</p>
+            <p class="f-ask">{% if site.professional %}want to build something together?{% else %}want to build something weird together?{% endif %}</p>
             <p class="f-links">
-                <a class="mail" href="mailto:alice@herkula.info">alice@herkula.info</a>
+                <a class="mail" href="mailto:{{ site.email }}">{{ site.email }}</a>
             </p>
-            <p class="f-note">poured concrete <span class="m">·</span> moss <span class="r">·</span> rust &mdash; alice, mmxxvi</p>
+            <p class="f-note">poured concrete <span class="m">·</span> moss <span class="r">·</span> rust &mdash; {{ site.short }}, mmxxvi</p>
             <p class="back"><a href="/">← return to interface</a></p>
         </footer>
     </div>

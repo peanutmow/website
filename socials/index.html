@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Socials — Alice</title>
+    <title>Socials — {{ site.name }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -132,21 +132,26 @@
         <div class="section">
             <div class="section-header">My Accounts</div>
             <div class="link-list">
-                <a href="https://x.com/Alice_mow" target="_blank" class="link-item">
+                {% if site.x_url %}
+                <a href="{{ site.x_url }}" target="_blank" class="link-item">
                     <span class="tag">X</span>
-                    <span class="name">@Alice_mow</span>
+                    <span class="name">@{{ site.x_handle }}</span>
                 </a>
-                <a href="https://github.com/peanutmow" target="_blank" class="link-item">
+                {% endif %}
+                <a href="{{ site.github_url }}" target="_blank" class="link-item">
                     <span class="tag">GitHub</span>
-                    <span class="name">peanutmow</span>
+                    <span class="name">{{ site.github_handle }}</span>
                 </a>
-                <a href="https://discord.gg/sdTrfEHF" target="_blank" class="link-item">
+                {% if site.discord_url %}
+                <a href="{{ site.discord_url }}" target="_blank" class="link-item">
                     <span class="tag">Discord</span>
-                    <span class="name">alice_meower</span>
+                    <span class="name">{{ site.discord_handle }}</span>
                 </a>
+                {% endif %}
             </div>
         </div>
 
+        {% if not site.professional %}
         <div class="section">
             <div class="section-header">Experiments</div>
             <div class="link-list" data-embed>
@@ -200,6 +205,7 @@
                 </a>
             </div>
         </div>
+        {% endif %}
     </div>
 
     <script>
@@ -218,6 +224,7 @@
         })();
     </script>
 
+    {% if not site.professional %}
     <script>
         // ── Friends / Cool Sites links: go back to the ASCII main page ──
         // The main page opens them in an in-site window rendered as ASCII;
@@ -241,5 +248,6 @@
             });
         })();
     </script>
+    {% endif %}
 </body>
 </html>
