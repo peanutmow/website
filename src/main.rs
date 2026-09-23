@@ -49,12 +49,14 @@ async fn main() {
         .route("/blog", get(|| async { Redirect::permanent("/blog/") }))
         .route("/blog/", get(blog_page))
         .nest_service("/blog/posts", ServeDir::new("blog/posts"))
-        // Gallery & Socials - SSR pages at root, profile-aware content pages
-        .route("/gallery", get(gallery_page))
-        .route("/gallery/", get(gallery_page))
+        // Gallery & Socials — the real pages, rendered per profile. These used to
+        // be a placeholder stub that iframed the content page, which stacked a
+        // second scroll area and dumped unstyled debug text above the artwork.
+        .route("/gallery", get(gallery_content_page))
+        .route("/gallery/", get(gallery_content_page))
         .route("/gallery/index.html", get(gallery_content_page))
-        .route("/socials", get(socials_page))
-        .route("/socials/", get(socials_page))
+        .route("/socials", get(socials_content_page))
+        .route("/socials/", get(socials_content_page))
         .route("/socials/index.html", get(socials_content_page))
         // Projects - SSR
         .route("/projects", get(projects_page))
@@ -102,16 +104,6 @@ async fn resolve_site(mut req: Request, next: Next) -> Response {
 async fn root_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
     let title = format!("{} Portfolio", site.full_name);
     state.tmpl.render_response("index.html", &serde_json::json!({ "title": title, "site": site }))
-}
-
-async fn gallery_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
-    let title = format!("Gallery — {}", site.name);
-    state.tmpl.render_response("gallery.html", &serde_json::json!({ "title": title, "site": site }))
-}
-
-async fn socials_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
-    let title = format!("Socials — {}", site.name);
-    state.tmpl.render_response("socials.html", &serde_json::json!({ "title": title, "site": site }))
 }
 
 async fn projects_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {

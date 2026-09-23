@@ -10,13 +10,12 @@ impl TemplateEngine {
     pub fn new() -> Self {
         let mut env = Environment::new();
         env.add_template("index.html", include_str!("../templates/index.html")).unwrap();
-        env.add_template("gallery.html", include_str!("../templates/gallery.html")).unwrap();
-        env.add_template("socials.html", include_str!("../templates/socials.html")).unwrap();
         env.add_template("projects.html", include_str!("../templates/projects.html")).unwrap();
         env.add_template("redherring.html", include_str!("../templates/redherring.html")).unwrap();
         env.add_template("conejillo.html", include_str!("../templates/conejillo.html")).unwrap();
-        // Pages that used to be served as static files. Same markup, but
-        // rendered so the active profile's name reaches them too.
+        // Gallery / socials / blog used to be served as static files behind a
+        // placeholder SSR stub that iframed them. They are rendered directly now,
+        // so the profile's name reaches them and nothing is nested twice.
         env.add_template("content_gallery.html", include_str!("../gallery/index.html")).unwrap();
         env.add_template("content_socials.html", include_str!("../socials/index.html")).unwrap();
         env.add_template("content_blog.html", include_str!("../blog/index.html")).unwrap();
