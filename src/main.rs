@@ -1,6 +1,6 @@
 use axum::{
     extract::{Extension, Request, State},
-    http::StatusCode,
+    http::{StatusCode, Uri},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
@@ -157,18 +157,85 @@ async fn dev_null_redirect() -> Redirect {
 
 async fn redherring_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
     if site.professional {
-        return not_found().await;
+        return page_404();
     }
     state.tmpl.render_response("redherring.html", &serde_json::json!({"title": "///", "site": site}))
 }
 
 async fn conejillo_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
     if site.professional {
-        return not_found().await;
+        return page_404();
     }
     state.tmpl.render_response("conejillo.html", &serde_json::json!({"title": "🐰 conejillo de indias", "site": site}))
 }
 
-async fn not_found() -> Response {
+/// Fallback for anything no route matched: hand back a root-level image if one
+/// exists under that name (webring buttons, favicons, stray art), else the 404
+/// page. The deploy mirrors the repo root to the server, so dropping a file in
+/// the root is enough to make it reachable.
+async fn not_found(uri: Uri) -> Response {
+    if let Some((file, mime)) = root_image(uri.path()) {
+        if let Ok(data) = tokio::fs::read(&file).await {
+            return Response::builder()
+                .header("Content-Type", mime)
+                .body(axum::body::Body::from(data))
+                .unwrap();
+        }
+    }
+    page_404()
+}
+
+fn page_404() -> Response {
     (StatusCode::NOT_FOUND, Html(include_str!("../templates/404.html"))).into_response()
+}
+
+/// Map a request path to a root-level image, e.g. `/webring-button.png`.
+///
+/// Only a single path segment, no dotfiles and no `..`, and only image
+/// extensions qualify — so this can never reach `Cargo.toml`, `src/main.rs`,
+/// `deploy/deploy.sh` or anything else that also lives in the deployed tree.
+fn root_image(path: &str) -> Option<(String, &'static str)> {
+    let name = path.strip_prefix('/')?;
+    if name.is_empty() || name.contains('/') || name.starts_with('.') || name.contains("..") {
+        return None;
+    }
+    let ext = name.rsplit_once('.')?.1.to_ascii_lowercase();
+    let mime = match ext.as_str() {
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "webp" => "image/webp",
+        "avif" => "image/avif",
+        "svg" => "image/svg+xml",
+        "ico" => "image/x-icon",
+        _ => return None,
+    };
+    Some((name.to_string(), mime))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::root_image;
+
+    fn served(path: &str) -> Option<String> {
+        root_image(path).map(|(file, _)| file)
+    }
+
+    #[test]
+    fn root_images_are_served() {
+        assert_eq!(served("/stupidwebbuttonthingykys.png").as_deref(), Some("stupidwebbuttonthingykys.png"));
+        assert_eq!(served("/icon.SVG").as_deref(), Some("icon.SVG"));
+    }
+
+    #[test]
+    fn non_images_and_unsafe_paths_are_refused() {
+        // Source and config files share the deployed tree — must never be served.
+        for path in ["/Cargo.toml", "/main.rs", "/deploy/deploy.sh", "/index.html", "/water-sim.js"] {
+            assert!(root_image(path).is_none(), "{path} should not be served");
+        }
+        // No traversal, no dotfiles, no nested paths, no bare root.
+        for path in ["/", "/.gitignore", "/.hidden.png", "/../secret.png", "/a/b.png", "nope.png"] {
+            assert!(root_image(path).is_none(), "{path} should not be served");
+        }
+    }
 }
