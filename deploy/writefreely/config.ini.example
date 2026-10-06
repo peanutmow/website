@@ -4,10 +4,12 @@
 ; is a live file holding secrets, and is never overwritten by later runs.
 
 [server]
-; Only the Uberspace reverse proxy talks to this, so bind to localhost and use
-; a port that doesn't collide with the main site (which takes 8080).
+; Uberspace's web backend proxies to this port, and it insists the app listens
+; on 0.0.0.0 or :: -- binding to 127.0.0.1, localhost or ::1 gives a 502 Bad
+; Gateway, because the proxy cannot reach the loopback from the frontend.
+; 8082 avoids the main site, which takes 8080.
 port = 8082
-bind = localhost
+bind = 0.0.0.0
 
 ; Empty means "look in the working directory", which the supervisord unit sets
 ; to the install directory.

@@ -143,6 +143,15 @@ command -v uberspace >/dev/null 2>&1 || export PATH="$PATH:/usr/local/bin"
 uberspace web domain add "$DOMAIN" || true
 uberspace web backend set "$DOMAIN/" --http --port "$PORT"
 
+# The backend only proxies to an app bound to 0.0.0.0 or ::, so confirm it can
+# actually see us -- otherwise the site serves 502 while the service is healthy.
+if uberspace web backend list 2>/dev/null | grep -q "$DOMAIN/.*OK, listening"; then
+    log "backend reaches the service"
+else
+    log "WARNING: backend does not report 'OK, listening' yet:"
+    uberspace web backend list 2>/dev/null || true
+fi
+
 cat <<EOF
 
 Done. Federation must be reachable at the domain root -- check all of these
