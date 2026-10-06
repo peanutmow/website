@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
+    {% if site.blog_feed %}
+    <link rel="alternate" type="application/rss+xml" title="{{ site.name }}'s blog" href="{{ site.blog_feed }}">
+    {% endif %}
     {% if not site.professional %}
     <!--
     ╔══════════════════════════════════════════════════════╗
@@ -257,7 +260,7 @@
         <div class="button-bar" id="button-bar">
             <a href="#" class="btn" data-label="Socials" data-page="socials">Socials</a>
             <a href="#" class="btn" data-label="Gallery" data-page="gallery">Gallery</a>
-            <a href="#" class="btn" data-label="Blog" data-page="blog">Blog</a>
+            {% if site.blog_url %}<a href="#" class="btn" data-label="Blog" data-page="blog">Blog</a>{% endif %}
             <a href="#" class="btn" data-label="Projects" data-page="projects">Projects</a>
         </div>
         <div class="bio">{{ site.bio }}</div>
@@ -325,7 +328,7 @@
         </div>
     {% endif %}
 
-    <script>window.__SITE__ = { greeting: {{ site.greeting|tojson }} };</script>    </div>
+    <script>window.__SITE__ = { greeting: {{ site.greeting|tojson }}, buttons: {% if site.blog_url %}['Socials', 'Gallery', 'Blog', 'Projects']{% else %}['Socials', 'Gallery', 'Projects']{% endif %} };</script>    </div>
 
     <script src="/water-sim.js"></script>
     <script>
@@ -335,7 +338,9 @@
             var bar = document.getElementById('button-bar');
             var bioEl = overlay.querySelector('.bio');
             var CELL_PX = 14;
-            var BUTTONS = ['Socials', 'Gallery', 'Blog', 'Projects'];
+            // Derived from the rendered buttons so the labels the water draws
+            // always line up with the click targets (professional hides Blog).
+            var BUTTONS = Array.prototype.map.call(document.querySelectorAll('.btn[data-label]'), function(b) { return b.getAttribute('data-label'); });
             var GAP = 2; // empty grid columns between labels (matches the water sim's separator)
 
             function measureCharWidth() {
@@ -406,7 +411,8 @@
     <script>
         (function() {
             var contentPanel = document.getElementById('content-panel'), contentFrame = document.getElementById('content-frame'), socialsInline = document.getElementById('socials-inline');
-            var pages = { gallery: { url: '/gallery', label: 'Gallery' }, blog: { url: '/blog', label: 'Blog' }, projects: { url: '/projects', label: 'Projects' }, socials: {} };
+            var pages = { gallery: { url: '/gallery', label: 'Gallery' }, projects: { url: '/projects', label: 'Projects' }, socials: {} };
+            {% if site.blog_url %}pages.blog = { url: {{ site.blog_url|tojson }}, label: 'Blog' };{% endif %}
             document.querySelectorAll('.btn[data-page]').forEach(function(btn) {
                 btn.addEventListener('click', function(e) {
                     e.preventDefault(); var page = this.getAttribute('data-page');

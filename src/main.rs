@@ -45,10 +45,10 @@ async fn main() {
         // SSR pages (rendered by Rust)
         .route("/", get(root_page))
         .route("/index.html", get(root_page))
-        // Blog — profile-aware index, static post files underneath
-        .route("/blog", get(|| async { Redirect::permanent("/blog/") }))
-        .route("/blog/", get(blog_page))
-        .nest_service("/blog/posts", ServeDir::new("blog/posts"))
+        // Blog — published on Bear Blog (see `Site::blog_url`), so these routes
+        // forward readers there instead of serving anything locally.
+        .route("/blog", get(blog_redirect))
+        .route("/blog/", get(blog_redirect))
         // Gallery & Socials — the real pages, rendered per profile. These used to
         // be a placeholder stub that iframed the content page, which stacked a
         // second scroll area and dumped unstyled debug text above the artwork.
@@ -134,8 +134,10 @@ async fn socials_content_page(State(state): State<Arc<AppState>>, Extension(site
     state.tmpl.render_response("content_socials.html", &serde_json::json!({ "site": site }))
 }
 
-async fn blog_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
-    state.tmpl.render_response("content_blog.html", &serde_json::json!({ "site": site }))
+/// Forward `/blog` to the externally hosted blog. The professional mirror has
+/// no `blog_url`, so it goes home rather than advertising personal writing.
+async fn blog_redirect(Extension(site): Extension<Site>) -> Redirect {
+    Redirect::permanent(site.blog_url.unwrap_or("/"))
 }
 
 // ─── File serving ──────────────────────────────────────────────────

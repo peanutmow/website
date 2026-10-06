@@ -45,6 +45,12 @@ pub struct Site {
     pub x_handle: Option<&'static str>,
     pub discord_url: Option<&'static str>,
     pub discord_handle: Option<&'static str>,
+    /// The blog, hosted externally (Bear Blog). `None` drops the Blog button and
+    /// the feed autodiscovery link, because the professional mirror must not
+    /// point recruiters at personal and political writing.
+    pub blog_url: Option<&'static str>,
+    /// Feed advertised to readers through `<link rel="alternate">`.
+    pub blog_feed: Option<&'static str>,
     /// True for the professional mirror: hides easter eggs, novelty pages and
     /// the "Friends" / "Cool Sites" link lists.
     pub professional: bool,
@@ -66,6 +72,8 @@ impl Site {
             x_handle: Some("Alice_mow"),
             discord_url: Some("https://discord.gg/sdTrfEHF"),
             discord_handle: Some("alice_meower"),
+            blog_url: Some("https://alicemow.bearblog.dev/"),
+            blog_feed: Some("https://alicemow.bearblog.dev/feed/"),
             professional: false,
         }
     }
@@ -85,6 +93,8 @@ impl Site {
             x_handle: None,
             discord_url: None,
             discord_handle: None,
+            blog_url: None,
+            blog_feed: None,
             professional: true,
         }
     }
@@ -158,6 +168,17 @@ mod tests {
         let site = detect(&host_header("daveherkula.org"));
         assert!(site.professional);
         assert_eq!(site.name, "Dave");
+    }
+
+    #[test]
+    fn blog_is_published_only_on_the_personal_profile() {
+        let site = Site::personal();
+        assert_eq!(site.blog_url, Some("https://alicemow.bearblog.dev/"));
+        assert_eq!(site.blog_feed, Some("https://alicemow.bearblog.dev/feed/"));
+
+        let professional = detect(&host_header("daveherkula.org"));
+        assert!(professional.blog_url.is_none());
+        assert!(professional.blog_feed.is_none());
     }
 
     #[test]
