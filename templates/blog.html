@@ -45,7 +45,8 @@
             color: rgba(255,255,255,0.5);
             font-weight: 300;
         }
-        .feed {
+        .page-actions { display: flex; align-items: center; gap: 0.5rem; }
+        .pill {
             font-size: 0.65rem;
             letter-spacing: 2px;
             text-transform: uppercase;
@@ -56,7 +57,7 @@
             padding: 0.35rem 0.75rem;
             transition: all 0.2s ease;
         }
-        .feed:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
+        .pill:hover { color: #fff; border-color: rgba(255,255,255,0.4); }
 
         /* ── Section switcher ──
            Only shown when this page is opened on its own. Framed in the content
@@ -142,7 +143,15 @@
     <div class="page-wrap">
         <header class="page-header">
             <h1>{{ section.label }}</h1>
-            <a class="feed" href="{{ section.feed }}">RSS</a>
+            <div class="page-actions">
+                {% if site.mastodon_url %}
+                <!-- Mastodon verifies a profile by finding a rel="me" link whose
+                     href matches the profile URL exactly, so this must not gain a
+                     trailing slash or any other difference. -->
+                <a class="pill" rel="me" href="{{ site.mastodon_url }}">Mastodon</a>
+                {% endif %}
+                <a class="pill" href="{{ section.feed }}">RSS</a>
+            </div>
         </header>
 
         <nav class="post-nav" id="post-nav" hidden>

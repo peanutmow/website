@@ -114,6 +114,18 @@ mod tests {
     #[test]
     fn the_professional_mirror_credits_nobody() {
         // Naming Alice's account there would tie the two identities together.
-        assert!(!blog_page(Site::professional()).contains("fediverse:creator"));
+        let html = blog_page(Site::professional());
+        assert!(!html.contains("fediverse:creator"));
+        assert!(!html.contains("mastodon.social"));
+        assert!(!html.contains("rel=\"me\""));
+    }
+
+    /// Mastodon verifies a profile by finding a `rel="me"` link whose href
+    /// matches the profile URL *exactly*, so both halves of this matter.
+    #[test]
+    fn the_blog_page_links_back_to_mastodon_for_verification() {
+        let html = decode_escapes(&blog_page(Site::personal()));
+        assert!(html.contains("rel=\"me\""));
+        assert!(html.contains("href=\"https://mastodon.social/@alicemow\""));
     }
 }
