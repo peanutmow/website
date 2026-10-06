@@ -27,8 +27,10 @@ use serde::Serialize;
 use std::sync::Mutex;
 use std::time::{Duration, Instant};
 
-/// How long a successful read is reused before WriteFreely is asked again.
-const TTL: Duration = Duration::from_secs(300);
+/// How long a successful read is reused before WriteFreely is asked again. The
+/// read is two tiny requests over loopback, so this stays short on purpose:
+/// after publishing, a refresh shows the post within a minute.
+const TTL: Duration = Duration::from_secs(60);
 
 /// How long to wait before retrying after a failed read. Without this, a blog
 /// that is down would add a request timeout to every single page view.
