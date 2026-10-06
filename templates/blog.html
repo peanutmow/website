@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
+    {% if site.fediverse_creator %}
+    <!-- Mastodon 4.3+ credits this account as the page author on link previews,
+         so that sharing the blog sends Alice a notification. It is read from
+         <head> only, which is why it lives here and not in the post body. -->
+    <meta name="fediverse:creator" content="{{ site.fediverse_creator }}">
+    <meta property="og:type" content="article">
+    {% endif %}
     <!-- Every link on this page goes to the blog itself, which is a different
          origin and refuses to be framed. Without this, clicking a post would
          navigate *this* frame into that refusal. -->

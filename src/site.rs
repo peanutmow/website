@@ -65,6 +65,11 @@ pub struct Site {
     pub mastodon_url: Option<&'static str>,
     /// Handle without the leading `@`, e.g. `alicemow@mastodon.social`.
     pub mastodon_handle: Option<&'static str>,
+    /// Full handle with the leading `@`, for `<meta name="fediverse:creator">`.
+    /// Mastodon shows this account as the page author on link previews. It must
+    /// stay `None` on the professional mirror: naming Alice's account there
+    /// would tie the two identities together.
+    pub fediverse_creator: Option<&'static str>,
     /// `None` hides the link entirely (used to drop personal accounts in
     /// professional).
     pub x_url: Option<&'static str>,
@@ -119,6 +124,7 @@ impl Site {
             github_handle: "peanutmow",
             mastodon_url: Some("https://mastodon.social/@alicemow"),
             mastodon_handle: Some("alicemow@mastodon.social"),
+            fediverse_creator: Some("@alicemow@mastodon.social"),
             x_url: Some("https://x.com/Alice_mow"),
             x_handle: Some("Alice_mow"),
             discord_url: Some("https://discord.gg/sdTrfEHF"),
@@ -141,6 +147,7 @@ impl Site {
             github_handle: "peanutmow",
             mastodon_url: None,
             mastodon_handle: None,
+            fediverse_creator: None,
             x_url: None,
             x_handle: None,
             discord_url: None,
@@ -247,11 +254,13 @@ mod tests {
         let personal = Site::personal();
         assert_eq!(personal.mastodon_url, Some("https://mastodon.social/@alicemow"));
         assert_eq!(personal.mastodon_handle, Some("alicemow@mastodon.social"));
+        assert_eq!(personal.fediverse_creator, Some("@alicemow@mastodon.social"));
 
         // The mirror exists for recruiters, so it must not point them at
         // personal or political accounts.
         let professional = Site::professional();
         assert!(professional.mastodon_url.is_none());
+        assert!(professional.fediverse_creator.is_none());
         assert!(professional.x_url.is_none());
         assert!(professional.discord_url.is_none());
     }

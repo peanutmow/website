@@ -78,4 +78,34 @@ mod tests {
         // GitHub stays: it is the same identity on both profiles.
         assert!(html.contains("https://github.com/peanutmow"));
     }
+
+    fn blog_page(site: Site) -> String {
+        let section = crate::blog::Section {
+            label: "Main".to_string(),
+            slug: "alice".to_string(),
+            url: "/blog".to_string(),
+            feed: "https://blog.alicemow.org/alice/feed/".to_string(),
+            posts: Vec::new(),
+        };
+        TemplateEngine::new().render(
+            "blog.html",
+            &serde_json::json!({ "title": "Main", "site": site, "section": section, "nav": [] }),
+        )
+    }
+
+    /// Mastodon 4.3 credits the page author on link previews by reading
+    /// `fediverse:creator` out of `<head>`. Its crawler runs no JavaScript, so
+    /// the tag has to be in the HTML the server sends.
+    #[test]
+    fn the_blog_page_credits_its_author_to_the_fediverse() {
+        let html = blog_page(Site::personal());
+        assert!(html.contains("name=\"fediverse:creator\""));
+        assert!(html.contains("@alicemow@mastodon.social"));
+    }
+
+    #[test]
+    fn the_professional_mirror_credits_nobody() {
+        // Naming Alice's account there would tie the two identities together.
+        assert!(!blog_page(Site::professional()).contains("fediverse:creator"));
+    }
 }
