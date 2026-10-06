@@ -70,9 +70,17 @@ mod tests {
     }
 
     #[test]
+    fn the_home_page_credits_its_author_to_the_fediverse() {
+        let html = home(Site::personal());
+        assert!(html.contains("name=\"fediverse:creator\""));
+        assert!(html.contains("content=\"@alicemow@mastodon.social\""));
+    }
+
+    #[test]
     fn the_professional_home_page_shows_no_personal_accounts() {
         let html = decode_escapes(&home(Site::professional()));
         assert!(!html.contains("mastodon.social"));
+        assert!(!html.contains("fediverse:creator"));
         assert!(!html.contains("x.com/Alice_mow"));
         assert!(!html.contains("discord.gg"));
         // GitHub stays: it is the same identity on both profiles.

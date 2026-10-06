@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
+    {% if site.fediverse_creator %}
+    <!-- Mastodon 4.3+ reads this from <head> and credits the account as the page
+         author on link previews, so sharing the site tags Alice. -->
+    <meta name="fediverse:creator" content="{{ site.fediverse_creator }}">
+    {% endif %}
     {% for blog in site.blogs %}
     <link rel="alternate" type="application/rss+xml" title="{{ site.name }}'s blog — {{ blog.label }}" href="{{ blog.feed }}">
     {% endfor %}
