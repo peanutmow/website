@@ -60,7 +60,13 @@ pub struct Site {
     pub email: &'static str,
     pub github_url: &'static str,
     pub github_handle: &'static str,
-    /// `None` hides the link entirely (used to drop X/Discord in professional).
+    /// Mastodon profile. The home page links to it with `rel="me"`, which is
+    /// what Mastodon fetches to decide whether to show the link as verified.
+    pub mastodon_url: Option<&'static str>,
+    /// Handle without the leading `@`, e.g. `alicemow@mastodon.social`.
+    pub mastodon_handle: Option<&'static str>,
+    /// `None` hides the link entirely (used to drop personal accounts in
+    /// professional).
     pub x_url: Option<&'static str>,
     pub x_handle: Option<&'static str>,
     pub discord_url: Option<&'static str>,
@@ -111,6 +117,8 @@ impl Site {
             email: "alice@herkula.info",
             github_url: "https://github.com/peanutmow",
             github_handle: "peanutmow",
+            mastodon_url: Some("https://mastodon.social/@alicemow"),
+            mastodon_handle: Some("alicemow@mastodon.social"),
             x_url: Some("https://x.com/Alice_mow"),
             x_handle: Some("Alice_mow"),
             discord_url: Some("https://discord.gg/sdTrfEHF"),
@@ -131,6 +139,8 @@ impl Site {
             email: "dave@herkula.info",
             github_url: "https://github.com/peanutmow",
             github_handle: "peanutmow",
+            mastodon_url: None,
+            mastodon_handle: None,
             x_url: None,
             x_handle: None,
             discord_url: None,
@@ -230,6 +240,20 @@ mod tests {
 
         let professional = detect(&host_header("daveherkula.org"));
         assert!(professional.blogs.is_empty());
+    }
+
+    #[test]
+    fn personal_accounts_are_hidden_on_the_professional_mirror() {
+        let personal = Site::personal();
+        assert_eq!(personal.mastodon_url, Some("https://mastodon.social/@alicemow"));
+        assert_eq!(personal.mastodon_handle, Some("alicemow@mastodon.social"));
+
+        // The mirror exists for recruiters, so it must not point them at
+        // personal or political accounts.
+        let professional = Site::professional();
+        assert!(professional.mastodon_url.is_none());
+        assert!(professional.x_url.is_none());
+        assert!(professional.discord_url.is_none());
     }
 
     #[test]

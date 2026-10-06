@@ -39,3 +39,43 @@ impl TemplateEngine {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::site::Site;
+
+    fn home(site: Site) -> String {
+        TemplateEngine::new().render(
+            "index.html",
+            &serde_json::json!({ "title": "Home", "site": site }),
+        )
+    }
+
+    /// minijinja escapes `/` as `&#x2f;` inside attribute values. That is valid
+    /// HTML — the parser Mastodon crawls with decodes it, so the link works —
+    /// but it hides URLs from naive string assertions, hence the round trip.
+    fn decode_escapes(html: &str) -> String {
+        html.replace("&#x2f;", "/")
+    }
+
+    /// Mastodon decides whether to show a profile link as verified by fetching
+    /// the page and looking for `<a rel="me">`. Its crawler does not run
+    /// JavaScript, so the link has to be in the HTML the server sends.
+    #[test]
+    fn the_home_page_links_back_to_mastodon_with_rel_me() {
+        let html = decode_escapes(&home(Site::personal()));
+        assert!(html.contains("href=\"https://mastodon.social/@alicemow\""));
+        assert!(html.contains("rel=\"me"));
+    }
+
+    #[test]
+    fn the_professional_home_page_shows_no_personal_accounts() {
+        let html = decode_escapes(&home(Site::professional()));
+        assert!(!html.contains("mastodon.social"));
+        assert!(!html.contains("x.com/Alice_mow"));
+        assert!(!html.contains("discord.gg"));
+        // GitHub stays: it is the same identity on both profiles.
+        assert!(html.contains("https://github.com/peanutmow"));
+    }
+}

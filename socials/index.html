@@ -132,6 +132,12 @@
         <div class="section">
             <div class="section-header">My Accounts</div>
             <div class="link-list">
+                {% if site.mastodon_url %}
+                <a href="{{ site.mastodon_url }}" target="_blank" rel="me noopener" class="link-item">
+                    <span class="tag">Mastodon</span>
+                    <span class="name">@{{ site.mastodon_handle }}</span>
+                </a>
+                {% endif %}
                 {% if site.x_url %}
                 <a href="{{ site.x_url }}" target="_blank" class="link-item">
                     <span class="tag">X</span>

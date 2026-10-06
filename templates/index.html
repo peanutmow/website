@@ -272,6 +272,12 @@
             <div class="si-section">
                 <div class="si-section-header">My Accounts</div>
                 <div class="si-list">
+                    {% if site.mastodon_url %}
+                    <!-- rel="me" is what lets Mastodon mark this link as verified
+                         on the profile. It has to be in the server-rendered HTML:
+                         Mastodon's crawler does not run JavaScript. -->
+                    <a href="{{ site.mastodon_url }}" target="_blank" rel="me noopener" class="si-item"><span class="tag">Mastodon</span><span class="name">@{{ site.mastodon_handle }}</span></a>
+                    {% endif %}
                     {% if site.x_url %}
                     <a href="{{ site.x_url }}" target="_blank" class="si-item"><span class="tag">Twitter</span><span class="name">{{ site.x_handle }}</span></a>
                     {% endif %}
