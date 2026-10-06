@@ -36,6 +36,9 @@ directory=$APP_DIR
 startsecs=60
 autorestart=true
 redirect_stderr=true
+# The blog is a WriteFreely instance on this same host and is read over
+# loopback, so this port has to match `port` in the WriteFreely config.ini.
+environment=BLOG_FEED_BASE="http://127.0.0.1:8082"
 EOF
 supervisorctl reread
 supervisorctl update

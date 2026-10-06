@@ -73,6 +73,10 @@ jobs:
           chmod +x "$APP_DIR/alice-website"
           echo "[2/6] write supervisord ini"
           mkdir -p "$REAL_HOME/etc/services.d"
+          # The blog is a WriteFreely instance on this same host, so the site
+          # reads its feeds over loopback: plain HTTP, never off the machine,
+          # which is why the binary carries no TLS client. Keep this port in
+          # step with `port` in the WriteFreely config.ini.
           printf '%s\n' \
             "[program:$SERVICE_NAME]" \
             "command=$APP_DIR/alice-website" \
@@ -80,6 +84,7 @@ jobs:
             'startsecs=60' \
             'autorestart=true' \
             'redirect_stderr=true' \
+            'environment=BLOG_FEED_BASE="http://127.0.0.1:8082"' \
             > "$REAL_HOME/etc/services.d/$SERVICE_NAME.ini"
           echo "[3/6] supervisorctl reread"
           supervisorctl reread

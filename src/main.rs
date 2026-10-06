@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Extension, Request, State},
+    extract::{Extension, Path, Request, State},
     http::{StatusCode, Uri},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
@@ -11,6 +11,7 @@ use tower_http::services::ServeDir;
 use tower_http::compression::CompressionLayer;
 use tracing_subscriber::EnvFilter;
 
+mod blog;
 mod projects;
 mod site;
 mod templates;
@@ -21,6 +22,7 @@ pub struct AppState {
     pub tmpl: templates::TemplateEngine,
     pub projects: Vec<projects::Project>,
     pub dreams: Vec<projects::Project>,
+    pub blog: blog::Cache,
 }
 
 #[tokio::main]
@@ -39,16 +41,20 @@ async fn main() {
         tmpl: templates::TemplateEngine::new(),
         projects,
         dreams,
+        blog: blog::Cache::new(),
     });
 
     let app = Router::new()
         // SSR pages (rendered by Rust)
         .route("/", get(root_page))
         .route("/index.html", get(root_page))
-        // Blog — published on Bear Blog (see `Site::blogs`), so these routes
-        // forward readers there instead of serving anything locally.
-        .route("/blog", get(blog_redirect))
-        .route("/blog/", get(blog_redirect))
+        // Blog — a self-hosted WriteFreely instance, read and rendered by
+        // `crate::blog`. These paths are same-origin so the content panel can
+        // frame them; the blog's own domain sends `X-Frame-Options: SAMEORIGIN`
+        // and cannot be framed at all.
+        .route("/blog", get(blog_page))
+        .route("/blog/", get(blog_page))
+        .route("/blog/:slug", get(blog_section_page))
         // Gallery & Socials — the real pages, rendered per profile. These used to
         // be a placeholder stub that iframed the content page, which stacked a
         // second scroll area and dumped unstyled debug text above the artwork.
@@ -134,10 +140,53 @@ async fn socials_content_page(State(state): State<Arc<AppState>>, Extension(site
     state.tmpl.render_response("content_socials.html", &serde_json::json!({ "site": site }))
 }
 
-/// Forward `/blog` to the externally hosted blog. The professional mirror has
-/// no blogs, so it goes home rather than advertising personal writing.
-async fn blog_redirect(Extension(site): Extension<Site>) -> Redirect {
-    Redirect::permanent(site.blogs.first().map_or("/", |blog| blog.url))
+// ─── Blog ─────────────────────────────────────────────────────────
+
+/// The first blog section. The switcher in the content panel sends each tab to
+/// one of these paths.
+async fn blog_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
+    render_blog(&state, &site, 0).await
+}
+
+/// `/blog/<slug>` — the section with that slug, or nothing.
+async fn blog_section_page(
+    State(state): State<Arc<AppState>>,
+    Path(slug): Path<String>,
+    Extension(site): Extension<Site>,
+) -> Response {
+    match blog::index_of(&site, Some(&slug)) {
+        Some(index) => render_blog(&state, &site, index).await,
+        // Not a section we publish. The professional mirror lands here for any
+        // slug, so it never advertises personal or political writing.
+        None => page_404(),
+    }
+}
+
+async fn render_blog(state: &AppState, site: &Site, index: usize) -> Response {
+    let sections = state.blog.sections(site).await;
+    let Some(section) = sections.get(index) else {
+        return page_404();
+    };
+
+    let nav: Vec<serde_json::Value> = site
+        .blogs
+        .iter()
+        .enumerate()
+        .map(|(position, blog)| {
+            serde_json::json!({
+                "label": blog.label,
+                "url": blog.url,
+                "selected": position == index,
+            })
+        })
+        .collect();
+
+    state.tmpl.render_response("blog.html", &serde_json::json!({
+        "title": format!("{} — {}", section.label, site.name),
+        "site": site,
+        "section": section,
+        "nav": nav,
+    }))
 }
 
 // ─── File serving ──────────────────────────────────────────────────

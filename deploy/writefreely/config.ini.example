@@ -7,7 +7,9 @@
 ; Uberspace's web backend proxies to this port, and it insists the app listens
 ; on 0.0.0.0 or :: -- binding to 127.0.0.1, localhost or ::1 gives a 502 Bad
 ; Gateway, because the proxy cannot reach the loopback from the frontend.
-; 8082 avoids the main site, which takes 8080.
+; 8082 avoids the main site, which takes 8080. The site reads this blog's feeds
+; from http://127.0.0.1:8082, so if the port changes here it has to change with
+; it (see BLOG_FEED_BASE in the deploy workflow).
 port = 8082
 bind = 0.0.0.0
 

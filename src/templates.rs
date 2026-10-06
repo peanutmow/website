@@ -15,10 +15,13 @@ impl TemplateEngine {
         env.add_template("conejillo.html", include_str!("../templates/conejillo.html")).unwrap();
         // Gallery / socials used to be served as static files behind a
         // placeholder SSR stub that iframed them. They are rendered directly now,
-        // so the profile's name reaches them and nothing is nested twice. The
-        // blog lives on Bear Blog, so it has no template here.
+        // so the profile's name reaches them and nothing is nested twice.
         env.add_template("content_gallery.html", include_str!("../gallery/index.html")).unwrap();
         env.add_template("content_socials.html", include_str!("../socials/index.html")).unwrap();
+        // The blog is a WriteFreely instance on this host that refuses to be
+        // framed from here, so its feeds are rendered through this template
+        // instead — see `crate::blog`.
+        env.add_template("blog.html", include_str!("../templates/blog.html")).unwrap();
         TemplateEngine { env }
     }
 

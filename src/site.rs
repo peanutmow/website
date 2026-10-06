@@ -21,19 +21,24 @@ use serde::Serialize;
 /// the `SITE_PROFESSIONAL_HOSTS` env var) once DNS is pointed at this server.
 const PROFESSIONAL_HOSTS: &[&str] = &["daveherkula.org"];
 
-/// One section of the externally hosted blog, offered by the blog switcher.
+/// One section of the blog, offered by the blog switcher.
 ///
-/// Bear Blog runs everything on one blog, so the sections are tag filters over
-/// it (`?q=politics` to keep only political posts, `?q=-politics` to drop them)
-/// rather than separate blogs — a second blog is a paid Bear feature.
+/// The blog is a self-hosted WriteFreely instance (see `deploy/writefreely`) with
+/// one collection per section, because a second blog there is free where Bear
+/// Blog charged for it. Its posts are read and rendered by `crate::blog`, so the
+/// switcher loads a page of *this* site rather than an external one — Uberspace
+/// sets `X-Frame-Options: SAMEORIGIN` on every domain, so a frame pointed at
+/// `blog.alicemow.org` would simply be refused by the browser.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct Blog {
     /// Switcher label, e.g. "Main" or "Politics".
     pub label: &'static str,
-    /// Where the switcher sends the reader.
+    /// Same-origin path the switcher loads (rendered by `crate::blog`).
     pub url: &'static str,
     /// Feed advertised for this section through `<link rel="alternate">`.
     pub feed: &'static str,
+    /// The WriteFreely collection this section reads.
+    pub slug: &'static str,
 }
 
 /// Everything the templates need to know about who the site belongs to.
@@ -71,29 +76,26 @@ pub struct Site {
 
 /// The blog sections shown on the personal site.
 ///
-/// Bear Blog serves a single blog, so these are two views over
-/// `alicemow.bearblog.dev` rather than separate blogs (a second blog is a paid
-/// Bear feature). Both point at *clean* URLs on purpose: Bear's tag filter also
-/// exists as `?q=politics`, but query-string requests hit a Cloudflare
-/// challenge that a cross-origin iframe cannot pass, because third-party
-/// cookies are blocked — the frame just renders "Verification failed".
+/// Both are collections on the self-hosted WriteFreely instance described in
+/// `deploy/writefreely`, which federates them as `@alice@blog.alicemow.org` and
+/// `@politics@blog.alicemow.org`.
 ///
-/// So each section is a Bear **page** ("Pages" → new page) whose body is a
-/// filtered post list, and the feeds carry the same filter as a query string
-/// (feeds are fetched by readers rather than framed, so `?q=` is fine there):
-///
-/// * `main`    → `{{ posts|tag:-politics }}` (everything except politics)
-/// * `politics`→ `{{ posts|tag:politics }}`
+/// `url` is deliberately a path on *this* site: the run-time reads the two feeds
+/// and renders the posts itself, so the reader stays here and the page can be
+/// framed (see `crate::blog`). `feed` stays canonical, so feed readers and
+/// subscribers point straight at the instance.
 const PERSONAL_BLOGS: &[Blog] = &[
     Blog {
         label: "Main",
-        url: "https://alicemow.bearblog.dev/main/",
-        feed: "https://alicemow.bearblog.dev/feed/?q=-politics",
+        url: "/blog",
+        feed: "https://blog.alicemow.org/alice/feed/",
+        slug: "alice",
     },
     Blog {
         label: "Politics",
-        url: "https://alicemow.bearblog.dev/politics/",
-        feed: "https://alicemow.bearblog.dev/feed/?q=politics",
+        url: "/blog/politics",
+        feed: "https://blog.alicemow.org/politics/feed/",
+        slug: "politics",
     },
 ];
 
@@ -215,16 +217,16 @@ mod tests {
         assert_eq!(site.blogs.len(), 2);
         assert_eq!(site.blogs[0].label, "Main");
         assert_eq!(site.blogs[1].label, "Politics");
-        assert_eq!(site.blogs[0].url, "https://alicemow.bearblog.dev/main/");
-        assert_eq!(site.blogs[0].feed, "https://alicemow.bearblog.dev/feed/?q=-politics");
-        assert_eq!(site.blogs[1].url, "https://alicemow.bearblog.dev/politics/");
-        assert_eq!(site.blogs[1].feed, "https://alicemow.bearblog.dev/feed/?q=politics");
-        // Query-string URLs cannot pass Bear's Cloudflare check inside the
-        // iframe, so the browsable URLs must stay query-free.
-        assert!(site.blogs.iter().all(|blog| !blog.url.contains('?')));
-        // Main drops politics, Politics keeps only it: no post appears twice.
-        assert!(site.blogs[0].feed.contains("q=-politics"));
-        assert!(site.blogs[1].feed.contains("q=politics"));
+        assert_eq!(site.blogs[0].slug, "alice");
+        assert_eq!(site.blogs[1].slug, "politics");
+        assert_eq!(site.blogs[0].feed, "https://blog.alicemow.org/alice/feed/");
+        assert_eq!(site.blogs[1].feed, "https://blog.alicemow.org/politics/feed/");
+        // The switcher loads pages of this site, because a frame pointed at the
+        // blog itself is refused: Uberspace sends `X-Frame-Options: SAMEORIGIN`
+        // on every domain and the blog is a different origin.
+        assert_eq!(site.blogs[0].url, "/blog");
+        assert_eq!(site.blogs[1].url, "/blog/politics");
+        assert!(site.blogs.iter().all(|blog| blog.url.starts_with('/')));
 
         let professional = detect(&host_header("daveherkula.org"));
         assert!(professional.blogs.is_empty());

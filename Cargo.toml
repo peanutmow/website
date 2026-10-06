@@ -14,4 +14,11 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 pulldown-cmark = "0.11"
 tracing = "0.1"
+# The blog is a WriteFreely instance on the same host. Its feeds are read over
+# loopback in plain HTTP, so this build deliberately carries no TLS client:
+# the deploy cross-compiles to static musl, where OpenSSL/ring are a real
+# liability, and nothing here ever talks to a remote HTTPS origin.
+reqwest = { version = "0.12", default-features = false }
+feed-rs = "2"
+chrono = { version = "0.4", default-features = false, features = ["std"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
