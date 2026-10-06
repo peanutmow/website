@@ -1,0 +1,51 @@
+; WriteFreely configuration for the personal blog.
+;
+; setup.sh copies this to ~/writefreely/config.ini on first install. That copy
+; is a live file holding secrets, and is never overwritten by later runs.
+
+[server]
+; Only the Uberspace reverse proxy talks to this, so bind to localhost and use
+; a port that doesn't collide with the main site (which takes 8080).
+port = 8082
+bind = localhost
+
+; Empty means "look in the working directory", which the supervisord unit sets
+; to the install directory.
+templates_parent_dir =
+static_parent_dir   =
+pages_parent_dir    =
+keys_parent_dir     =
+
+; Uberspace terminates TLS, so WriteFreely must not try to serve it itself.
+; Leaving these empty is also what tells it that it sits behind a proxy.
+tls_cert_path =
+tls_key_path  =
+
+[database]
+; SQLite keeps the whole instance in one file, and the official release
+; binaries bundle the driver -- no compiler and no database server needed.
+type     = sqlite3
+filename = writefreely.db
+
+[app]
+site_name = Alice
+
+; Federation needs the scheme and host with NO path and NO trailing slash.
+; WriteFreely strips any path given here, which is exactly why a blog cannot
+; live on a subpath like alicemow.org/blog and must be its own subdomain.
+host = https://blog.alicemow.org
+
+; Multi-user mode is what lets one account own more than one blog.
+; This is not a public instance: registration stays closed and the landing page
+; is the login form, so only you can post.
+single_user       = false
+open_registration = false
+landing           = /login
+
+; ActivityPub, so the blogs are followable from Mastodon as
+; @alice@blog.alicemow.org and @politics@blog.alicemow.org.
+federation   = true
+public_stats = true
+
+; The default is 1, and the "New blog" link only appears once this is higher.
+max_blogs = 2

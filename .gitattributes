@@ -1,0 +1,3 @@
+# Written on Windows but installed on Linux. Shell scripts must keep LF endings:
+# with CRLF they fail with "$'\r': command not found".
+deploy/writefreely/* text eol=lf
