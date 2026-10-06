@@ -45,7 +45,7 @@ async fn main() {
         // SSR pages (rendered by Rust)
         .route("/", get(root_page))
         .route("/index.html", get(root_page))
-        // Blog — published on Bear Blog (see `Site::blog_url`), so these routes
+        // Blog — published on Bear Blog (see `Site::blogs`), so these routes
         // forward readers there instead of serving anything locally.
         .route("/blog", get(blog_redirect))
         .route("/blog/", get(blog_redirect))
@@ -135,9 +135,9 @@ async fn socials_content_page(State(state): State<Arc<AppState>>, Extension(site
 }
 
 /// Forward `/blog` to the externally hosted blog. The professional mirror has
-/// no `blog_url`, so it goes home rather than advertising personal writing.
+/// no blogs, so it goes home rather than advertising personal writing.
 async fn blog_redirect(Extension(site): Extension<Site>) -> Redirect {
-    Redirect::permanent(site.blog_url.unwrap_or("/"))
+    Redirect::permanent(site.blogs.first().map_or("/", |blog| blog.url))
 }
 
 // ─── File serving ──────────────────────────────────────────────────

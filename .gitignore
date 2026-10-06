@@ -34,3 +34,6 @@ Desktop.ini
 
 # Generated / cache files
 *.wasm
+
+# Cloudflare / Wrangler local state (auth cache, account info, tmp)
+.wrangler/

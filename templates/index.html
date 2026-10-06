@@ -4,18 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
-    {% if site.blog_feed %}
-    <link rel="alternate" type="application/rss+xml" title="{{ site.name }}'s blog" href="{{ site.blog_feed }}">
-    {% endif %}
+    {% for blog in site.blogs %}
+    <link rel="alternate" type="application/rss+xml" title="{{ site.name }}'s blog — {{ blog.label }}" href="{{ blog.feed }}">
+    {% endfor %}
     {% if not site.professional %}
     <!--
     ╔══════════════════════════════════════════════════════╗
     ║  Nice try, inspector.                                ║
-    ║                                                      ║
-    ║  Try curl -s https://alice.sh/etc/hosts              ║
-    ║  or visit /etc/hosts if you're feeling brave.        ║
-    ║                                                      ║
-    ║  PS: type 'cowsay' anywhere on the page.             ║
     ╚══════════════════════════════════════════════════════╝
     -->
     {% endif %}
@@ -39,6 +34,11 @@
         #ui-overlay .bio { font-size: 0.65rem; color: rgba(255,255,255,0.15); letter-spacing: 1.5px; line-height: 1.5; max-width: 420px; opacity: 0.6; }
         #content-panel { position: relative; z-index: 50; margin-top: 100vh; min-height: 100vh; width: 100%; padding: 1.5rem; display: flex; flex-direction: column; }
         #content-frame { flex: 1; width: 100%; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; background: transparent; min-height: 0; }
+        #blog-tabs { display: flex; flex: 0 0 auto; gap: 0.4rem; margin-bottom: 0.6rem; }
+        #blog-tabs[hidden] { display: none; }
+        #blog-tabs .blog-tab { font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif; font-size: 0.7rem; letter-spacing: 2px; text-transform: uppercase; color: rgba(255,255,255,0.45); background: transparent; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 0.4rem 0.9rem; cursor: pointer; transition: all 0.2s ease; }
+        #blog-tabs .blog-tab:hover { color: rgba(255,255,255,0.85); border-color: rgba(255,255,255,0.22); }
+        #blog-tabs .blog-tab[aria-selected="true"] { color: #fff; background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.4); }
         #socials-inline { display: none; flex: 1; width: 100%; border-radius: 8px; background: url('/assets/glassblock4k.avif') center/cover no-repeat, rgba(255,255,255,0.015); backdrop-filter: blur(1.5px); -webkit-backdrop-filter: blur(1.5px); will-change: transform; transform: translateZ(0); padding: 2rem; overflow-y: auto; color: #fff; font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif; }
         #socials-inline.visible { display: block; }
         #socials-inline .si-inner { max-width: 560px; margin: 0 auto; }
@@ -260,7 +260,7 @@
         <div class="button-bar" id="button-bar">
             <a href="#" class="btn" data-label="Socials" data-page="socials">Socials</a>
             <a href="#" class="btn" data-label="Gallery" data-page="gallery">Gallery</a>
-            {% if site.blog_url %}<a href="#" class="btn" data-label="Blog" data-page="blog">Blog</a>{% endif %}
+            {% if site.blogs %}<a href="#" class="btn" data-label="Blog" data-page="blog">Blog</a>{% endif %}
             <a href="#" class="btn" data-label="Projects" data-page="projects">Projects</a>
         </div>
         <div class="bio">{{ site.bio }}</div>
@@ -303,6 +303,13 @@
             {% endif %}
         </div>
         </div>
+        {% if site.blogs %}
+        <div id="blog-tabs" hidden>
+            {% for blog in site.blogs %}
+            <button type="button" class="blog-tab" data-blog-url="{{ blog.url }}" aria-selected="false">{{ blog.label }}</button>
+            {% endfor %}
+        </div>
+        {% endif %}
         <iframe id="content-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
     </div>
 
@@ -328,7 +335,7 @@
         </div>
     {% endif %}
 
-    <script>window.__SITE__ = { greeting: {{ site.greeting|tojson }}, buttons: {% if site.blog_url %}['Socials', 'Gallery', 'Blog', 'Projects']{% else %}['Socials', 'Gallery', 'Projects']{% endif %} };</script>    </div>
+    <script>window.__SITE__ = { greeting: {{ site.greeting|tojson }}, buttons: {% if site.blogs %}['Socials', 'Gallery', 'Blog', 'Projects']{% else %}['Socials', 'Gallery', 'Projects']{% endif %} };</script>    </div>
 
     <script src="/water-sim.js"></script>
     <script>
@@ -411,8 +418,29 @@
     <script>
         (function() {
             var contentPanel = document.getElementById('content-panel'), contentFrame = document.getElementById('content-frame'), socialsInline = document.getElementById('socials-inline');
+            var blogTabs = document.getElementById('blog-tabs');
+            var tabs = blogTabs ? blogTabs.querySelectorAll('.blog-tab') : [];
+            var currentBlog = 0;
             var pages = { gallery: { url: '/gallery', label: 'Gallery' }, projects: { url: '/projects', label: 'Projects' }, socials: {} };
-            {% if site.blog_url %}pages.blog = { url: {{ site.blog_url|tojson }}, label: 'Blog' };{% endif %}
+            {% if site.blogs %}pages.blog = { label: 'Blog' };{% endif %}
+
+            // The tabs own the blog URLs, so switching sections never loses the choice.
+            function showBlog(index) {
+                if (!tabs.length) return;
+                currentBlog = (index + tabs.length) % tabs.length;
+                for (var i = 0; i < tabs.length; i++) {
+                    tabs[i].setAttribute('aria-selected', i === currentBlog ? 'true' : 'false');
+                }
+                contentFrame.src = tabs[currentBlog].getAttribute('data-blog-url');
+            }
+
+            if (blogTabs) {
+                blogTabs.addEventListener('click', function(e) {
+                    var tab = e.target.closest('.blog-tab');
+                    if (tab) showBlog(Array.prototype.indexOf.call(tabs, tab));
+                });
+            }
+
             document.querySelectorAll('.btn[data-page]').forEach(function(btn) {
                 btn.addEventListener('click', function(e) {
                     e.preventDefault(); var page = this.getAttribute('data-page');
@@ -426,9 +454,10 @@
                                 new Image().src = '/assets/tree.avif';
                                 new Image().src = '/assets/treebranch.avif';
                             }
-                            contentFrame.src = info.url;
+                            if (page === 'blog') showBlog(currentBlog); else contentFrame.src = info.url;
                         }
                     }
+                    if (blogTabs) blogTabs.hidden = (page !== 'blog');
                     contentPanel.scrollIntoView({ behavior: 'smooth' });
                 });
             });

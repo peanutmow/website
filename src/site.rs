@@ -21,6 +21,21 @@ use serde::Serialize;
 /// the `SITE_PROFESSIONAL_HOSTS` env var) once DNS is pointed at this server.
 const PROFESSIONAL_HOSTS: &[&str] = &["daveherkula.org"];
 
+/// One section of the externally hosted blog, offered by the blog switcher.
+///
+/// Bear Blog runs everything on one blog, so the sections are tag filters over
+/// it (`?q=politics` to keep only political posts, `?q=-politics` to drop them)
+/// rather than separate blogs — a second blog is a paid Bear feature.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+pub struct Blog {
+    /// Switcher label, e.g. "Main" or "Politics".
+    pub label: &'static str,
+    /// Where the switcher sends the reader.
+    pub url: &'static str,
+    /// Feed advertised for this section through `<link rel="alternate">`.
+    pub feed: &'static str,
+}
+
 /// Everything the templates need to know about who the site belongs to.
 ///
 /// `Copy` on purpose: it is cheap, and the middleware can drop a copy into the
@@ -45,16 +60,42 @@ pub struct Site {
     pub x_handle: Option<&'static str>,
     pub discord_url: Option<&'static str>,
     pub discord_handle: Option<&'static str>,
-    /// The blog, hosted externally (Bear Blog). `None` drops the Blog button and
-    /// the feed autodiscovery link, because the professional mirror must not
+    /// Blog sections, in switcher order. Empty drops the Blog button, the
+    /// switcher and the feed links, because the professional mirror must not
     /// point recruiters at personal and political writing.
-    pub blog_url: Option<&'static str>,
-    /// Feed advertised to readers through `<link rel="alternate">`.
-    pub blog_feed: Option<&'static str>,
+    pub blogs: &'static [Blog],
     /// True for the professional mirror: hides easter eggs, novelty pages and
     /// the "Friends" / "Cool Sites" link lists.
     pub professional: bool,
 }
+
+/// The blog sections shown on the personal site.
+///
+/// Bear Blog serves a single blog, so these are two views over
+/// `alicemow.bearblog.dev` rather than separate blogs (a second blog is a paid
+/// Bear feature). Both point at *clean* URLs on purpose: Bear's tag filter also
+/// exists as `?q=politics`, but query-string requests hit a Cloudflare
+/// challenge that a cross-origin iframe cannot pass, because third-party
+/// cookies are blocked — the frame just renders "Verification failed".
+///
+/// So each section is a Bear **page** ("Pages" → new page) whose body is a
+/// filtered post list, and the feeds carry the same filter as a query string
+/// (feeds are fetched by readers rather than framed, so `?q=` is fine there):
+///
+/// * `main`    → `{{ posts|tag:-politics }}` (everything except politics)
+/// * `politics`→ `{{ posts|tag:politics }}`
+const PERSONAL_BLOGS: &[Blog] = &[
+    Blog {
+        label: "Main",
+        url: "https://alicemow.bearblog.dev/main/",
+        feed: "https://alicemow.bearblog.dev/feed/?q=-politics",
+    },
+    Blog {
+        label: "Politics",
+        url: "https://alicemow.bearblog.dev/politics/",
+        feed: "https://alicemow.bearblog.dev/feed/?q=politics",
+    },
+];
 
 impl Site {
     /// The real site.
@@ -72,8 +113,7 @@ impl Site {
             x_handle: Some("Alice_mow"),
             discord_url: Some("https://discord.gg/sdTrfEHF"),
             discord_handle: Some("alice_meower"),
-            blog_url: Some("https://alicemow.bearblog.dev/"),
-            blog_feed: Some("https://alicemow.bearblog.dev/feed/"),
+            blogs: PERSONAL_BLOGS,
             professional: false,
         }
     }
@@ -93,8 +133,7 @@ impl Site {
             x_handle: None,
             discord_url: None,
             discord_handle: None,
-            blog_url: None,
-            blog_feed: None,
+            blogs: &[],
             professional: true,
         }
     }
@@ -171,14 +210,24 @@ mod tests {
     }
 
     #[test]
-    fn blog_is_published_only_on_the_personal_profile() {
+    fn blogs_are_published_only_on_the_personal_profile() {
         let site = Site::personal();
-        assert_eq!(site.blog_url, Some("https://alicemow.bearblog.dev/"));
-        assert_eq!(site.blog_feed, Some("https://alicemow.bearblog.dev/feed/"));
+        assert_eq!(site.blogs.len(), 2);
+        assert_eq!(site.blogs[0].label, "Main");
+        assert_eq!(site.blogs[1].label, "Politics");
+        assert_eq!(site.blogs[0].url, "https://alicemow.bearblog.dev/main/");
+        assert_eq!(site.blogs[0].feed, "https://alicemow.bearblog.dev/feed/?q=-politics");
+        assert_eq!(site.blogs[1].url, "https://alicemow.bearblog.dev/politics/");
+        assert_eq!(site.blogs[1].feed, "https://alicemow.bearblog.dev/feed/?q=politics");
+        // Query-string URLs cannot pass Bear's Cloudflare check inside the
+        // iframe, so the browsable URLs must stay query-free.
+        assert!(site.blogs.iter().all(|blog| !blog.url.contains('?')));
+        // Main drops politics, Politics keeps only it: no post appears twice.
+        assert!(site.blogs[0].feed.contains("q=-politics"));
+        assert!(site.blogs[1].feed.contains("q=politics"));
 
         let professional = detect(&host_header("daveherkula.org"));
-        assert!(professional.blog_url.is_none());
-        assert!(professional.blog_feed.is_none());
+        assert!(professional.blogs.is_empty());
     }
 
     #[test]
