@@ -3,14 +3,20 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - '**.md'
   # The gallery is generated from the public photostream. A nightly deploy
   # refreshes it even when the repository itself hasn't changed.
   schedule:
     - cron: '17 4 * * *'
   workflow_dispatch:
+concurrency:
+  group: deploy-uberspace
+  cancel-in-progress: true
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -23,23 +29,42 @@ jobs:
         run: |
           python3 -m pip install --quiet --disable-pip-version-check pillow
           python3 tools/gallery/sync.py
+      - name: Restore the built binary
+        id: binary
+        uses: actions/cache@v4
+        with:
+          path: .deploy/alice-website
+          key: alice-binary-v1-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'src/**', 'templates/**', 'gallery/curation.json', 'gallery/index.html', 'socials/**') }}
+
+      - name: Install transfer tools (lftp, sshpass)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends lftp sshpass rsync
 
       - name: Install Rust
+        if: steps.binary.outputs.cache-hit != 'true'
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-unknown-linux-musl
 
       - name: Cache Rust build
+        if: steps.binary.outputs.cache-hit != 'true'
         uses: Swatinem/rust-cache@v2
 
       - name: Install musl-tools (static link)
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
+        if: steps.binary.outputs.cache-hit != 'true'
+        run: sudo apt-get install -y --no-install-recommends musl-tools
 
       - name: Build release binary (static, for the server)
-        run: cargo build --release --target x86_64-unknown-linux-musl
-
-      - name: Install lftp + sshpass (+ rsync)
-        run: sudo apt-get install -y lftp sshpass rsync
+        if: steps.binary.outputs.cache-hit != 'true'
+        run: |
+          cargo build --locked --release --target x86_64-unknown-linux-musl
+          mkdir -p .deploy
+          # Symbols are dead weight over SFTP; GNU strip handles the static
+          # musl ELF fine. Fall back to the unstripped file if it refuses.
+          strip target/x86_64-unknown-linux-musl/release/alice-website \
+            -o .deploy/alice-website \
+            || cp target/x86_64-unknown-linux-musl/release/alice-website .deploy/alice-website
 
       - name: Deploy to Uberspace
         env:
@@ -65,8 +90,10 @@ jobs:
           SYNC_EXCLUDES=(
             --exclude=/.git/
             --exclude=/.github/
+            --exclude=/.deploy/
             --exclude=/target/
             --exclude=node_modules/
+            --exclude=__pycache__/
             --exclude='*.md'
             --exclude=/alice-website
             --exclude='/alice-website.*'
@@ -86,7 +113,7 @@ jobs:
               'set sftp:auto-confirm yes' \
               'set cmd:fail-exit yes' \
               'set net:max-retries 3' \
-              'mirror --reverse --delete --verbose --exclude=.git/ --exclude=.github/ --exclude=target/ --exclude=node_modules/ --exclude-glob=*.md --exclude=alice-website ./ html/' \
+              'mirror --reverse --delete --verbose --exclude=.git/ --exclude=.github/ --exclude=.deploy/ --exclude=target/ --exclude=node_modules/ --exclude=__pycache__/ --exclude-glob=*.md --exclude=alice-website ./ html/' \
               'bye' > "$RUNNER_TEMP/mirror.lftp"
             lftp -u "$SFTP_USERNAME,$SFTP_PASSWORD" \
               "sftp://$SFTP_HOST:$SFTP_PORT" -f "$RUNNER_TEMP/mirror.lftp"
@@ -99,8 +126,7 @@ jobs:
           set sftp:auto-confirm yes
           set cmd:fail-exit yes
           set net:max-retries 3
-          put target/x86_64-unknown-linux-musl/release/alice-website \
-            -o html/alice-website.new
+          put .deploy/alice-website -o html/alice-website.new
           bye
           EOF
           echo "==> [lftp] upload done"
@@ -120,9 +146,18 @@ jobs:
           REAL_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
           [ -n "$REAL_HOME" ] || REAL_HOME="$HOME"
 
-          echo "[1/6] atomically replace running binary"
-          mv -f "$APP_DIR/alice-website.new" "$APP_DIR/alice-website"
-          chmod +x "$APP_DIR/alice-website"
+          echo "[1/6] install binary"
+          # Identical bytes mean there is nothing to swap -- and, just as
+          # importantly, no reason to restart the service and drop requests.
+          if [ -f "$APP_DIR/alice-website" ] && cmp -s "$APP_DIR/alice-website" "$APP_DIR/alice-website.new"; then
+            echo "  binary unchanged; keeping the running process"
+            rm -f "$APP_DIR/alice-website.new"
+            BINARY_CHANGED=0
+          else
+            mv -f "$APP_DIR/alice-website.new" "$APP_DIR/alice-website"
+            chmod +x "$APP_DIR/alice-website"
+            BINARY_CHANGED=1
+          fi
           echo "[2/6] write supervisord ini"
           mkdir -p "$REAL_HOME/etc/services.d"
           # The blog is a WriteFreely instance on this same host, so the site
@@ -143,7 +178,11 @@ jobs:
           echo "[4/6] supervisorctl update"
           supervisorctl update
           echo "[5/6] restart service"
-          supervisorctl restart "$SERVICE_NAME" || supervisorctl start "$SERVICE_NAME"
+          if [ "$BINARY_CHANGED" = 1 ] || ! supervisorctl status "$SERVICE_NAME" | grep -q RUNNING; then
+            supervisorctl restart "$SERVICE_NAME" || supervisorctl start "$SERVICE_NAME"
+          else
+            echo "  service already running the current binary"
+          fi
           supervisorctl status "$SERVICE_NAME" || true
           echo "[6/6] set web backend"
           command -v uberspace >/dev/null 2>&1 || export PATH="$PATH:/usr/local/bin"
