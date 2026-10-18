@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Extension, Path, Request, State},
+    extract::{Extension, Path, Query, Request, State},
     http::{StatusCode, Uri},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
@@ -12,6 +12,7 @@ use tower_http::compression::CompressionLayer;
 use tracing_subscriber::EnvFilter;
 
 mod blog;
+mod embed;
 mod projects;
 mod site;
 mod templates;
@@ -79,6 +80,10 @@ async fn main() {
         // Easter egg pages
         .route("/dev/null", get(dev_null_redirect))
         .route("/redherring", get(redherring_page))
+        // Link previews: the fixed-size surface the Discord artwork is
+        // recorded from, and the oEmbed document that credits the author.
+        .route("/embed-scene", get(embed_scene))
+        .route("/oembed.json", get(oembed))
         // The bunny page — any /conejillo/… URL (long paths, matrix params,
         // percent-encoding, query strings, fragments) lands here.
         .route("/conejillo", get(conejillo_page))
@@ -101,18 +106,33 @@ async fn main() {
 /// can render the matching profile. See [`site::detect`].
 async fn resolve_site(mut req: Request, next: Next) -> Response {
     let site = site::detect(req.headers());
+    let origin = site::origin(req.headers());
     req.extensions_mut().insert(site);
+    req.extensions_mut().insert(origin);
     next.run(req).await
 }
 
 // ─── SSR Handlers ──────────────────────────────────────────────────
 
-async fn root_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
+async fn root_page(
+    State(state): State<Arc<AppState>>,
+    Extension(site): Extension<Site>,
+    Extension(origin): Extension<site::Origin>,
+) -> Response {
     let title = format!("{} Portfolio", site.full_name);
-    state.tmpl.render_response("index.html", &serde_json::json!({ "title": title, "site": site }))
+    let meta = embed::home(&site, &origin.0);
+    state.tmpl.render_response("index.html", &serde_json::json!({
+        "title": title,
+        "site": site,
+        "meta": meta,
+    }))
 }
 
-async fn projects_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
+async fn projects_page(
+    State(state): State<Arc<AppState>>,
+    Extension(site): Extension<Site>,
+    Extension(origin): Extension<site::Origin>,
+) -> Response {
     let live_count = state
         .projects
         .iter()
@@ -120,9 +140,17 @@ async fn projects_page(State(state): State<Arc<AppState>>, Extension(site): Exte
         .count();
     let dream_count = state.dreams.len();
     let title = format!("Projects — {}", site.name);
+    let meta = embed::projects(
+        &site,
+        &origin.0,
+        &state.projects,
+        live_count,
+        dream_count,
+    );
     state.tmpl.render_response("projects.html", &serde_json::json!({
         "title": title,
         "site": site,
+        "meta": meta,
         "projects": state.projects,
         "dreams": state.dreams,
         "live_count": live_count,
@@ -132,20 +160,40 @@ async fn projects_page(State(state): State<Arc<AppState>>, Extension(site): Exte
 
 // ─── Content pages (rendered so the profile's name reaches them) ───
 
-async fn gallery_content_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
-    state.tmpl.render_response("content_gallery.html", &serde_json::json!({ "site": site }))
+async fn gallery_content_page(
+    State(state): State<Arc<AppState>>,
+    Extension(site): Extension<Site>,
+    Extension(origin): Extension<site::Origin>,
+) -> Response {
+    let meta = embed::gallery(&site, &origin.0);
+    state.tmpl.render_response("content_gallery.html", &serde_json::json!({
+        "site": site,
+        "meta": meta,
+    }))
 }
 
-async fn socials_content_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
-    state.tmpl.render_response("content_socials.html", &serde_json::json!({ "site": site }))
+async fn socials_content_page(
+    State(state): State<Arc<AppState>>,
+    Extension(site): Extension<Site>,
+    Extension(origin): Extension<site::Origin>,
+) -> Response {
+    let meta = embed::socials(&site, &origin.0);
+    state.tmpl.render_response("content_socials.html", &serde_json::json!({
+        "site": site,
+        "meta": meta,
+    }))
 }
 
 // ─── Blog ─────────────────────────────────────────────────────────
 
 /// The first blog section. The switcher in the content panel sends each tab to
 /// one of these paths.
-async fn blog_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
-    render_blog(&state, &site, 0).await
+async fn blog_page(
+    State(state): State<Arc<AppState>>,
+    Extension(site): Extension<Site>,
+    Extension(origin): Extension<site::Origin>,
+) -> Response {
+    render_blog(&state, &site, &origin.0, 0).await
 }
 
 /// `/blog/<slug>` — the section with that slug, or nothing.
@@ -153,16 +201,17 @@ async fn blog_section_page(
     State(state): State<Arc<AppState>>,
     Path(slug): Path<String>,
     Extension(site): Extension<Site>,
+    Extension(origin): Extension<site::Origin>,
 ) -> Response {
     match blog::index_of(&site, Some(&slug)) {
-        Some(index) => render_blog(&state, &site, index).await,
+        Some(index) => render_blog(&state, &site, &origin.0, index).await,
         // Not a section we publish. The professional mirror lands here for any
         // slug, so it never advertises personal or political writing.
         None => page_404(),
     }
 }
 
-async fn render_blog(state: &AppState, site: &Site, index: usize) -> Response {
+async fn render_blog(state: &AppState, site: &Site, origin: &str, index: usize) -> Response {
     let sections = state.blog.sections(site).await;
     let Some(section) = sections.get(index) else {
         return page_404();
@@ -186,6 +235,7 @@ async fn render_blog(state: &AppState, site: &Site, index: usize) -> Response {
         "site": site,
         "section": section,
         "nav": nav,
+        "meta": embed::blog(site, origin, section),
     }))
 }
 
@@ -218,6 +268,62 @@ async fn conejillo_page(State(state): State<Arc<AppState>>, Extension(site): Ext
         return page_404();
     }
     state.tmpl.render_response("conejillo.html", &serde_json::json!({"title": "🐰 conejillo de indias", "site": site}))
+}
+
+// ─── Link previews ────────────────────────────────────────────────
+
+#[derive(serde::Deserialize)]
+struct SceneQuery {
+    #[serde(default)]
+    name: Option<String>,
+    /// Overrides the line under the name. Needed when recording the
+    /// professional mirror locally, where the Host header still looks personal.
+    #[serde(default)]
+    bio: Option<String>,
+}
+
+/// The fixed-size surface `tools/embed/record.mjs` records the Discord artwork
+/// from. Nothing links here; it exists so the preview is generated from the
+/// real simulator instead of a hand-drawn mock-up.
+async fn embed_scene(
+    State(state): State<Arc<AppState>>,
+    Extension(site): Extension<Site>,
+    Query(query): Query<SceneQuery>,
+) -> Response {
+    let name: String = query
+        .name
+        .unwrap_or_else(|| site.greeting.to_string())
+        .trim()
+        .chars()
+        .take(48)
+        .collect();
+    let name = if name.is_empty() { site.greeting.to_string() } else { name };
+    let bio: String = query
+        .bio
+        .unwrap_or_else(|| site.tagline().to_string())
+        .trim()
+        .chars()
+        .take(48)
+        .collect();
+    state.tmpl.render_response("embed_scene.html", &serde_json::json!({
+        "name": name,
+        "bio": bio,
+    }))
+}
+
+/// oEmbed fills the one field OpenGraph cannot: a linked author. Everything
+/// else is already served by `embed::*`.
+async fn oembed(
+    Extension(site): Extension<Site>,
+    Extension(origin): Extension<site::Origin>,
+) -> Response {
+    Response::builder()
+        .header("Content-Type", "application/json")
+        .header("Cache-Control", "public, max-age=1800")
+        .body(axum::body::Body::from(
+            embed::oembed(&site, &origin.0).to_string(),
+        ))
+        .unwrap()
 }
 
 /// Fallback for anything no route matched: hand back a root-level image if one

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>embed scene</title>
+    <style>
+        /* The recording surface for the Discord artwork. Fixed size on purpose:
+           the recorder captures exactly these pixels, and the layout has to be
+           identical every time the assets are regenerated. */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 1200px; height: 600px; overflow: hidden; background: #000; }
+        #embed-water {
+            width: 1200px;
+            height: 600px;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            white-space: pre;
+            line-height: 1;
+            letter-spacing: 0;
+            text-shadow: 0 0 4px rgba(255,255,255,0.3), 0 0 12px rgba(255,255,255,0.1);
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <pre id="embed-water" aria-hidden="true"></pre>
+    <script src="/water-sim.js"></script>
+    <script>
+        // `window.__arm()` is called by tools/embed/record.mjs once the
+        // screencast is running, so the GIF starts on the first frame of the
+        // typewriter instead of however far the page happened to get.
+        (function () {
+            'use strict';
+            var NAME = {{ name | tojson }};
+            var BIO = {{ bio | tojson }};
+            var sim = null;
+
+            function stir() {
+                var g = sim.grid();
+                // Broad currents, kept above the name: rows 8 and 9 carry the
+                // words. No droplets here — the figure-eight below leaves ink.
+                sim.vortex(g.cols * 0.30, g.rows * 0.34, 0.45);
+                sim.vortex(g.cols * 0.64, g.rows * 0.30, -0.40);
+                sim.vortex(g.cols * 0.50, g.rows * 0.56, 0.30);
+            }
+
+            window.__arm = function () {
+                if (sim) return sim;
+                sim = window.createWaterSim({
+                    mount: document.getElementById('embed-water'),
+                    greeting: NAME,
+                    buttons: [],
+                    bio: BIO,
+                    showMenu: false,
+                    typewriter: true,
+                    size: function () { return { width: 1200, height: 600 }; }
+                });
+
+                stir();
+
+                // An invisible finger draws a slow figure-eight through the
+                // water. Small droplets plus rotation leave a real wake
+                // instead of the round blobs a handful of seeded droplets
+                // would produce.
+                var t = 0;
+                var tick = 0;
+                setInterval(function () {
+                    t += 0.06;
+                    tick++;
+                    var g = sim.grid();
+                    var c = g.cols * (0.50 + Math.sin(t) * 0.38);
+                    var r = g.rows * (0.34 + Math.sin(t * 2 + 1.1) * 0.18);
+                    sim.droplet(c, r, 0.28, 1);
+                    if (tick % 3 === 0) sim.vortex(c, r, 0.4);
+                }, 50);
+
+                return sim;
+            };
+
+            // A person opening this page should not stare at a blank screen:
+            // the recorder arms within ~2s, so this only fires when nobody is
+            // driving Chrome.
+            setTimeout(function () { if (!sim) window.__arm(); }, 3000);
+        })();
+    </script>
+</body>
+</html>

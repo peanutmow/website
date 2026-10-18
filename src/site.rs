@@ -111,6 +111,16 @@ const PERSONAL_BLOGS: &[Blog] = &[
 ];
 
 impl Site {
+    /// The one-line label under the ASCII greeting. Short enough to fit the
+    /// coarse grid used for the Discord artwork, where the full bio does not.
+    pub const fn tagline(&self) -> &'static str {
+        if self.professional {
+            "developer"
+        } else {
+            "artist & developer"
+        }
+    }
+
     /// The real site.
     pub const fn personal() -> Self {
         Site {
@@ -178,6 +188,70 @@ fn from_env() -> Option<Site> {
         "professional" | "pro" | "dave" => Site::professional(),
         _ => Site::personal(),
     })
+}
+
+/// The absolute origin of a request, e.g. `https://alicemow.uber.space`.
+///
+/// Link previews need absolute URLs: Discord's crawler fetches them from its
+/// own servers, so a root-relative `og:image` would point at nowhere. The
+/// origin is taken from the request rather than hard-coded so the same binary
+/// works on every domain that fronts it (including local development). Set
+/// `SITE_ORIGIN` to force one when the proxy does not forward the scheme.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Origin(pub String);
+
+/// Resolve the request's origin from `X-Forwarded-Proto`/`Host`, unless
+/// `SITE_ORIGIN` forces one; fall back to local development when there is no
+/// `Host` header at all.
+pub fn origin(headers: &HeaderMap) -> Origin {
+    let forced = std::env::var("SITE_ORIGIN").ok();
+    origin_with(headers, forced.as_deref())
+}
+
+fn origin_with(headers: &HeaderMap, forced: Option<&str>) -> Origin {
+    if let Some(forced) = forced {
+        let forced = forced.trim().trim_end_matches('/');
+        if !forced.is_empty() {
+            return Origin(forced.to_string());
+        }
+    }
+
+    let Some(host) = host_with_port(headers) else {
+        return Origin("http://localhost:8080".to_string());
+    };
+    Origin(format!("{}://{host}", scheme(headers, &host)))
+}
+
+/// The public scheme, as the reverse proxy saw it.
+fn scheme<'a>(headers: &'a HeaderMap, host: &str) -> &'a str {
+    if let Some(proto) = headers.get("x-forwarded-proto").and_then(|v| v.to_str().ok()) {
+        let first = proto.split(',').next().unwrap_or("").trim();
+        if first == "http" || first == "https" {
+            return first;
+        }
+    }
+    // Without a proxy header the scheme has to be inferred. Uberspace fronts
+    // the app with HTTPS, while local runs are plain HTTP.
+    let local = host.starts_with("localhost")
+        || host.starts_with("127.0.0.1")
+        || host.starts_with("[::1]");
+    if local {
+        "http"
+    } else {
+        "https"
+    }
+}
+
+/// The `Host` header as sent, port included. Unlike [`host_of`] this keeps a
+/// non-default port, which is what makes preview URLs work in local runs.
+fn host_with_port(headers: &HeaderMap) -> Option<String> {
+    let raw = headers.get(header::HOST)?.to_str().ok()?;
+    let host = raw.trim().to_ascii_lowercase();
+    if host.is_empty() {
+        None
+    } else {
+        Some(host)
+    }
 }
 
 /// The bare hostname from the `Host` header, lowercased and stripped of any
@@ -271,5 +345,31 @@ mod tests {
         assert!(detect(&host_header("daveherkula.org:8080")).professional);
         // ...but a lookalike host must not match.
         assert!(!detect(&host_header("notdaveherkula.org")).professional);
+    }
+
+    #[test]
+    fn origins_are_absolute_and_pick_up_the_proxy_scheme() {
+        assert_eq!(
+            origin_with(&host_header("alicemow.uber.space"), None).0,
+            "https://alicemow.uber.space"
+        );
+
+        // Local runs are plain HTTP, so previews built during development still
+        // point somewhere fetchable.
+        assert_eq!(
+            origin_with(&host_header("localhost:8080"), None).0,
+            "http://localhost:8080"
+        );
+
+        // Uberspace terminates TLS in front of the app.
+        let mut headers = host_header("alicemow.uber.space");
+        headers.insert("x-forwarded-proto", "http,https".parse().unwrap());
+        assert_eq!(origin_with(&headers, None).0, "http://alicemow.uber.space");
+
+        // An explicit override wins.
+        assert_eq!(
+            origin_with(&host_header("alicemow.uber.space"), Some("https://alicemow.org/")).0,
+            "https://alicemow.org"
+        );
     }
 }

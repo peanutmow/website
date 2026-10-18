@@ -22,6 +22,12 @@ impl TemplateEngine {
         // framed from here, so its feeds are rendered through this template
         // instead — see `crate::blog`.
         env.add_template("blog.html", include_str!("../templates/blog.html")).unwrap();
+        // Shared <head> block for link previews (OpenGraph + Discord's
+        // component-embed payload). Kept in one place so every page emits the
+        // same tags in the same order.
+        env.add_template("meta.html", include_str!("../templates/meta.html")).unwrap();
+        // The fixed-size surface the Discord artwork is recorded from.
+        env.add_template("embed_scene.html", include_str!("../templates/embed_scene.html")).unwrap();
         TemplateEngine { env }
     }
 
@@ -48,7 +54,11 @@ mod tests {
     fn home(site: Site) -> String {
         TemplateEngine::new().render(
             "index.html",
-            &serde_json::json!({ "title": "Home", "site": site }),
+            &serde_json::json!({
+                "title": "Home",
+                "site": site,
+                "meta": crate::embed::home(&site, "https://example.test"),
+            }),
         )
     }
 
@@ -88,6 +98,38 @@ mod tests {
         }
     }
 
+    /// The home page is what gets pasted into Discord, so it has to carry both
+    /// halves of the preview: the OpenGraph fallback and the component payload.
+    #[test]
+    fn the_home_page_carries_a_discord_preview() {
+        // minijinja escapes `/` inside attribute values; the component payload
+        // is injected raw.
+        let html = decode_escapes(&home(Site::personal()));
+        assert!(html.contains("property=\"og:title\""));
+        assert!(html.contains(
+            "property=\"og:image\" content=\"https://example.test/static/embed/water-alice.gif"
+        ));
+        assert!(html.contains("name=\"theme-color\" content=\"#0a0a0a\""));
+        assert!(html.contains("twitter:card\" content=\"summary_large_image\""));
+        assert!(html.contains("application/json+oembed"));
+        assert!(html.contains("id=\"discord:component-embed\" type=\"application/json\""));
+        // The payload is emitted raw, not HTML-escaped.
+        assert!(html.contains("\"type\":17"));
+        // ...and it is inside <head>, where the crawler looks for it.
+        let head_end = html.find("</head>").expect("the page has a head");
+        let payload = html
+            .find("discord:component-embed")
+            .expect("the payload is present");
+        assert!(payload < head_end);
+    }
+
+    #[test]
+    fn the_professional_preview_uses_its_own_artwork() {
+        let html = home(Site::professional());
+        assert!(html.contains("water-dave.gif"));
+        assert!(!html.contains("water-alice"));
+    }
+
     #[test]
     fn the_professional_home_page_shows_no_personal_accounts() {
         let html = decode_escapes(&home(Site::professional()));
@@ -109,8 +151,82 @@ mod tests {
         };
         TemplateEngine::new().render(
             "blog.html",
-            &serde_json::json!({ "title": "Main", "site": site, "section": section, "nav": [] }),
+            &serde_json::json!({
+                "title": "Main",
+                "site": site,
+                "section": section,
+                "nav": [],
+                "meta": crate::embed::blog(&site, "https://example.test", &section),
+            }),
         )
+    }
+
+    fn projects_page(site: Site) -> String {
+        let projects = crate::projects::load_projects();
+        let dreams = crate::projects::load_dreams();
+        let live_count = projects
+            .iter()
+            .filter(|p| p.section == "featured" || p.section == "work")
+            .count();
+        let dream_count = dreams.len();
+        TemplateEngine::new().render(
+            "projects.html",
+            &serde_json::json!({
+                "title": "Projects",
+                "site": site,
+                "meta": crate::embed::projects(&site, "https://example.test", &projects, live_count, dream_count),
+                "projects": projects,
+                "dreams": dreams,
+                "live_count": live_count,
+                "dream_count": dream_count,
+            }),
+        )
+    }
+
+    fn gallery_page(site: Site) -> String {
+        TemplateEngine::new().render(
+            "content_gallery.html",
+            &serde_json::json!({
+                "site": site,
+                "meta": crate::embed::gallery(&site, "https://example.test"),
+            }),
+        )
+    }
+
+    fn socials_page(site: Site) -> String {
+        TemplateEngine::new().render(
+            "content_socials.html",
+            &serde_json::json!({
+                "site": site,
+                "meta": crate::embed::socials(&site, "https://example.test"),
+            }),
+        )
+    }
+
+    /// Every page that can be pasted into Discord has to include the shared
+    /// head block; one missing include means a bare link.
+    #[test]
+    fn every_page_template_includes_the_preview() {
+        for site in [Site::personal(), Site::professional()] {
+            for (name, html) in [
+                ("home", home(site)),
+                ("projects", projects_page(site)),
+                ("gallery", gallery_page(site)),
+                ("socials", socials_page(site)),
+                ("blog", blog_page(site)),
+            ] {
+                assert!(html.contains("property=\"og:title\""), "{name} has no OG title");
+                assert!(html.contains("name=\"theme-color\""), "{name} has no accent");
+                assert!(
+                    html.contains("id=\"discord:component-embed\""),
+                    "{name} has no component payload"
+                );
+                assert!(
+                    html.contains("application/json+oembed"),
+                    "{name} has no oEmbed discovery"
+                );
+            }
+        }
     }
 
     /// Mastodon 4.3 credits the page author on link previews by reading

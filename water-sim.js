@@ -23,6 +23,8 @@
      *   buttons     string[]     menu labels stamped into the water
      *   mode        string       'ascii' | 'density' | 'velocity' | 'grid' | 'text'
      *   text        boolean      draw the greeting/menu overlay
+     *   bio         string       line under the greeting ('' hides it)
+     *   showMenu    boolean      stamp the menu labels into the water
      *   interactive boolean      follow the pointer
      *   globalInput boolean      listen on document instead of the mount
      *   inputEl     HTMLElement  element that receives pointer events
@@ -299,7 +301,10 @@
         const name    = GREETING;
         const buttons = BUTTONS;
         const btnStr  = buttons.join('  ');
-        const bio     = 'artist & developer';
+        // The embed scene wants the name and the line under it without the
+        // menu, so both are optional here.
+        const bio     = opts.bio === undefined ? 'artist & developer' : String(opts.bio);
+        const showMenu = opts.showMenu !== false;
 
         // ---- Name (typewriter reveal) ----
         const nameRow = Math.floor(rows * 0.84);
@@ -314,17 +319,21 @@
         }
 
         // ---- Buttons (single spaced row) ----
-        const btnRow = Math.floor(rows * 0.89);
-        const btnCol = Math.floor((cols - btnStr.length) / 2);
-        for (let i = 0; i < btnStr.length; i++) {
-            textOverlays.push({ row: btnRow, col: btnCol + i, char: btnStr[i] });
+        const btnRow = showMenu ? Math.floor(rows * 0.89) : 0;
+        const btnCol = showMenu ? Math.floor((cols - btnStr.length) / 2) : 0;
+        if (showMenu) {
+            for (let i = 0; i < btnStr.length; i++) {
+                textOverlays.push({ row: btnRow, col: btnCol + i, char: btnStr[i] });
+            }
         }
 
         // ---- Bio ----
-        const bioRow = Math.floor(rows * 0.94);
-        const bioCol = Math.floor((cols - bio.length) / 2);
-        for (let i = 0; i < bio.length; i++) {
-            textOverlays.push({ row: bioRow, col: bioCol + i, char: bio[i] });
+        const bioRow = bio ? Math.floor(rows * 0.94) : 0;
+        const bioCol = bio ? Math.floor((cols - bio.length) / 2) : 0;
+        if (bio) {
+            for (let i = 0; i < bio.length; i++) {
+                textOverlays.push({ row: bioRow, col: bioCol + i, char: bio[i] });
+            }
         }
 
         // Expose the live grid so the DOM overlay can align its click targets exactly
