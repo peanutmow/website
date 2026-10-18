@@ -21,8 +21,8 @@ jobs:
       - name: Build release binary (static, for the server)
         run: cargo build --release --target x86_64-unknown-linux-musl
 
-      - name: Install lftp + sshpass
-        run: sudo apt-get install -y lftp sshpass
+      - name: Install lftp + sshpass (+ rsync)
+        run: sudo apt-get install -y lftp sshpass rsync
 
       - name: Deploy to Uberspace
         env:
@@ -30,30 +30,65 @@ jobs:
           SFTP_PORT: ${{ secrets.SFTP_PORT }}
           SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
           SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+          SSHPASS: ${{ secrets.SFTP_PASSWORD }}
         run: |
-          # 1) Upload static assets first, then the binary LAST so the
-          #    mirror --delete never removes it (it's not in the local tree).
-          #    NOTE: use RELATIVE paths (html/...) — lftp starts in the SFTP
-          #    user's home dir. No explicit mkdir: lftp's `mkdir -p` fails
-          #    with "Access failed" on dirs that already exist (like html/);
-          #    mirror creates any needed dirs by itself.
-          echo "==> [lftp] mirroring repo to html/ ..."
+          set -euo pipefail
+
+          # 1) Sync the site incrementally. rsync compares checksums, so only
+          #    new/changed files are uploaded and unchanged ones are left
+          #    alone (lftp's mirror compared size+mtime, and actions/checkout
+          #    stamps every file with "now", so it re-uploaded everything on
+          #    every run). --delete still removes files that no longer exist
+          #    in the repo, but excluded paths (the running binary) are kept.
+          #    NOTE: the destination is the absolute web root (on Uberspace
+          #    ~/html is a symlink into /var/www/virtual/<user>/html), which
+          #    is the same path the remote setup step below uses.
+          echo "==> [rsync] syncing repo to html/ ..."
+          APP_DIR="/var/www/virtual/$SFTP_USERNAME/html"
+          SYNC_EXCLUDES=(
+            --exclude=/.git/
+            --exclude=/.github/
+            --exclude=/target/
+            --exclude=node_modules/
+            --exclude='*.md'
+            --exclude=/alice-website
+            --exclude='/alice-website.*'
+          )
+          RSYNC_SSH="sshpass -e ssh -p $SFTP_PORT -o StrictHostKeyChecking=no"
+          if rsync -rlpt --omit-dir-times --checksum \
+               --delete --delete-after --itemize-changes \
+               "${SYNC_EXCLUDES[@]}" -e "$RSYNC_SSH" \
+               ./ "$SFTP_USERNAME@$SFTP_HOST:$APP_DIR/"; then
+            echo "==> [rsync] sync done"
+          else
+            # Safety net: fall back to the previous behaviour (full lftp
+            # mirror) if rsync is unusable on the host. Keep this exclude
+            # list in sync with SYNC_EXCLUDES above.
+            echo "!! [rsync] failed — falling back to a full lftp mirror" >&2
+            printf '%s\n' \
+              'set sftp:auto-confirm yes' \
+              'set cmd:fail-exit yes' \
+              'set net:max-retries 3' \
+              'mirror --reverse --delete --verbose --exclude=.git/ --exclude=.github/ --exclude=target/ --exclude=node_modules/ --exclude-glob=*.md --exclude=alice-website ./ html/' \
+              'bye' > "$RUNNER_TEMP/mirror.lftp"
+            lftp -u "$SFTP_USERNAME,$SFTP_PASSWORD" \
+              "sftp://$SFTP_HOST:$SFTP_PORT" -f "$RUNNER_TEMP/mirror.lftp"
+          fi
+
+          # 2) Upload the binary LAST (and under a temp name) so the sync
+          #    above can never remove or replace the running executable.
+          echo "==> [lftp] uploading binary ..."
           lftp -u "$SFTP_USERNAME,$SFTP_PASSWORD" sftp://$SFTP_HOST:$SFTP_PORT <<EOF
           set sftp:auto-confirm yes
           set cmd:fail-exit yes
           set net:max-retries 3
-          mirror --reverse --delete --verbose \
-            --exclude=.git/ --exclude=.github/ --exclude=target/ \
-            --exclude=node_modules/ --exclude-glob=*.md \
-            --exclude=alice-website \
-            ./ html/
           put target/x86_64-unknown-linux-musl/release/alice-website \
             -o html/alice-website.new
           bye
           EOF
           echo "==> [lftp] upload done"
 
-          # 2) Make binary executable, install supervisord service, set web
+          # 3) Make binary executable, install supervisord service, set web
           #    backend. Uberspace manages persistent daemons with supervisord
           #    (NOT systemd user services — `systemctl --user` / linger don't
           #    exist there). Service config = one .ini in ~/etc/services.d/.
