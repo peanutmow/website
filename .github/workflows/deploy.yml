@@ -3,6 +3,11 @@ on:
   push:
     branches:
       - main
+  # The gallery is generated from the public photostream. A nightly deploy
+  # refreshes it even when the repository itself hasn't changed.
+  schedule:
+    - cron: '17 4 * * *'
+  workflow_dispatch:
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -10,10 +15,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Regenerate gallery/photos.json from Flickr before building. The
+      # archive lives in that file, so new uploads reach the live page without
+      # anyone editing HTML. Non-fatal: a Flickr outage keeps the last copy.
+      - name: Refresh gallery from Flickr
+        continue-on-error: true
+        run: |
+          python3 -m pip install --quiet --disable-pip-version-check pillow
+          python3 tools/gallery/sync.py
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-unknown-linux-musl
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
 
       - name: Install musl-tools (static link)
         run: sudo apt-get update && sudo apt-get install -y musl-tools
