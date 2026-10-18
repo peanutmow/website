@@ -1,0 +1,156 @@
+/* ──────────────────────────────────────────────────────────────
+   Inspect mode.
+
+   The page itself is the interface: one line of layers at the top,
+   a short note at the left, everything else left alone. No panels,
+   no rails, no accent colours — only the type already on the page.
+   ────────────────────────────────────────────────────────────── */
+
+:root {
+    --ix-sans: 'Geist', 'Helvetica Neue', Arial, sans-serif;
+    --ix-mono: 'Courier New', monospace;
+    --ix-white: rgba(255, 255, 255, 0.82);
+}
+
+body.inspect-open { overflow: hidden !important; }
+body.inspect-open #ui-overlay {
+    opacity: 0 !important;
+    pointer-events: none !important;
+}
+
+.inspect {
+    position: fixed;
+    inset: 0;
+    z-index: 940;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.28s ease;
+}
+.inspect[hidden] { display: none; }
+.inspect.is-open { opacity: 1; }
+.inspect:focus { outline: none; }
+
+/* a soft fall of black behind the words, and nothing else */
+.inspect::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 15rem;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(to bottom, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+}
+
+/* the density field as an image, not as characters */
+.ix-canvas {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0;
+    filter: blur(4px);
+    transform: scale(1.01);
+    transform-origin: center;
+    transition: opacity 0.4s ease;
+}
+.ix-canvas.is-on { opacity: 1; }
+.ix-canvas[data-mode="current"] { filter: none; }
+
+/* ── layers ─────────────────────────────────────────────────── */
+
+/* Everything the tour says is written into the water's own character grid.
+   inspect.js sets the font size and line height from the live grid, so the
+   columns line up with the characters already on screen. */
+.ix-ascii {
+    position: fixed;
+    inset: 0;
+    margin: 0;
+    padding: 0;
+    z-index: 3;
+    font-family: var(--ix-mono);
+    color: rgba(255, 255, 255, 0.62);
+    white-space: pre;
+    overflow: hidden;
+    pointer-events: none;
+    text-shadow: 0 0 10px rgba(0, 0, 0, 0.9);
+}
+
+/* Invisible hit targets. The buttons keep their labels for screen readers
+   and keyboard focus; the glyphs are the ones drawn in .ix-ascii above. */
+.ix-layer,
+.ix-arrow,
+.ix-close,
+.ix-cta {
+    padding: 0;
+    border: 0;
+    background: none;
+    font-size: 0;
+    line-height: 1;
+    color: transparent;
+    white-space: nowrap;
+    cursor: pointer;
+    pointer-events: auto;
+    text-shadow: none;
+}
+.ix-layer:focus,
+.ix-arrow:focus,
+.ix-close:focus,
+.ix-cta:focus { outline: none; }
+.ix-layer:focus-visible,
+.ix-arrow:focus-visible,
+.ix-close:focus-visible,
+.ix-cta:focus-visible {
+    outline: 1px solid rgba(255, 255, 255, 0.34);
+    outline-offset: 2px;
+}
+.ix-arrow:disabled { cursor: default; }
+.ix-cta[hidden] { display: none; }
+
+/* the note is spoken, not shown */
+.ix-note {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+}
+
+/* the old frame dissolving into the next */
+.ix-ghost {
+    position: fixed;
+    top: 0;
+    left: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    z-index: 900;
+    color: #fff;
+    font-family: 'Courier New', monospace;
+    white-space: pre;
+    overflow: hidden;
+    line-height: 1;
+    letter-spacing: 0;
+    tab-size: 1;
+    pointer-events: none;
+    text-shadow: 0 0 4px rgba(255, 255, 255, 0.3), 0 0 12px rgba(255, 255, 255, 0.1);
+    opacity: 1;
+    transition: opacity 0.5s ease;
+}
+.ix-ghost.is-out { opacity: 0; }
+
+/* ── entrance ───────────────────────────────────────────────── */
+
+.ix-ascii { transition: opacity 0.28s ease; }
+.inspect:not(.is-open) .ix-ascii { opacity: 0; }
+
+@media (prefers-reduced-motion: reduce) {
+    .inspect,
+    .ix-ascii,
+    .ix-canvas,
+    .ix-ghost { transition-duration: 0.01ms !important; }
+}

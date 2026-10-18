@@ -4,12 +4,38 @@
  * Simplified Navier-Stokes solver (Jos Stam method) rendered as
  * brightness-mapped ASCII characters on a pitch-black background.
  *
- * Mouse movement creates swirling vortexes; the intensity of the
- * fluid maps to ASCII character brightness. Click to reveal the
- * page navigation.
+ * The pointer pushes the fluid along the path it travelled; the intensity of
+ * the fluid maps to character brightness. `createWaterSim` returns an instance bound to a <pre>,
+ * which is how the guided tour runs small plates beside the page.
  */
 (function () {
     'use strict';
+
+    /**
+     * Create a simulation bound to a <pre> element.
+     *
+     * Every instance owns its solver state, so the page background and the
+     * small plates in the guided tour can run side by side.
+     *
+     * @param {Object} opts
+     *   mount       HTMLElement  target <pre> (required)
+     *   greeting    string       line typed into the water
+     *   buttons     string[]     menu labels stamped into the water
+     *   mode        string       'ascii' | 'density' | 'velocity' | 'grid' | 'text'
+     *   text        boolean      draw the greeting/menu overlay
+     *   interactive boolean      follow the pointer
+     *   globalInput boolean      listen on document instead of the mount
+     *   inputEl     HTMLElement  element that receives pointer events
+     *   pageHooks   boolean      the landing page's scroll/socials behaviour
+     *   easterEggs  boolean      type "42" / "cowsay" / "about:blank"
+     *   typewriter  boolean      type the greeting out
+     *   buttonBar   HTMLElement  ripple when its buttons are hovered
+     *   onLayout    function     receives the live grid layout
+     *   size        function     returns { width, height } in CSS pixels
+     * @returns {Object} controls
+     */
+    function createWaterSim(opts) {
+    opts = opts || {};
 
     // ================================================================
     // Configuration
@@ -21,14 +47,18 @@
         diffuseIters: 10,        // Gauss-Seidel iterations for diffusion
         pressureIters: 25,       // Gauss-Seidel iterations for pressure solve
         forceStrength: 3.0,      // Velocity impulse from mouse drag
-        swirlStrength: 1.2,      // Perpendicular vortex strength
+        maxPushCells: 22,        // Longest stretch of one frame's drag that pushes the fluid
+        vorticity: 8,            // Vorticity confinement: keeps small eddies spinning (0 = off)
+        vorticityCap: 0.05,      // Ceiling on the confinement force per cell per step
         densityPerFrame: 1.0,    // Density emitted per frame from mouse
         brushRadius: 2,          // Radius of density brush in grid cells
         dissipation: 0.992,      // Per-frame density decay (lower = faster fade)
         velDissipation: 0.997,   // Per-frame velocity decay
         ambientForce: 0.0003,    // Tiny random forces (keeps water alive)
         ambientDensity: 0.0005,  // Subtle background shimmer density
-        chars: ' .,-~:=+*#%@',  // 11-level brightness ramp (dark → bright)
+        // Ordered by measured ink coverage in Courier New, so each step is a
+        // real step up in brightness rather than a jump around it.
+        chars: ' .-:~,^;*=|>+\\/?&$%#@',  // 21 levels, space → @ (dark → bright)
         fadeFps: 60              // Target frames per second
     };
 
@@ -42,19 +72,46 @@
     let dens, densPrev;
     // Projection scratch
     let pressure, divergence;
+    // Vorticity confinement scratch
+    let curl, curlAbs;
 
     // Mouse tracking (in grid coordinates)
     let mx = -1, my = -1;
-    let pmx = -1, pmy = -1;
-    let mdx = 0, mdy = 0;
     let mouseActive = false;
     let mouseDown = false;
-    let lastMouseTime = 0;
+    // Pointer segments since the last solver step. Browsers coalesce moves and
+    // often deliver them as x-only then y-only deltas; keeping every segment
+    // means a diagonal drag pushes diagonally instead of snapping to an axis.
+    let trail = [];
+    const TRAIL_MAX = 512;
+    // Patches the caller wants kept clear of ink (see applyMasks).
+    let masks = [];
 
     // DOM references
     let preEl;
     let animFrameId = null;
     let lastTimestamp = 0;
+    // Milliseconds carried over between animation frames, so the solver keeps a
+    // steady rate whatever the display or the tab throttling does.
+    let pendingMs = 0;
+    // The <pre>'s text node, reused instead of rebuilt on every frame.
+    let textNode = null;
+    // Respect the system's reduced-motion preference: no ambient drift.
+    const reduceMotion = window.matchMedia
+        ? window.matchMedia('(prefers-reduced-motion: reduce)')
+        : null;
+    const ambientMotion = function () { return !(reduceMotion && reduceMotion.matches); };
+
+    // ── What this instance draws ──
+    // The guided tour turns the same solver into separate teaching views:
+    // the raw field, the grid, the velocity, the ramp, the type.
+    let renderMode = opts.mode || 'ascii';
+    let textVisible = opts.text !== false;
+
+    /** CSS-pixel size of the surface this instance paints. */
+    const SIZE = opts.size || function () {
+        return { width: window.innerWidth, height: window.innerHeight };
+    };
 
     // ── ASCII text overlay ──
     // Text rendered directly in the ASCII grid so it blends seamlessly with the water.
@@ -68,7 +125,8 @@
     // The page may set window.__SITE__.greeting so the greeting matches the
     // active profile (Alice on the personal site, Dave on the professional
     // one). Falls back to the personal greeting when the script is served raw.
-    const GREETING = (window.__SITE__ && window.__SITE__.greeting) || "Hi, I'm Alice";
+    const GREETING = opts.greeting || (window.__SITE__ && window.__SITE__.greeting) || "Hi, I'm Alice";
+    const BUTTONS = opts.buttons || (window.__SITE__ && window.__SITE__.buttons) || ['Socials', 'Gallery', 'Blog', 'Projects'];
     let greetingRevealed = 0;
     let greetingComplete = false;
 
@@ -223,7 +281,7 @@
     }
 
     // Expose easter egg triggers globally for URL hash detection
-    window.__triggerAboutBlank = triggerAboutBlank;
+    if (opts.easterEggs) window.__triggerAboutBlank = triggerAboutBlank;
 
     function computeTextOverlays() {
         textOverlays = [];
@@ -236,10 +294,10 @@
         }
 
         // Don't render UI text when a content page (like Socials) is open
-        if (document.body.classList.contains('hide-ui-text')) return;
+        if (opts.pageHooks && document.body.classList.contains('hide-ui-text')) return;
 
-        const name   = GREETING;
-        const buttons = (window.__SITE__ && window.__SITE__.buttons) || ['Socials', 'Gallery', 'Blog', 'Projects'];
+        const name    = GREETING;
+        const buttons = BUTTONS;
         const btnStr  = buttons.join('  ');
         const bio     = 'artist & developer';
 
@@ -270,19 +328,22 @@
         }
 
         // Expose the live grid so the DOM overlay can align its click targets exactly
-        try {
-            window.__asciiLayout = {
-                rows: rows,
-                cols: cols,
-                charW: _charWidth || parseFloat(preEl.style.fontSize) * 0.54 || 8,
-                rowH: parseFloat(preEl.style.fontSize) || 14,
-                nameRow: nameRow, nameCol: nameCol,
-                btnRow: btnRow, btnCol: btnCol,
-                bioRow: bioRow, bioCol: bioCol,
-                buttons: buttons,
-                btnStr: btnStr
-            };
-        } catch (e) {}
+        if (opts.onLayout) {
+            try {
+                opts.onLayout({
+                    rows: rows,
+                    cols: cols,
+                    charW: _charWidth || parseFloat(preEl.style.fontSize) * 0.54 || 8,
+                    rowH: parseFloat(preEl.style.fontSize) || 14,
+                    nameRow: nameRow, nameCol: nameCol,
+                    btnRow: btnRow, btnCol: btnCol,
+                    bioRow: bioRow, bioCol: bioCol,
+                    buttons: buttons,
+                    btnStr: btnStr,
+                    bio: bio
+                });
+            } catch (e) {}
+        }
     }
 
     /** Measure the exact character width using a hidden DOM span (more reliable than canvas). */
@@ -295,7 +356,7 @@
         try {
             if (!_charSpan) {
                 _charSpan = document.createElement('span');
-                _charSpan.style.cssText = 'position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;white-space:pre;font-family:"Share Tech Mono","Courier New",monospace;line-height:1;letter-spacing:0;';
+                _charSpan.style.cssText = 'position:fixed;left:0;top:0;visibility:hidden;pointer-events:none;white-space:pre;font-family:"Courier New",monospace;line-height:1;letter-spacing:0;';
                 document.body.appendChild(_charSpan);
             }
             _charSpan.style.fontSize = fs;
@@ -332,8 +393,10 @@
     function allocate(width, height) {
         // Compute rows to fill height, then derive cols to fill (or slightly overflow) width.
         // Using actual measured character width for accuracy.
+        if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) return;
         const newRows = Math.max(10, Math.ceil(height / CFG.cellPx));
         const fs = height / newRows;
+        if (!Number.isFinite(fs) || fs <= 0) return;
         // Temporarily set font size to measure char width
         if (preEl) {
             preEl.style.fontSize = fs + 'px';
@@ -341,10 +404,16 @@
             measureCharWidth();
         }
         const cw = _charWidth || fs * 0.54;
+        if (!Number.isFinite(cw) || cw <= 0) return;
         const newCols = Math.max(20, Math.ceil(width / cw));
+        if (!Number.isFinite(newCols)) return;
 
         // No-op if size unchanged
         if (newCols === cols && newRows === rows) return;
+
+        // Keep the water through the resize: sample the old fields at the same
+        // relative position instead of starting from an empty screen.
+        const carry = cols ? { cols: cols, rows: rows, u: u, v: v, dens: dens } : null;
 
         cols = newCols;
         rows = newRows;
@@ -358,14 +427,50 @@
         densPrev = new Float32Array(total);
         pressure = new Float32Array(total);
         divergence = new Float32Array(total);
+        curl = new Float32Array(total);
+        curlAbs = new Float32Array(total);
+
+        if (carry) carryField(carry);
+
+        // Cell coordinates on the old grid mean nothing on the new one.
+        mx = -1; my = -1;
+        trail.length = 0;
 
         computeTextOverlays();
     }
 
-    /** Recalculate font-size so the ASCII grid exactly fills the viewport. */
+    /** Bilinearly move a field from an older grid size onto the current one. */
+    function carryField(old) {
+        const sx = old.cols / cols;
+        const sy = old.rows / rows;
+        for (let j = 0; j < rows; j++) {
+            const fj = clamp((j + 0.5) * sy - 0.5, 0, old.rows - 1);
+            const j0 = Math.floor(fj);
+            const j1 = Math.min(old.rows - 1, j0 + 1);
+            const rj = fj - j0;
+            for (let i = 0; i < cols; i++) {
+                const fi = clamp((i + 0.5) * sx - 0.5, 0, old.cols - 1);
+                const i0 = Math.floor(fi);
+                const i1 = Math.min(old.cols - 1, i0 + 1);
+                const ri = fi - i0;
+                const a = i0 + j0 * old.cols;
+                const b = i1 + j0 * old.cols;
+                const c = i0 + j1 * old.cols;
+                const d = i1 + j1 * old.cols;
+                const p = i + j * cols;
+                dens[p] = lerp(lerp(old.dens[a], old.dens[b], ri), lerp(old.dens[c], old.dens[d], ri), rj);
+                u[p] = lerp(lerp(old.u[a], old.u[b], ri), lerp(old.u[c], old.u[d], ri), rj);
+                v[p] = lerp(lerp(old.v[a], old.v[b], ri), lerp(old.v[c], old.v[d], ri), rj);
+            }
+        }
+        densPrev.set(dens);
+    }
+
+    /** Recalculate font-size so the ASCII grid exactly fills the surface. */
     function updatePreFontSize() {
         if (!preEl) return;
-        const h = window.innerHeight;
+        const h = SIZE().height;
+        if (!h) return;
         const fs = h / rows; // font size based on height constraint
         preEl.style.fontSize = fs + 'px';
         preEl.style.lineHeight = fs + 'px';
@@ -431,6 +536,13 @@
      */
     function diffuse(dst, src, diffRate, bType, iters) {
         const a = CFG.dt * diffRate * cols * rows;
+        // With the shipped viscosity the coefficient is ~3e-5, so the solve
+        // returns its input. Copying is the same answer without the iterations.
+        if (a * iters < 1e-3) {
+            dst.set(src);
+            setBounds(dst, bType);
+            return;
+        }
         const denom = 1 + 4 * a;
 
         for (let iter = 0; iter < iters; iter++) {
@@ -506,13 +618,17 @@
      * bilinearly interpolate the source quantity.
      */
     function advect(dst, src, velU, velV) {
+        // One scale for both axes. The old code used `cols` across and `rows`
+        // down, so on a wide grid a diagonal current flattened into a sideways
+        // one as it travelled.
+        const step = CFG.dt * Math.sqrt(cols * rows);
         for (let j = 1; j < rows - 1; j++) {
             const off = j * cols;
             for (let i = 1; i < cols - 1; i++) {
                 const p = off + i;
                 // Trace backwards in time
-                let x = i - CFG.dt * cols * velU[p];
-                let y = j - CFG.dt * rows * velV[p];
+                let x = i - step * velU[p];
+                let y = j - step * velV[p];
                 x = clamp(x, 0.5, cols - 1.5);
                 y = clamp(y, 0.5, rows - 1.5);
                 dst[p] = bilin(src, x, y);
@@ -525,58 +641,94 @@
     // Forces & interaction
     // ================================================================
 
-    /** Add velocity from mouse movement (called BEFORE advection). */
-    function addMouseForces() {
-        if (!mouseActive || mx < 0 || my < 0) return;
-
-        // Only inject when the mouse is actually moving (velocity above threshold).
-        const speed = Math.sqrt(mdx * mdx + mdy * mdy);
-        if (speed < 0.01) return;
-
-        const gi = clamp(Math.round(mx), 1, cols - 2);
-        const gj = clamp(Math.round(my), 1, rows - 2);
-        const p = idx(gi, gj);
-
-        // Velocity impulse in the direction of mouse movement
-        u[p] += mdx * CFG.forceStrength;
-        v[p] += mdy * CFG.forceStrength;
-
-        // Add perpendicular component for vortex generation
-        const swirl = speed * CFG.swirlStrength;
-        u[p] -= mdy * swirl;
-        v[p] += mdx * swirl;
-
-        // Note: mdx/mdy are NOT reset here — injectMouseDensity still needs them.
+    /**
+     * One net segment for everything the pointer did since the last solver
+     * step. Browsers often report a diagonal drag as a staircase of x-only and
+     * y-only events; using every individual segment would therefore push the
+     * water on the axes. The net displacement over one frame is the true
+     * direction of travel, so that is what the force follows.
+     */
+    function pointerSegment() {
+        if (!trail.length) return null;
+        const first = trail[0];
+        const last = trail[trail.length - 1];
+        const dx = last.x1 - first.x0;
+        const dy = last.y1 - first.y0;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 0.01) return null;
+        return { x0: first.x0, y0: first.y0, dx: dx, dy: dy, dist: dist };
     }
 
-    /** Inject density at mouse position (called AFTER advection so it stays at cursor). */
+    /** Add velocity from the pointer's net movement (called BEFORE advection). */
+    function addMouseForces() {
+        if (!mouseActive) return;
+        const seg = pointerSegment();
+        if (!seg) return;
+
+        // Only the stretch nearest the pointer pushes the fluid. A quick flick
+        // can cover most of the screen in one frame, and handing the solver a
+        // whole screen of momentum at once makes the projection ring and the
+        // current break up along the axes.
+        const span = Math.min(seg.dist, CFG.maxPushCells) / seg.dist;
+        const x0 = seg.x0 + seg.dx * (1 - span);
+        const y0 = seg.y0 + seg.dy * (1 - span);
+        const dx = seg.dx * span;
+        const dy = seg.dy * span;
+
+        const steps = Math.max(1, Math.ceil(Math.sqrt(dx * dx + dy * dy)));
+        const sx = dx / steps;
+        const sy = dy / steps;
+
+        for (let s = 1; s <= steps; s++) {
+            const gi = clamp(Math.round(x0 + sx * s), 1, cols - 2);
+            const gj = clamp(Math.round(y0 + sy * s), 1, rows - 2);
+            const p = idx(gi, gj);
+
+            // The summed impulse equals the pointer displacement, so the
+            // wake points exactly where the pointer went. No perpendicular
+            // term is added: a swirl is divergence-free, so the solver would
+            // preserve it while projecting the real push away, leaving the
+            // current running sideways to the mouse.
+            u[p] += sx * CFG.forceStrength;
+            v[p] += sy * CFG.forceStrength;
+        }
+    }
+
+    /** Inject density along the net pointer movement (called AFTER advection). */
     function injectMouseDensity() {
-        if (!mouseActive || mx < 0 || my < 0) return;
+        if (!mouseActive) return;
+        const seg = pointerSegment();
+        if (!seg) {
+            trail.length = 0;
+            return;
+        }
 
-        const speed = Math.sqrt(mdx * mdx + mdy * mdy);
-        if (speed < 0.01) return;
-
-        const gi = clamp(Math.round(mx), 1, cols - 2);
-        const gj = clamp(Math.round(my), 1, rows - 2);
-
-        // Inject density at mouse position with a wider brush
+        const steps = Math.max(1, Math.ceil(seg.dist));
+        const sx = seg.dx / steps;
+        const sy = seg.dy / steps;
+        const amount = CFG.densityPerFrame / Math.sqrt(steps);
         const brush = CFG.brushRadius;
-        for (let dj = -brush; dj <= brush; dj++) {
-            for (let di = -brush; di <= brush; di++) {
-                const ni = clamp(gi + di, 1, cols - 2);
-                const nj = clamp(gj + dj, 1, rows - 2);
-                const dist = Math.sqrt(di * di + dj * dj);
-                if (dist <= brush) {
-                    const falloff = 1 - (dist / (brush + 1));
-                    dens[idx(ni, nj)] += CFG.densityPerFrame * falloff;
-                    if (dens[idx(ni, nj)] > 1) dens[idx(ni, nj)] = 1;
+
+        for (let s = 1; s <= steps; s++) {
+            const gi = clamp(Math.round(seg.x0 + sx * s), 1, cols - 2);
+            const gj = clamp(Math.round(seg.y0 + sy * s), 1, rows - 2);
+
+            for (let dj = -brush; dj <= brush; dj++) {
+                for (let di = -brush; di <= brush; di++) {
+                    const ni = clamp(gi + di, 1, cols - 2);
+                    const nj = clamp(gj + dj, 1, rows - 2);
+                    const d2 = di * di + dj * dj;
+                    if (d2 <= brush * brush) {
+                        const falloff = 1 - (Math.sqrt(d2) / (brush + 1));
+                        const at = idx(ni, nj);
+                        dens[at] += amount * falloff;
+                        if (dens[at] > 1) dens[at] = 1;
+                    }
                 }
             }
         }
 
-        // Reset velocity delta so stationary mouse doesn't keep injecting next frame
-        mdx = 0;
-        mdy = 0;
+        trail.length = 0;
     }
 
     /** Random ambient velocity (BEFORE advection). */
@@ -595,13 +747,63 @@
         }
     }
 
+    /**
+     * Vorticity confinement. Small eddies are what make the field read as
+     * water, but decaying momentum and the two projections flatten them.
+     * Nudging each cell along the gradient of |curl| keeps them spinning.
+     * It only amplifies rotation the flow already has, so unlike a swirl
+     * added to the pointer it cannot turn a drag sideways.
+     */
+    function addVorticity() {
+        if (!CFG.vorticity || !curl) return;
+
+        for (let j = 1; j < rows - 1; j++) {
+            const off = j * cols;
+            for (let i = 1; i < cols - 1; i++) {
+                const p = off + i;
+                const c = 0.5 * ((v[p + 1] - v[p - 1]) - (u[p + cols] - u[p - cols]));
+                curl[p] = c;
+                curlAbs[p] = Math.abs(c);
+            }
+        }
+        setBounds(curl, 0);
+        setBounds(curlAbs, 0);
+
+        const gain = CFG.vorticity * CFG.dt;
+        const cap = CFG.vorticityCap;
+        for (let j = 1; j < rows - 1; j++) {
+            const off = j * cols;
+            for (let i = 1; i < cols - 1; i++) {
+                const p = off + i;
+                const gx = curlAbs[p + 1] - curlAbs[p - 1];
+                const gy = curlAbs[p + cols] - curlAbs[p - cols];
+                const len = Math.sqrt(gx * gx + gy * gy);
+                if (len < 1e-6) continue;
+                const nx = gx / len;
+                const ny = gy / len;
+                // Clamp: confinement is positive feedback, and without a ceiling
+                // one strong eddy can spin the whole field apart.
+                let fx = gain * ny * curl[p];
+                let fy = -gain * nx * curl[p];
+                if (fx > cap) fx = cap; else if (fx < -cap) fx = -cap;
+                if (fy > cap) fy = cap; else if (fy < -cap) fy = -cap;
+                u[p] += fx;
+                v[p] += fy;
+            }
+        }
+        setBounds(u, 1);
+        setBounds(v, 2);
+    }
+
     // ================================================================
     // Main simulation step
     // ================================================================
     function simulate() {
+        if (!cols || !rows || !u || !v || !dens) return;
+
         // ── Step 1: Add velocity forces (BEFORE advection) ──
         addMouseForces();        // velocity from mouse
-        addAmbientVelocity();    // random ambient velocity
+        if (ambientMotion()) addAmbientVelocity();    // random ambient velocity
 
         // 2. Diffuse velocity
         diffuse(uPrev, u, CFG.viscosity, 1, CFG.diffuseIters);
@@ -617,6 +819,9 @@
         // 5. Advect velocity
         advect(uPrev, u, u, v);
         advect(vPrev, v, u, v);
+
+        // 5b. Put the curl back that advection and decay have taken out
+        addVorticity();
 
         // 6. Project again
         project(uPrev, vPrev);
@@ -635,7 +840,7 @@
         // This ensures freshly injected density stays at the cursor position
         // instead of being immediately swept away by the velocity field.
         injectMouseDensity();
-        addAmbientDensity();
+        if (ambientMotion()) addAmbientDensity();
 
         // 11. Dissipate density & velocity
         for (let i = 0; i < total; i++) {
@@ -645,49 +850,171 @@
             // Keep a minimum threshold to avoid rendering noise
             if (dens[i] < 0.005) dens[i] = 0;
         }
+
+        applyMasks();
+    }
+
+    /** Is this grid coordinate inside a masked patch? */
+    function maskAt(i, j) {
+        for (let m = 0; m < masks.length; m++) {
+            const k = masks[m];
+            if (i >= k.col && i < k.col + k.cols && j >= k.row && j < k.row + k.rows) return true;
+        }
+        return false;
+    }
+
+    /**
+     * Keep patches of the grid clear of ink.
+     *
+     * The guided tour writes its own words into the character grid; without
+     * this they would be printed over moving water and turn to mush. Rather
+     * than dimming them with a panel, the water is thinned where the words
+     * are, with a soft edge so it looks like it parts around them.
+     */
+    function applyMasks() {
+        for (let m = 0; m < masks.length; m++) {
+            const mask = masks[m];
+            const r1 = Math.min(rows - 1, mask.row + mask.rows);
+            const c1 = Math.min(cols - 1, mask.col + mask.cols);
+            const fade = mask.fade == null ? 2 : mask.fade;
+            for (let j = Math.max(0, mask.row); j < r1; j++) {
+                const edgeJ = Math.min(j - mask.row, r1 - 1 - j);
+                for (let i = Math.max(0, mask.col); i < c1; i++) {
+                    const edgeI = Math.min(i - mask.col, c1 - 1 - i);
+                    const edge = Math.min(edgeJ, edgeI);
+                    const keep = fade > 0 ? Math.min(1, Math.max(0, edge / fade)) : 0;
+                    const p = i + j * cols;
+                    dens[p] *= keep;
+                }
+            }
+        }
     }
 
     // ================================================================
     // ASCII rendering
     // ================================================================
 
-    /** Build the ASCII string from the density field and update the DOM. */
-    function render() {
-        if (!preEl) return;
+    /** The glyphs used when the plate shows shade instead of letters. */
+    const SHADE = ' ░▒▓█';
+    /** Four strokes are enough to read a current without breaking the grid. */
+    const STROKES = ['-', '\\', '|', '/'];
 
+    /** The normal view: density mapped onto the character ramp. */
+    function renderFluid(rowsArr) {
         const ramp = CFG.chars;
-        const rampLen = ramp.length - 1; // skip space at index 0
-        // Precompute threshold so density 0 → space, density ~1 → last char
-        const threshold = rampLen;
-
-        // Build rows as array of strings (mutable for text overlay)
-        const rowsArr = new Array(rows);
+        const rampLen = ramp.length - 1;
         for (let j = 0; j < rows; j++) {
             const off = j * cols;
             let line = '';
             for (let i = 0; i < cols; i++) {
-                const d = dens[off + i];
+                // A touch of gain: density peaks around 0.85 by the time the
+                // frame is drawn, so without it the densest glyphs never show.
+                const d = Math.min(1, dens[off + i] * 1.15);
                 if (d <= 0) {
                     line += ' ';
                 } else {
-                    const idx = Math.min(rampLen, Math.round(d * threshold));
-                    line += ramp[idx];
+                    line += ramp[Math.min(rampLen, Math.round(d * rampLen))];
                 }
             }
             rowsArr[j] = line;
         }
+    }
 
-        // ── Overlay text directly into the ASCII grid ──
+    /** The field without letters: shade blocks, lightly boosted to be legible. */
+    function renderShade(rowsArr) {
+        for (let j = 0; j < rows; j++) {
+            const off = j * cols;
+            let line = '';
+            for (let i = 0; i < cols; i++) {
+                const d = Math.min(1, dens[off + i] * 1.15);
+                const step = d <= 0 ? 0 : Math.min(4, 1 + Math.floor(d * 4));
+                line += SHADE[step];
+            }
+            rowsArr[j] = line;
+        }
+    }
+
+    /** The velocity field as strokes; speed picks the weight, direction the angle. */
+    function renderCurrent(rowsArr) {
+        let peak = 0;
+        for (let p = 0; p < total; p++) {
+            const s = u[p] * u[p] + v[p] * v[p];
+            if (s > peak) peak = s;
+        }
+        const scale = peak > 0 ? 1 / Math.sqrt(peak) : 0;
+        for (let j = 0; j < rows; j++) {
+            const off = j * cols;
+            let line = '';
+            for (let i = 0; i < cols; i++) {
+                const p = off + i;
+                const su = u[p] * scale;
+                const sv = v[p] * scale;
+                const speed = Math.sqrt(su * su + sv * sv);
+                if (speed < 0.08) {
+                    line += ' ';
+                } else if (speed < 0.32) {
+                    line += '.';
+                } else {
+                    let angle = Math.atan2(sv, su);
+                    if (angle < 0) angle += Math.PI;
+                    line += STROKES[Math.round(angle / (Math.PI / 4)) % 4];
+                }
+            }
+            rowsArr[j] = line;
+        }
+    }
+
+    /** The lattice itself: one dot per cell, a cross every fifth. */
+    function renderGrid(rowsArr) {
+        const hasMasks = masks.length > 0;
+        for (let j = 0; j < rows; j++) {
+            let line = '';
+            for (let i = 0; i < cols; i++) {
+                // Under the tour's words the lattice thins to every fourth
+                // dot: still a texture, but quiet enough to read through.
+                if (hasMasks && maskAt(i, j)) {
+                    line += ((i + j) % 4 === 0) ? '.' : ' ';
+                    continue;
+                }
+                line += (i % 5 === 0 && j % 5 === 0) ? '+' : '.';
+            }
+            rowsArr[j] = line;
+        }
+    }
+
+    /** Build the character frame for the current mode and update the DOM. */
+    function render() {
+        if (!preEl || !cols || !rows) return;
+
+        const rowsArr = new Array(rows);
+
+        if (renderMode === 'text') {
+            for (let j = 0; j < rows; j++) rowsArr[j] = ' '.repeat(cols);
+        } else if (renderMode === 'grid') {
+            renderGrid(rowsArr);
+        } else if (renderMode === 'velocity') {
+            renderCurrent(rowsArr);
+        } else if (renderMode === 'density') {
+            renderShade(rowsArr);
+        } else {
+            renderFluid(rowsArr);
+        }
+
+        // ── Overlay text directly into the character grid ──
         // Auto-hide text when scrolled past the first viewport (content panel visible)
-        if (document.getElementById('socials-inline').classList.contains('visible')) {
-            if (window.scrollY > window.innerHeight * 0.4) {
-                document.body.classList.add('hide-ui-text');
-            } else {
-                document.body.classList.remove('hide-ui-text');
+        if (opts.pageHooks) {
+            const socials = document.getElementById('socials-inline');
+            if (socials && socials.classList.contains('visible')) {
+                if (window.scrollY > window.innerHeight * 0.4) {
+                    document.body.classList.add('hide-ui-text');
+                } else {
+                    document.body.classList.remove('hide-ui-text');
+                }
             }
         }
 
-        if (!document.body.classList.contains('hide-ui-text')) {
+        const hiddenByPage = opts.pageHooks && document.body.classList.contains('hide-ui-text');
+        if (textVisible && !hiddenByPage) {
             // Always recompute so erosion/density checks run every frame
             computeTextOverlays();
             for (let t = 0; t < textOverlays.length; t++) {
@@ -699,57 +1026,81 @@
             }
         }
 
-        preEl.textContent = rowsArr.join('\n');
+        if (preEl.dataset.mode !== renderMode) preEl.dataset.mode = renderMode;
+
+        // Reuse the text node: replacing it every frame churns the DOM for a
+        // string that is always the same shape.
+        const text = rowsArr.join('\n');
+        if (textNode && textNode.parentNode === preEl) {
+            textNode.data = text;
+        } else {
+            preEl.textContent = text;
+            textNode = preEl.firstChild;
+        }
     }
 
     // ================================================================
     // Animation loop
     // ================================================================
+    // The solver keeps a fixed step so its constants stay valid, but the
+    // number of steps comes from the wall clock. A 120 Hz display no longer
+    // runs the water at double speed, and a throttled tab no longer slows it.
+    const FRAME_MS = 1000 / CFG.fadeFps;
+    const MAX_CATCHUP = 3;
+
     function tick(timestamp) {
         if (!timestamp) timestamp = performance.now();
-
-        // Skip frame if we're falling behind (maintain ~30fps minimum)
-        if (timestamp - lastTimestamp < 1000 / CFG.fadeFps) {
-            animFrameId = requestAnimationFrame(tick);
-            return;
-        }
+        const elapsed = Math.min(250, Math.max(0, timestamp - lastTimestamp));
         lastTimestamp = timestamp;
+        pendingMs = Math.min(pendingMs + elapsed, FRAME_MS * MAX_CATCHUP);
 
-        simulate();
-        render();
+        let stepped = false;
+        // Half a millisecond of slack: frame timestamps are not exact, and a
+        // step that lands one float epsilon short would never run.
+        while (pendingMs >= FRAME_MS - 0.5) {
+            simulate();
+            pendingMs = Math.max(0, pendingMs - FRAME_MS);
+            stepped = true;
+        }
+        if (stepped) render();
         animFrameId = requestAnimationFrame(tick);
     }
 
     // ================================================================
     // Mouse / touch event handlers
     // ================================================================
+    /** Pointer position in the surface's own coordinates. */
+    function localPoint(clientX, clientY) {
+        const r = preEl.getBoundingClientRect();
+        return { x: clientX - r.left, y: clientY - r.top };
+    }
+
     function onMouseMove(e) {
-        // Map screen pixel coords → grid coords using actual measured character width.
-        // The pre element is fixed at (0,0) spanning the viewport, and characters are
-        // left-aligned, so clientX/Y directly correspond to character positions.
+        // Map surface pixels → grid coords using the measured character width.
+        // Characters are left-aligned, so the local offset corresponds directly
+        // to a character position (the landing page's pre sits at 0,0).
         const charW = _charWidth || parseFloat(preEl.style.fontSize) * 0.54 || 8;
         const fSize = parseFloat(preEl.style.fontSize) || 14;
-        const gx = e.clientX / charW;
-        const gy = e.clientY / fSize;
+        const pt = localPoint(e.clientX, e.clientY);
+        const gx = pt.x / charW;
+        const gy = pt.y / fSize;
 
         if (mx >= 0 && my >= 0) {
-            mdx = gx - mx;
-            mdy = gy - my;
-        } else {
-            mdx = 0;
-            mdy = 0;
+            const dx = gx - mx;
+            const dy = gy - my;
+            if (dx * dx + dy * dy > 1e-6 && trail.length < TRAIL_MAX) {
+                trail.push({ x0: mx, y0: my, x1: gx, y1: gy });
+            }
         }
 
-        pmx = mx;
-        pmy = my;
         mx = gx;
         my = gy;
         mouseActive = true;
-        lastMouseTime = performance.now();
     }
 
     function onTouchMove(e) {
-        e.preventDefault();
+        // No preventDefault: `touch-action: pan-y` on the surface lets a
+        // vertical swipe scroll the page instead of stirring.
         const touch = e.touches[0];
         if (!touch) return;
         onMouseMove({ clientX: touch.clientX, clientY: touch.clientY });
@@ -761,10 +1112,10 @@
         // Initialize mouse position without velocity
         const charW = _charWidth || parseFloat(preEl.style.fontSize) * 0.54 || 8;
         const fSize = parseFloat(preEl.style.fontSize) || 14;
-        mx = touch.clientX / charW;
-        my = touch.clientY / fSize;
-        mdx = 0;
-        mdy = 0;
+        const pt = localPoint(touch.clientX, touch.clientY);
+        mx = pt.x / charW;
+        my = pt.y / fSize;
+        trail.length = 0;
         mouseActive = true;
     }
 
@@ -772,6 +1123,7 @@
         mouseActive = false;
         mx = -1;
         my = -1;
+        trail.length = 0;
     }
 
     function onMouseDown(e) {
@@ -779,8 +1131,9 @@
         if (mx < 0) {
             const charW = _charWidth || parseFloat(preEl.style.fontSize) * 0.54 || 8;
             const fSize = parseFloat(preEl.style.fontSize) || 14;
-            mx = e.clientX / charW;
-            my = e.clientY / fSize;
+            const pt = localPoint(e.clientX, e.clientY);
+            mx = pt.x / charW;
+            my = pt.y / fSize;
         }
         mouseActive = true;
     }
@@ -793,9 +1146,11 @@
     // Resize handler
     // ================================================================
     function onResize() {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        // Set pre dimensions to exactly match innerWidth/innerHeight
+        const { width: w, height: h } = SIZE();
+        // A surface that is still being laid out reports zero (or, mid-font
+        // swap, a non-number). Skip those frames rather than build a NaN grid.
+        if (!Number.isFinite(w) || !Number.isFinite(h) || w <= 0 || h <= 0) return;
+        // Set pre dimensions to exactly match the surface
         // (not 100vw/vh which differ when a scrollbar is present)
         if (preEl) {
             preEl.style.width = w + 'px';
@@ -833,9 +1188,9 @@
     // ================================================================
     function init() {
         // Capture DOM elements
-        preEl = document.getElementById('ascii-water');
+        preEl = opts.mount || document.getElementById('ascii-water');
         if (!preEl) {
-            console.error('water-sim: #ascii-water element not found');
+            console.error('water-sim: no mount element');
             return;
         }
 
@@ -854,34 +1209,44 @@
         }, 1500);
 
         // ── Typewriter greeting ──
-        startTypewriter();
-
-        // ── Keyboard easter egg listener ──
-        document.addEventListener('keydown', function (e) {
-            // Only capture keys, ignore if typing in an input
-            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
-            if (e.ctrlKey || e.altKey || e.metaKey) return;
-
-            // Printable keys — easter egg sequence detection
-            if (e.key.length === 1) {
-                keyBuffer.push(e.key.toLowerCase());
-                if (keyBuffer.length > KEY_BUFFER_MAX) keyBuffer.shift();
-                checkKeySequences();
-            }
-        });
-
-        // ── Hash change listener (for #about:blank) ──
-        function checkHash() {
-            if (window.location.hash === '#about:blank') {
-                if (typeof window.__triggerAboutBlank === 'function') {
-                    window.__triggerAboutBlank();
-                }
-                // Clear hash without triggering another event
-                history.replaceState(null, '', window.location.pathname + window.location.search);
-            }
+        if (opts.typewriter === false) {
+            greetingRevealed = GREETING.length;
+            greetingComplete = true;
+            computeTextOverlays();
+        } else {
+            startTypewriter();
         }
-        checkHash();
-        window.addEventListener('hashchange', checkHash);
+
+        if (opts.easterEggs) {
+            // ── Keyboard easter egg listener ──
+            document.addEventListener('keydown', function (e) {
+                // Only capture keys, ignore if typing in an input
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable) return;
+                if (e.ctrlKey || e.altKey || e.metaKey) return;
+                // Inspect mode owns the keyboard while it is open.
+                if (document.body.classList.contains('inspect-open')) return;
+
+                // Printable keys — easter egg sequence detection
+                if (e.key.length === 1) {
+                    keyBuffer.push(e.key.toLowerCase());
+                    if (keyBuffer.length > KEY_BUFFER_MAX) keyBuffer.shift();
+                    checkKeySequences();
+                }
+            });
+
+            // ── Hash change listener (for #about:blank) ──
+            function checkHash() {
+                if (window.location.hash === '#about:blank') {
+                    if (typeof window.__triggerAboutBlank === 'function') {
+                        window.__triggerAboutBlank();
+                    }
+                    // Clear hash without triggering another event
+                    history.replaceState(null, '', window.location.pathname + window.location.search);
+                }
+            }
+            checkHash();
+            window.addEventListener('hashchange', checkHash);
+        }
 
         // ── Button fluid interaction ──
         // When hovering over UI buttons, inject density at that position
@@ -909,7 +1274,7 @@
             }
         }
 
-        var buttonBar = document.getElementById('button-bar');
+        var buttonBar = opts.buttonBar || null;
         if (buttonBar) {
             var btns = buttonBar.querySelectorAll('.btn');
             btns.forEach(function(btn) {
@@ -925,23 +1290,318 @@
             });
         }
 
-        // Event listeners
         window.addEventListener('resize', onResize);
-        document.addEventListener('mousemove', onMouseMove);
-        document.addEventListener('mousedown', onMouseDown);
-        document.addEventListener('mouseup', onMouseUp);
-        document.addEventListener('mouseleave', onMouseLeave);
-        document.addEventListener('touchmove', onTouchMove, { passive: false });
-        document.addEventListener('touchstart', onTouchStart, { passive: false });
+
+        if (opts.interactive !== false) {
+            // The landing page follows the pointer anywhere in the window; a
+            // plate in the guided tour only reacts while the cursor is on it.
+            const target = opts.globalInput ? document : (opts.inputEl || preEl);
+            target.addEventListener('mousemove', onMouseMove);
+            target.addEventListener('mousedown', onMouseDown);
+            target.addEventListener('mouseup', onMouseUp);
+            target.addEventListener('mouseleave', onMouseLeave);
+            target.addEventListener('touchmove', onTouchMove, { passive: true });
+            target.addEventListener('touchstart', onTouchStart, { passive: true });
+        }
+
         // Start animation
         lastTimestamp = performance.now();
         animFrameId = requestAnimationFrame(tick);
     }
 
-    // Boot when DOM is ready
+    // ================================================================
+    // Controls (used by the guided tour)
+    // ================================================================
+    const api = {
+        /** Change what the surface draws; `text` toggles the greeting/menu. */
+        setMode: function (mode, text) {
+            if (mode) renderMode = mode;
+            if (typeof text === 'boolean') textVisible = text;
+            render();
+        },
+        setTextVisible: function (visible) {
+            textVisible = !!visible;
+            render();
+        },
+        /** Live dimensions of the grid, for figure captions. */
+        grid: function () {
+            return {
+                cols: cols,
+                rows: rows,
+                charW: _charWidth,
+                rowH: parseFloat(preEl.style.fontSize) || 14,
+                cellPx: CFG.cellPx
+            };
+        },
+        /** The brightness ramp, so callers describe the same characters. */
+        ramp: function () { return CFG.chars; },
+        /** The raw fields, for views that are not drawn as text. */
+        field: function () {
+            return { cols: cols, rows: rows, dens: dens, u: u, v: v };
+        },
+        /**
+         * Draw the velocity field as streamlines: lines that a mote of ink
+         * would follow. The ASCII renderer can only point four ways, and a
+         * field of unheaded ticks reads as contour rings, so this traces the
+         * flow instead and draws the path.
+         */
+        paintCurrent: function (canvas) {
+            if (!canvas || !cols || !rows || !u || !v || !preEl) return;
+
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            const w = canvas.clientWidth || window.innerWidth;
+            const h = canvas.clientHeight || window.innerHeight;
+            const pw = Math.round(w * dpr);
+            const ph = Math.round(h * dpr);
+            if (canvas.width !== pw) canvas.width = pw;
+            if (canvas.height !== ph) canvas.height = ph;
+
+            const ctx = canvas.getContext('2d');
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, w, h);
+
+            const charW = _charWidth || parseFloat(preEl.style.fontSize) * 0.54 || 8;
+            const rowH = parseFloat(preEl.style.fontSize) || 14;
+
+            let peak = 0;
+            for (let p = 0; p < total; p++) {
+                const s = u[p] * u[p] + v[p] * v[p];
+                if (s > peak) peak = s;
+            }
+            if (peak <= 0) return;
+            const invPeak = 1 / Math.sqrt(peak);
+
+            // Bilinear sample of one velocity component, in grid coordinates.
+            const sample = function (field, x, y) {
+                const i = clamp(Math.floor(x), 1, cols - 2);
+                const j = clamp(Math.floor(y), 1, rows - 2);
+                const fx = clamp(x - i, 0, 1);
+                const fy = clamp(y - j, 0, 1);
+                const p = i + j * cols;
+                const top = field[p] + (field[p + 1] - field[p]) * fx;
+                const bot = field[p + cols] + (field[p + cols + 1] - field[p + cols]) * fx;
+                return top + (bot - top) * fy;
+            };
+
+            // Five brightness bands, one stroke call each.
+            const bands = [];
+            for (let b = 0; b < 5; b++) bands.push(new Path2D());
+
+            const STEP = 0.8;        // cells travelled per trace step
+            const MAX_STEPS = 30;    // long enough to show the curve, short enough not to close into a ring
+            const STOP = 0.06;       // relative speed that ends a line
+            const SEED_X = 5;        // seeds per this many cells, with jitter
+            const SEED_Y = 4;
+
+            // A line is drawn from both ends of its seed, so each trace runs
+            // one way until it dies out and the other until it does the same.
+            for (let sj = SEED_Y * 0.5; sj < rows - 1; sj += SEED_Y) {
+                for (let si = SEED_X * 0.5; si < cols - 1; si += SEED_X) {
+                    // Stable jitter: same seeds every frame, so lines hold still.
+                    const hx = Math.sin(si * 12.9898 + sj * 78.233) * 43758.5453;
+                    const hy = Math.sin(sj * 39.346 + si * 11.135) * 24634.6345;
+                    const seedX = si + (hx - Math.floor(hx) - 0.5) * SEED_X * 0.8;
+                    const seedY = sj + (hy - Math.floor(hy) - 0.5) * SEED_Y * 0.8;
+                    if (seedX < 1 || seedY < 1 || seedX > cols - 2 || seedY > rows - 2) continue;
+
+                    const su0 = sample(u, seedX, seedY) * invPeak;
+                    const sv0 = sample(v, seedX, seedY) * invPeak;
+                    if (Math.sqrt(su0 * su0 + sv0 * sv0) < STOP * 2) continue;
+
+                    for (let dir = -1; dir <= 1; dir += 2) {
+                        let x = seedX;
+                        let y = seedY;
+                        for (let step = 0; step < MAX_STEPS; step++) {
+                            let ux = sample(u, x, y) * invPeak;
+                            let uy = sample(v, x, y) * invPeak;
+                            let speed = Math.sqrt(ux * ux + uy * uy);
+                            if (speed < STOP) break;
+                            ux /= speed;
+                            uy /= speed;
+
+                            // Midpoint step keeps the curve smooth where it bends.
+                            let mx2 = x + ux * STEP * 0.5 * dir;
+                            let my2 = y + uy * STEP * 0.5 * dir;
+                            let ux2 = sample(u, mx2, my2) * invPeak;
+                            let uy2 = sample(v, mx2, my2) * invPeak;
+                            const speed2 = Math.sqrt(ux2 * ux2 + uy2 * uy2);
+                            if (speed2 >= STOP) {
+                                ux = ux2 / speed2;
+                                uy = uy2 / speed2;
+                                speed = speed2;
+                            }
+
+                            const nx = x + ux * STEP * dir;
+                            const ny = y + uy * STEP * dir;
+                            if (!Number.isFinite(nx) || !Number.isFinite(ny)) break;
+                            if (nx < 1 || nx > cols - 2 || ny < 1 || ny > rows - 2) break;
+                            // Lines stop at the tour's own words rather than
+                            // running through them.
+                            if (masks.length && maskAt(nx, ny)) break;
+
+                            // Grid units map to pixels per axis; the linear map
+                            // preserves the shape of the traced curve. The
+                            // stroke fades along its length, so it reads as a
+                            // streak instead of a closed contour line.
+                            const taper = 1 - (step + 1) / MAX_STEPS * 0.75;
+                            const band = Math.min(4, Math.floor(speed * 5 * taper));
+                            const path = bands[band];
+                            path.moveTo(x * charW, y * rowH);
+                            path.lineTo(nx * charW, ny * rowH);
+
+                            x = nx;
+                            y = ny;
+                        }
+                    }
+                }
+            }
+
+            ctx.lineWidth = Math.max(0.75, Math.min(charW, rowH) * 0.1);
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = '#fff';
+            for (let b = 0; b < bands.length; b++) {
+                ctx.globalAlpha = 0.08 + b * 0.065;
+                ctx.stroke(bands[b]);
+            }
+            ctx.globalAlpha = 1;
+        },
+        /** The cell under a pointer, with the glyph it earns. */
+        sampleAt: function (clientX, clientY) {
+            if (!preEl || !cols) return null;
+            const charW = _charWidth || parseFloat(preEl.style.fontSize) * 0.54 || 8;
+            const rowH = parseFloat(preEl.style.fontSize) || 14;
+            const pt = localPoint(clientX, clientY);
+            const i = Math.floor(pt.x / charW);
+            const j = Math.floor(pt.y / rowH);
+            if (i < 0 || j < 0 || i >= cols || j >= rows) return null;
+            const p = j * cols + i;
+            const d = dens[p];
+            const ramp = CFG.chars;
+            return {
+                i: i,
+                j: j,
+                dens: d,
+                char: d <= 0 ? ' ' : ramp[Math.min(ramp.length - 1, Math.round(Math.min(1, d * 1.15) * (ramp.length - 1)))],
+                speed: Math.sqrt(u[p] * u[p] + v[p] * v[p])
+            };
+        },
+        /** Empty the field — a fresh plate for the next chapter. */
+        clear: function () {
+            if (!dens) return;
+            dens.fill(0); densPrev.fill(0);
+            u.fill(0); v.fill(0); uPrev.fill(0); vPrev.fill(0);
+            render();
+        },
+        /** Drop brightness at a grid coordinate. */
+        droplet: function (ci, cj, amount, radius) {
+            if (!cols) return;
+            const r = radius == null ? 4 : radius;
+            const a = amount == null ? 0.9 : amount;
+            for (let dj = -r; dj <= r; dj++) {
+                for (let di = -r; di <= r; di++) {
+                    const dist = Math.sqrt(di * di + dj * dj);
+                    if (dist > r) continue;
+                    const falloff = Math.cos((dist / (r + 1)) * (Math.PI / 2));
+                    const p = idx(clamp(Math.round(ci + di), 1, cols - 2), clamp(Math.round(cj + dj), 1, rows - 2));
+                    dens[p] = Math.min(1, dens[p] + a * falloff);
+                }
+            }
+            render();
+        },
+        /** Spin the field around a grid coordinate. */
+        vortex: function (ci, cj, strength) {
+            if (!cols) return;
+            const radius = 7;
+            const s = strength == null ? 0.4 : strength;
+            for (let dj = -radius; dj <= radius; dj++) {
+                for (let di = -radius; di <= radius; di++) {
+                    const dist = Math.sqrt(di * di + dj * dj);
+                    if (dist > radius || dist < 0.4) continue;
+                    const falloff = 1 - dist / radius;
+                    const p = idx(
+                        clamp(Math.round(ci + di), 1, cols - 2),
+                        clamp(Math.round(cj + dj), 1, rows - 2)
+                    );
+                    u[p] += (-dj / dist) * s * falloff;
+                    v[p] += (di / dist) * s * falloff;
+                    dens[p] = Math.min(1, dens[p] + 0.06 * falloff);
+                }
+            }
+            render();
+        },
+        /** A recognisable wake for a plate that has just been opened. */
+        stir: function () {
+            if (!cols) return;
+            api.vortex(cols * 0.36, rows * 0.42, 0.5);
+            api.vortex(cols * 0.63, rows * 0.55, -0.45);
+            api.vortex(cols * 0.48, rows * 0.3, 0.32);
+            api.droplet(cols * 0.38, rows * 0.45, 0.9);
+            api.droplet(cols * 0.61, rows * 0.5, 0.6);
+        },
+        pause: function () {
+            if (animFrameId !== null) {
+                cancelAnimationFrame(animFrameId);
+                animFrameId = null;
+            }
+        },
+        resume: function () {
+            if (animFrameId === null) {
+                lastTimestamp = performance.now();
+                pendingMs = 0;
+                animFrameId = requestAnimationFrame(tick);
+            }
+        },
+        resize: function () {
+            onResize();
+            render();
+        },
+        isRunning: function () { return animFrameId !== null; },
+        /**
+         * Keep rectangles of the grid free of ink, in grid cells:
+         * [{ row, col, rows, cols, fade }]. The tour uses this so its own
+         * words are not printed over moving water.
+         */
+        mask: function (rects) {
+            masks = Array.isArray(rects) ? rects.filter(function (r) {
+                return r && Number.isFinite(r.row) && Number.isFinite(r.col) &&
+                    Number.isFinite(r.rows) && Number.isFinite(r.cols);
+            }) : [];
+            if (!dens) return;
+            applyMasks();
+            render();
+        }
+    };
+
+    init();
+    return api;
+    }
+
+    // ================================================================
+    // The landing page's own instance
+    // ================================================================
+    function bootLanding() {
+        const mount = document.getElementById('ascii-water');
+        if (!mount) return;
+        window.__pageWaterSim = createWaterSim({
+            mount: mount,
+            greeting: window.__SITE__ && window.__SITE__.greeting,
+            buttons: window.__SITE__ && window.__SITE__.buttons,
+            pageHooks: true,
+            globalInput: true,
+            easterEggs: true,
+            buttonBar: document.getElementById('button-bar'),
+            onLayout: function (layout) { window.__asciiLayout = layout; },
+            size: function () {
+                return { width: window.innerWidth, height: window.innerHeight };
+            }
+        });
+    }
+
+    window.createWaterSim = createWaterSim;
+
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init);
+        document.addEventListener('DOMContentLoaded', bootLanding);
     } else {
-        init();
+        bootLanding();
     }
 })();

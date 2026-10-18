@@ -20,6 +20,7 @@
     -->
     {% endif %}
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/inspect.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root { --accent: #e0e0e0; --bg-color: #0a0a0a; }
@@ -29,9 +30,9 @@
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.15); }
-        #ascii-water { position: fixed; top: 0; left: 0; margin: 0; padding: 0; color: #fff; font-family: 'Courier New', 'Share Tech Mono', monospace; white-space: pre; overflow: hidden; pointer-events: auto; z-index: 1; text-shadow: 0 0 4px rgba(255,255,255,0.3), 0 0 12px rgba(255,255,255,0.1); user-select: none; line-height: 1; letter-spacing: 0; tab-size: 1; }
+        #ascii-water { position: fixed; top: 0; left: 0; margin: 0; padding: 0; color: #fff; font-family: 'Courier New', monospace; white-space: pre; overflow: hidden; pointer-events: auto; touch-action: pan-y; z-index: 1; text-shadow: 0 0 4px rgba(255,255,255,0.3), 0 0 12px rgba(255,255,255,0.1); user-select: none; line-height: 1; letter-spacing: 0; tab-size: 1; }
         #ui-overlay { position: fixed; left: 0; right: 0; z-index: 200; text-align: center; pointer-events: none; display: flex; flex-direction: column; align-items: center; gap: 0.6rem; opacity: 0; }
-        #ui-overlay .name { font-size: 1rem; color: rgba(255,255,255,0.6); letter-spacing: 6px; text-transform: uppercase; text-shadow: 0 0 20px rgba(255,255,255,0.08); opacity: 0.8; font-weight: 300; }
+        #ui-overlay .name { margin: 0; font-size: 1rem; color: rgba(255,255,255,0.6); letter-spacing: 6px; text-transform: uppercase; text-shadow: 0 0 20px rgba(255,255,255,0.08); opacity: 0.8; font-weight: 300; }
         .button-bar { position: relative; width: 100%; height: 3rem; pointer-events: auto; }
         .button-bar .btn { position: absolute; top: 0; color: rgba(255,255,255,0.3); text-decoration: none; font-size: 0.75rem; letter-spacing: 2px; text-transform: uppercase; border-radius: 6px; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 1px solid transparent; }
         .button-bar .btn:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.08); text-shadow: 0 0 15px rgba(255,255,255,0.15); }
@@ -259,14 +260,15 @@
             <button type="button" id="mn-dismiss">Continue anyway</button>
         </div>
     </div>
-    <pre id="ascii-water"></pre>
+    <pre id="ascii-water" aria-hidden="true"></pre>
     <div id="ui-overlay">
-        <div class="name">{{ site.greeting }}</div>
+        <h1 class="name">{{ site.greeting }}</h1>
         <div class="button-bar" id="button-bar">
             <a href="#" class="btn" data-label="Socials" data-page="socials">Socials</a>
             <a href="#" class="btn" data-label="Gallery" data-page="gallery">Gallery</a>
             {% if site.blogs %}<a href="#" class="btn" data-label="Blog" data-page="blog">Blog</a>{% endif %}
             <a href="#" class="btn" data-label="Projects" data-page="projects">Projects</a>
+            <a href="#" class="btn" data-label="How" data-page="how">How</a>
         </div>
         <div class="bio">{{ site.bio }}</div>
     </div>
@@ -346,9 +348,10 @@
         </div>
     {% endif %}
 
-    <script>window.__SITE__ = { greeting: {{ site.greeting|tojson }}, buttons: {% if site.blogs %}['Socials', 'Gallery', 'Blog', 'Projects']{% else %}['Socials', 'Gallery', 'Projects']{% endif %} };</script>    </div>
+    <script>window.__SITE__ = { greeting: {{ site.greeting|tojson }}, buttons: {% if site.blogs %}['Socials', 'Gallery', 'Blog', 'Projects', 'How']{% else %}['Socials', 'Gallery', 'Projects', 'How']{% endif %} };</script>    </div>
 
     <script src="/water-sim.js"></script>
+    <script src="/static/inspect.js"></script>
     <script>
         (function() { 'use strict';
             var overlay = document.getElementById('ui-overlay');
@@ -455,6 +458,9 @@
             document.querySelectorAll('.btn[data-page]').forEach(function(btn) {
                 btn.addEventListener('click', function(e) {
                     e.preventDefault(); var page = this.getAttribute('data-page');
+                    // The guide is a mode, not a content page: it does not
+                    // scroll to the frame below the fold.
+                    if (page === 'how') { if (window.openInspect) window.openInspect(); return; }
                     if (page === 'socials') { socialsInline.classList.add('visible'); contentFrame.style.display = 'none'; contentFrame.src = ''; }
                     else {
                         socialsInline.classList.remove('visible'); contentFrame.style.display = '';
@@ -493,6 +499,7 @@
                 console.log('%c  5. Visit /man for the manual', s);
                 console.log('%c  6. Add #about:blank to the URL', s);
                 console.log('%c  7. Visit /dev/null for a surprise', s);
+            console.log('%c  8. Open "How" in the menu for a guided tour of the water', s);
                 console.log('%c' + [
                     '  ┌──────────────────────────────┐',
                     '  │  You are now 7% cooler.      │',
@@ -544,7 +551,7 @@
             if (!win || !body || !asciiEl || !frame) return;
 
             // Same brightness ramp + monospace font as the water sim
-            var CHARS = ' .,-~:=+*#%@';
+            var CHARS = ' .-:~,^;*=|>+\\/?&$%#@';
             var CELL_PX = 14;
             var rows = 0, cols = 0, strips = [], raf = 0, running = false;
             var t = 0, revealed = false, openLock = false;

@@ -76,6 +76,18 @@ mod tests {
         assert!(html.contains("content=\"@alicemow@mastodon.social\""));
     }
 
+    /// The guided tour lives in the ASCII menu. Both profiles have to offer it,
+    /// and the layout array has to know about it or its click target drifts
+    /// away from the word drawn in the water.
+    #[test]
+    fn the_home_page_offers_the_guided_tour() {
+        for site in [Site::personal(), Site::professional()] {
+            let html = home(site);
+            assert!(html.contains("data-page=\"how\""));
+            assert!(html.contains("'How'"));
+        }
+    }
+
     #[test]
     fn the_professional_home_page_shows_no_personal_accounts() {
         let html = decode_escapes(&home(Site::professional()));
