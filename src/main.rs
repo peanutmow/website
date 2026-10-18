@@ -13,6 +13,7 @@ use tracing_subscriber::EnvFilter;
 
 mod blog;
 mod embed;
+mod gallery;
 mod projects;
 mod site;
 mod templates;
@@ -169,6 +170,7 @@ async fn gallery_content_page(
     state.tmpl.render_response("content_gallery.html", &serde_json::json!({
         "site": site,
         "meta": meta,
+        "photos_json": gallery::photos_json(),
     }))
 }
 

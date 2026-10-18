@@ -20,7 +20,6 @@ use crate::projects::Project;
 use crate::site::Site;
 use serde::Serialize;
 use serde_json::{json, Value};
-use std::sync::OnceLock;
 
 /// Discord's documented ceiling for the escaped component JSON.
 pub const COMPONENT_LIMIT: usize = 3000;
@@ -502,17 +501,10 @@ fn gallery_photos() -> &'static [&'static str] {
     ]
 }
 
-/// The gallery hard-codes its collection in the template, so count it there
+/// The gallery's collection lives in `gallery/photos.json`, so count it there
 /// rather than keeping a second number in sync by hand.
 fn gallery_count() -> usize {
-    static COUNT: OnceLock<usize> = OnceLock::new();
-    *COUNT.get_or_init(|| {
-        include_str!("../gallery/index.html")
-            // Every artwork entry declares at least one subtype; the renderer's
-            // JavaScript template uses `subtypes: ' + ...` and is not counted.
-            .matches("subtypes: [")
-            .count()
-    })
+    crate::gallery::count()
 }
 
 #[cfg(test)]
@@ -763,10 +755,8 @@ mod tests {
     }
 
     #[test]
-    fn the_gallery_count_ignores_the_renderer_template() {
-        let total = include_str!("../gallery/index.html").matches("{ src:").count();
-        // Exactly one of those matches is the JavaScript that builds a card.
-        assert_eq!(gallery_count(), total - 1);
+    fn the_gallery_count_matches_the_archive() {
+        assert_eq!(gallery_count(), crate::gallery::count());
         assert!(gallery_count() > 100);
     }
 

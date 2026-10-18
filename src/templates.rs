@@ -194,6 +194,7 @@ mod tests {
             &serde_json::json!({
                 "site": site,
                 "meta": crate::embed::gallery(&site, "https://example.test"),
+                "photos_json": crate::gallery::photos_json(),
             }),
         )
     }
