@@ -29,50 +29,60 @@
     <script>
         // `window.__arm()` is called by tools/embed/record.mjs once the
         // screencast is running, so the GIF starts on the first frame of the
-        // typewriter instead of however far the page happened to get.
+        // motion instead of however far the page happened to get.
+        //
+        // The scene is deliberately text-free: the artwork is the water, and
+        // letters only made the surface look like a screenshot of the site.
         (function () {
             'use strict';
-            var NAME = {{ name | tojson }};
-            var BIO = {{ bio | tojson }};
             var sim = null;
 
-            function stir() {
+            // Ink and rotation, spread across the frame. Without this the first
+            // frame would be an empty black rectangle — and a single wake can
+            // drift out of shot, leaving holes in the composition.
+            function seed() {
                 var g = sim.grid();
-                // Broad currents, kept above the name: rows 8 and 9 carry the
-                // words. No droplets here — the figure-eight below leaves ink.
-                sim.vortex(g.cols * 0.30, g.rows * 0.34, 0.45);
-                sim.vortex(g.cols * 0.64, g.rows * 0.30, -0.40);
-                sim.vortex(g.cols * 0.50, g.rows * 0.56, 0.30);
+                var spots = [
+                    [0.22, 0.34], [0.38, 0.24], [0.56, 0.30], [0.74, 0.40],
+                    [0.30, 0.56], [0.50, 0.64], [0.68, 0.58], [0.84, 0.62],
+                    [0.46, 0.44]
+                ];
+                spots.forEach(function (spot, i) {
+                    var c = g.cols * spot[0];
+                    var r = g.rows * spot[1];
+                    sim.droplet(c, r, 0.42, 1);
+                    sim.vortex(c, r, i % 2 ? -0.22 : 0.22);
+                });
             }
 
             window.__arm = function () {
                 if (sim) return sim;
                 sim = window.createWaterSim({
                     mount: document.getElementById('embed-water'),
-                    greeting: NAME,
                     buttons: [],
-                    bio: BIO,
-                    showMenu: false,
-                    typewriter: true,
+                    text: false,
                     size: function () { return { width: 1200, height: 600 }; }
                 });
 
-                stir();
+                seed();
 
-                // An invisible finger draws a slow figure-eight through the
-                // water. Small droplets plus rotation leave a real wake
-                // instead of the round blobs a handful of seeded droplets
-                // would produce.
+                // Three invisible fingers draw slow, phase-shifted
+                // figure-eights. One alone leaves a single wandering streak
+                // with most of the frame empty; three fill the surface with
+                // interleaved wakes that read as one turbulent pool.
                 var t = 0;
                 var tick = 0;
                 setInterval(function () {
-                    t += 0.06;
+                    t += 0.045;
                     tick++;
                     var g = sim.grid();
-                    var c = g.cols * (0.50 + Math.sin(t) * 0.38);
-                    var r = g.rows * (0.34 + Math.sin(t * 2 + 1.1) * 0.18);
-                    sim.droplet(c, r, 0.28, 1);
-                    if (tick % 3 === 0) sim.vortex(c, r, 0.4);
+                    for (var k = 0; k < 3; k++) {
+                        var phase = t + k * 2.1;
+                        var c = g.cols * (0.50 + Math.sin(phase * 1.1) * 0.31);
+                        var r = g.rows * (0.50 + Math.sin(phase * 2.2 + k * 1.7) * 0.26);
+                        sim.droplet(c, r, 0.16, 1);
+                        if (tick % 5 === 3) sim.vortex(c, r, k % 2 ? -0.34 : 0.34);
+                    }
                 }, 50);
 
                 return sim;

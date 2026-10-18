@@ -107,7 +107,7 @@ mod tests {
         let html = decode_escapes(&home(Site::personal()));
         assert!(html.contains("property=\"og:title\""));
         assert!(html.contains(
-            "property=\"og:image\" content=\"https://example.test/static/embed/water-alice.gif"
+            "property=\"og:image\" content=\"https://example.test/static/embed/water.gif"
         ));
         assert!(html.contains("name=\"theme-color\" content=\"#0a0a0a\""));
         assert!(html.contains("twitter:card\" content=\"summary_large_image\""));
@@ -123,11 +123,16 @@ mod tests {
         assert!(payload < head_end);
     }
 
+    /// The artwork is the water alone, so it names nobody and both profiles
+    /// point at the same file.
     #[test]
-    fn the_professional_preview_uses_its_own_artwork() {
-        let html = home(Site::professional());
-        assert!(html.contains("water-dave.gif"));
-        assert!(!html.contains("water-alice"));
+    fn the_preview_artwork_is_text_free_and_shared() {
+        let personal = decode_escapes(&home(Site::personal()));
+        let professional = decode_escapes(&home(Site::professional()));
+        assert!(personal.contains("/static/embed/water.gif"));
+        assert!(professional.contains("/static/embed/water.gif"));
+        // The greeting still belongs to the text, not the picture.
+        assert!(!personal.contains("water-alice"));
     }
 
     #[test]

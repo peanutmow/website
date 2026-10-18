@@ -33,7 +33,7 @@ const DESCRIPTION_LIMIT: usize = 350;
 
 /// Bump when the artwork changes. Discord's media CDN caches proxied assets
 /// independently of the page, and only a new URL makes it refetch them.
-pub const ASSET_VERSION: &str = "1";
+pub const ASSET_VERSION: &str = "2";
 
 /// The accent used by both layers. The site is monochrome and the artwork is
 /// black, so a near-black bar is more coherent than a default Discord colour
@@ -94,14 +94,14 @@ pub fn home(site: &Site, origin: &str) -> Meta {
                     "type": 12,
                     "items": [
                         {
-                            "media": { "url": artwork(site, origin) },
+                            "media": { "url": artwork(origin) },
                             "description": "ASCII water rippling behind the greeting"
                         }
                     ]
                 },
                 {
                     "type": 10,
-                    "content": "-# rendered live by the site's own fluid solver."
+                    "content": "-# subpages:"
                 },
                 { "type": 1, "components": row }
             ]
@@ -348,12 +348,21 @@ pub fn blog(site: &Site, origin: &str, section: &Section) -> Meta {
 /// oEmbed is the only way to put a *linked author* on the classic card, so a
 /// tiny JSON document fills that one gap. Everything else is already in the OG
 /// tags; Discord ignores the rest of the oEmbed fields.
+///
+/// `author_url` is the closest an unfurl can get to a mention: it makes the
+/// author name clickable, and pointing it at the Discord profile means a reader
+/// who sees the card is one click from the account. It cannot *notify* anyone —
+/// pings come from message content only.
 pub fn oembed(site: &Site, origin: &str) -> Value {
+    let author_url = site
+        .discord_user_id
+        .map(|id| format!("https://discord.com/users/{id}"))
+        .unwrap_or_else(|| format!("{origin}/"));
     json!({
         "version": "1.0",
         "type": "link",
         "author_name": site.full_name,
-        "author_url": format!("{origin}/"),
+        "author_url": author_url,
         "provider_name": site.full_name,
         "provider_url": format!("{origin}/"),
     })
@@ -372,7 +381,7 @@ struct Page<'a> {
 fn meta(site: &Site, origin: &str, page: Page<'_>, component: Value) -> Meta {
     let title = truncate(&page.title, TITLE_LIMIT);
     let description = truncate_words(&page.description, DESCRIPTION_LIMIT);
-    let image = artwork(site, origin);
+    let image = artwork(origin);
     let image_alt = format!("ASCII water rippling behind the words \"{}\"", site.greeting);
 
     Meta {
@@ -391,11 +400,10 @@ fn meta(site: &Site, origin: &str, page: Page<'_>, component: Value) -> Meta {
     }
 }
 
-/// The recorded scene for this profile. The professional mirror gets its own
-/// file: the personal artwork has Alice's name printed into the water.
-fn artwork(site: &Site, origin: &str) -> String {
-    let who = if site.professional { "dave" } else { "alice" };
-    format!("{origin}/static/embed/water-{who}.gif?v={ASSET_VERSION}")
+/// The recorded scene. There is one file: the artwork is the water alone, so
+/// it carries no name and both profiles can share it.
+fn artwork(origin: &str) -> String {
+    format!("{origin}/static/embed/water.gif?v={ASSET_VERSION}")
 }
 
 fn link_button(url: impl Into<String>, label: &str) -> Value {
@@ -696,17 +704,16 @@ mod tests {
                     "{name} leaks {secret}"
                 );
             }
-            assert!(meta.image.contains("water-dave.gif"), "{name}");
         }
     }
 
     #[test]
-    fn the_personal_artwork_is_the_personal_one() {
-        let meta = home(&Site::personal(), ORIGIN);
-        assert!(meta.image.contains("/static/embed/water-alice.gif?v="));
-        assert!(meta.component_json.contains("water-alice.gif"));
-        // The card is image-only: no video files ship with the site.
-        assert!(!meta.component_json.contains(".mp4"));
+    fn both_profiles_share_the_text_free_artwork() {
+        let personal = home(&Site::personal(), ORIGIN);
+        let professional = home(&Site::professional(), ORIGIN);
+        assert!(personal.image.ends_with("/static/embed/water.gif?v=2"));
+        assert_eq!(personal.image, professional.image);
+        assert!(!personal.component_json.contains(".mp4"));
     }
 
     #[test]
@@ -716,6 +723,24 @@ mod tests {
             oembed(&Site::professional(), ORIGIN)["author_name"],
             "Dave Herkula"
         );
+    }
+
+    /// An unfurl cannot mention anyone, so the author line is the substitute:
+    /// the name becomes a link, and it should open the Discord profile.
+    #[test]
+    fn the_personal_author_line_opens_the_discord_profile() {
+        let personal = oembed(&Site::personal(), ORIGIN);
+        assert_eq!(
+            personal["author_url"],
+            "https://discord.com/users/462513388195545093"
+        );
+    }
+
+    #[test]
+    fn the_professional_author_line_stays_on_the_site() {
+        let professional = oembed(&Site::professional(), ORIGIN);
+        assert_eq!(professional["author_url"], "https://example.test/");
+        assert!(!professional.to_string().contains("discord.com"));
     }
 
     #[test]

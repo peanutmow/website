@@ -2,22 +2,25 @@
  * Record the Discord link-preview artwork from the real ASCII water simulator.
  *
  * The site serves a fixed 1200x600 `/embed-scene` page that boots
- * `water-sim.js` at a coarse grid, types the greeting and is stirred by
- * scripted droplets. This script drives headless Chrome over the DevTools
- * protocol, records that page, and hands the frames to ffmpeg.
+ * `water-sim.js` at a coarse grid and stirs it with scripted droplets. The
+ * scene draws the water alone — no greeting, no menu — so the artwork is the
+ * simulation rather than a screenshot of the site. This script drives headless
+ * Chrome over the DevTools protocol, records that page, and hands the frames to
+ * ffmpeg.
  *
  * It has no npm dependencies: Node 22+ ships a WebSocket client, and ffmpeg is
  * the only external tool. Run it while the site is up:
  *
  *     cargo run
- *     node tools/embed/record.mjs --slug alice --name "Hi, I'm Alice"
- *     node tools/embed/record.mjs --slug dave  --name "Hi, I'm Dave" --bio developer
+ *     node tools/embed/record.mjs
  *
  * Outputs (into static/embed/):
- *   water-<slug>.gif   animated OpenGraph image / gallery item
+ *   water.gif   animated OpenGraph image / gallery item
+ *
+ * There is one file: the scene is text-free, so both profiles share it.
  *
  * Bump ASSET_VERSION in src/embed.rs after regenerating, so Discord's media
- * CDN refetches the files.
+ * CDN refetches the file.
  */
 import { spawn } from 'node:child_process';
 import { mkdirSync, writeFileSync, rmSync, existsSync, statSync } from 'node:fs';
@@ -34,12 +37,9 @@ const LIMIT_SECONDS = 9.5;
 
 const args = parseArgs(process.argv.slice(2));
 const baseUrl = (args['base-url'] || 'http://localhost:8080').replace(/\/$/, '');
-const slug = args.slug || 'alice';
-const name = args.name || "Hi, I'm Alice";
-const bio = args.bio || 'artist & developer';
 const seconds = Number(args.seconds || 9.5);
 const outDir = path.resolve(ROOT, args['out-dir'] || 'static/embed');
-const framesDir = path.join(os.tmpdir(), `embed-frames-${slug}-${Date.now()}`);
+const framesDir = path.join(os.tmpdir(), `embed-frames-${Date.now()}`);
 
 if (seconds > LIMIT_SECONDS) {
   throw new Error(`keep the clip at ${LIMIT_SECONDS}s or less`);
@@ -137,7 +137,7 @@ try {
     width: WIDTH, height: HEIGHT, deviceScaleFactor: 1, mobile: false,
   }, session);
 
-  const sceneUrl = `${baseUrl}/embed-scene?name=${encodeURIComponent(name)}&bio=${encodeURIComponent(bio)}`;
+  const sceneUrl = `${baseUrl}/embed-scene`;
   console.log(`==> loading ${sceneUrl}`);
   await send('Page.navigate', { url: sceneUrl }, session);
   await waitFor(() => runtimeValue(session, 'typeof window.__arm === "function"'), 10000, 'scene script');
@@ -188,7 +188,7 @@ try {
   });
 
   mkdirSync(outDir, { recursive: true });
-  const gif = path.join(outDir, `water-${slug}.gif`);
+  const gif = path.join(outDir, 'water.gif');
   const fadeOut = Math.max(0.1, seconds - 1.0);
   const fade = `fade=t=in:st=0:d=0.35,fade=t=out:st=${fadeOut}:d=1.0`;
 

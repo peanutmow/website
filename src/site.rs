@@ -76,6 +76,14 @@ pub struct Site {
     pub x_handle: Option<&'static str>,
     pub discord_url: Option<&'static str>,
     pub discord_handle: Option<&'static str>,
+    /// The numeric Discord account id (snowflake).
+    ///
+    /// A link preview cannot ping anyone — only message content can — so the
+    /// closest thing is the oEmbed author line, whose `author_url` makes the
+    /// name clickable. Pointing it at the profile is as close to a mention as
+    /// an unfurl allows. `None` on the professional mirror for the same reason
+    /// as the handles above.
+    pub discord_user_id: Option<&'static str>,
     /// Blog sections, in switcher order. Empty drops the Blog button, the
     /// switcher and the feed links, because the professional mirror must not
     /// point recruiters at personal and political writing.
@@ -111,16 +119,6 @@ const PERSONAL_BLOGS: &[Blog] = &[
 ];
 
 impl Site {
-    /// The one-line label under the ASCII greeting. Short enough to fit the
-    /// coarse grid used for the Discord artwork, where the full bio does not.
-    pub const fn tagline(&self) -> &'static str {
-        if self.professional {
-            "developer"
-        } else {
-            "artist & developer"
-        }
-    }
-
     /// The real site.
     pub const fn personal() -> Self {
         Site {
@@ -128,7 +126,7 @@ impl Site {
             full_name: "Alice",
             short: "alice",
             greeting: "Hi, I'm Alice",
-            bio: "artist & developer \u{2014} building things that live at the intersection of code and art.",
+            bio: "artist & developer",
             email: "alice@herkula.info",
             github_url: "https://github.com/peanutmow",
             github_handle: "peanutmow",
@@ -139,6 +137,7 @@ impl Site {
             x_handle: Some("Alice_mow"),
             discord_url: Some("https://discord.gg/sdTrfEHF"),
             discord_handle: Some("alice_meower"),
+            discord_user_id: Some("462513388195545093"),
             blogs: PERSONAL_BLOGS,
             professional: false,
         }
@@ -162,6 +161,7 @@ impl Site {
             x_handle: None,
             discord_url: None,
             discord_handle: None,
+            discord_user_id: None,
             blogs: &[],
             professional: true,
         }
@@ -337,6 +337,7 @@ mod tests {
         assert!(professional.fediverse_creator.is_none());
         assert!(professional.x_url.is_none());
         assert!(professional.discord_url.is_none());
+        assert!(professional.discord_user_id.is_none());
     }
 
     #[test]

@@ -1,5 +1,5 @@
 use axum::{
-    extract::{Extension, Path, Query, Request, State},
+    extract::{Extension, Path, Request, State},
     http::{StatusCode, Uri},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
@@ -272,43 +272,15 @@ async fn conejillo_page(State(state): State<Arc<AppState>>, Extension(site): Ext
 
 // ─── Link previews ────────────────────────────────────────────────
 
-#[derive(serde::Deserialize)]
-struct SceneQuery {
-    #[serde(default)]
-    name: Option<String>,
-    /// Overrides the line under the name. Needed when recording the
-    /// professional mirror locally, where the Host header still looks personal.
-    #[serde(default)]
-    bio: Option<String>,
-}
-
 /// The fixed-size surface `tools/embed/record.mjs` records the Discord artwork
 /// from. Nothing links here; it exists so the preview is generated from the
-/// real simulator instead of a hand-drawn mock-up.
-async fn embed_scene(
-    State(state): State<Arc<AppState>>,
-    Extension(site): Extension<Site>,
-    Query(query): Query<SceneQuery>,
-) -> Response {
-    let name: String = query
-        .name
-        .unwrap_or_else(|| site.greeting.to_string())
-        .trim()
-        .chars()
-        .take(48)
-        .collect();
-    let name = if name.is_empty() { site.greeting.to_string() } else { name };
-    let bio: String = query
-        .bio
-        .unwrap_or_else(|| site.tagline().to_string())
-        .trim()
-        .chars()
-        .take(48)
-        .collect();
-    state.tmpl.render_response("embed_scene.html", &serde_json::json!({
-        "name": name,
-        "bio": bio,
-    }))
+/// real simulator instead of a hand-drawn mock-up. It draws the water alone —
+/// no greeting, no menu — because the artwork should be the simulation, not a
+/// picture of the site.
+async fn embed_scene(State(state): State<Arc<AppState>>) -> Response {
+    state
+        .tmpl
+        .render_response("embed_scene.html", &serde_json::json!({}))
 }
 
 /// oEmbed fills the one field OpenGraph cannot: a linked author. Everything
