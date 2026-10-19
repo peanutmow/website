@@ -19,6 +19,7 @@
     --serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
     --mono: 'Share Tech Mono', ui-monospace, 'Courier New', monospace;
     --sans: 'Geist', 'Helvetica Neue', Arial, sans-serif;
+    --wave: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='white' stop-opacity='0.42'/%3E%3Cstop offset='0.2' stop-color='white' stop-opacity='0.62'/%3E%3Cstop offset='0.45' stop-color='white' stop-opacity='0.85'/%3E%3C/linearGradient%3E%3Cfilter id='b' x='-20%25' y='-20%25' width='140%25' height='140%25'%3E%3CfeGaussianBlur stdDeviation='16'/%3E%3C/filter%3E%3C/defs%3E%3Crect width='1200' height='800' fill='url(%23g)'/%3E%3Cpath d='M0 90 C 140 55 260 140 400 110 C 540 80 660 35 800 65 C 940 95 1080 150 1200 105 L 1200 800 L 0 800 Z' fill='white' filter='url(%23b)'/%3E%3C/svg%3E");
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -28,6 +29,7 @@ html {
     min-height: 100%;
     background: var(--bg-deep);
 }
+html.embedded { background: transparent; }
 
 body {
     width: 100%;
@@ -35,11 +37,28 @@ body {
     color: var(--paper);
     font-family: var(--sans);
     -webkit-font-smoothing: antialiased;
+    background: transparent;
+}
+
+/* The room the archive sits in. Its top edge is a soft, wavy gradient so the
+   page behind it — the ASCII water when the gallery is embedded — shows
+   through. The mask is white below the wave and transparent above it. */
+.atmosphere {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
     background:
         radial-gradient(110% 80% at 88% -14%, rgba(147, 169, 124, 0.10), transparent 58%),
         radial-gradient(85% 70% at -12% 112%, rgba(194, 112, 62, 0.07), transparent 60%),
         radial-gradient(120% 100% at 50% 40%, transparent 45%, rgba(0, 0, 0, 0.35) 100%),
         var(--bg);
+    -webkit-mask-image: var(--wave);
+    mask-image: var(--wave);
+    -webkit-mask-size: 100% 100%;
+    mask-size: 100% 100%;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
 }
 
 ::selection { background: var(--moss); color: var(--bg); }
