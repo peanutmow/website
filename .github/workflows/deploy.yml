@@ -3,12 +3,18 @@ on:
   push:
     branches:
       - main
+    # Docs, the AI worker (deployed by its own workflow) and CI config don't
+    # change the site, so don't spend a full build+deploy on them.
     paths-ignore:
       - '**.md'
+      - 'worker-ai/**'
+      - '.github/**'
   # The gallery is generated from the public photostream. A nightly deploy
   # refreshes it even when the repository itself hasn't changed.
   schedule:
     - cron: '17 4 * * *'
+  # Lets you deploy on demand from the Actions tab (paths-ignore also means a
+  # workflow-only change doesn't trigger a deploy by itself).
   workflow_dispatch:
 concurrency:
   group: deploy-uberspace
@@ -103,6 +109,13 @@ jobs:
                --delete --delete-after --itemize-changes \
                "${SYNC_EXCLUDES[@]}" -e "$RSYNC_SSH" \
                ./ "$SFTP_USERNAME@$SFTP_HOST:$APP_DIR/"; then
+            # 2) Upload the binary the same way: an identical (cached) build
+            #    is not transferred at all, and rsync renames a temp file over
+            #    alice-website.new, so the running executable is never touched.
+            echo "==> [rsync] uploading binary ..."
+            rsync -pt --checksum --itemize-changes -e "$RSYNC_SSH" \
+              .deploy/alice-website \
+              "$SFTP_USERNAME@$SFTP_HOST:$APP_DIR/alice-website.new"
             echo "==> [rsync] sync done"
           else
             # Safety net: fall back to the previous behaviour (full lftp
@@ -114,26 +127,15 @@ jobs:
               'set cmd:fail-exit yes' \
               'set net:max-retries 3' \
               'mirror --reverse --delete --verbose --exclude=.git/ --exclude=.github/ --exclude=.deploy/ --exclude=target/ --exclude=node_modules/ --exclude=__pycache__/ --exclude-glob=*.md --exclude=alice-website ./ html/' \
+              'put .deploy/alice-website -o html/alice-website.new' \
               'bye' > "$RUNNER_TEMP/mirror.lftp"
             lftp -u "$SFTP_USERNAME,$SFTP_PASSWORD" \
               "sftp://$SFTP_HOST:$SFTP_PORT" -f "$RUNNER_TEMP/mirror.lftp"
           fi
 
-          # 2) Upload the binary LAST (and under a temp name) so the sync
-          #    above can never remove or replace the running executable.
-          echo "==> [lftp] uploading binary ..."
-          lftp -u "$SFTP_USERNAME,$SFTP_PASSWORD" sftp://$SFTP_HOST:$SFTP_PORT <<EOF
-          set sftp:auto-confirm yes
-          set cmd:fail-exit yes
-          set net:max-retries 3
-          put .deploy/alice-website -o html/alice-website.new
-          bye
-          EOF
-          echo "==> [lftp] upload done"
-
-          # 3) Make binary executable, install supervisord service, set web
-          #    backend. Uberspace manages persistent daemons with supervisord
-          #    (NOT systemd user services — `systemctl --user` / linger don't
+          # 3) Install/refresh the service and set the web backend.
+          #    Uberspace manages persistent daemons with supervisord (NOT
+          #    systemd user services — `systemctl --user` / linger don't
           #    exist there). Service config = one .ini in ~/etc/services.d/.
           echo "==> [ssh] running remote setup ..."
           sshpass -p "$SFTP_PASSWORD" ssh -p "$SFTP_PORT" -o StrictHostKeyChecking=no \
@@ -146,24 +148,32 @@ jobs:
           REAL_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
           [ -n "$REAL_HOME" ] || REAL_HOME="$HOME"
 
-          echo "[1/6] install binary"
+          SERVICE_DIR="$REAL_HOME/etc/services.d"
+          INI="$SERVICE_DIR/$SERVICE_NAME.ini"
+          BINARY_CHANGED=0
+          CONFIG_CHANGED=0
+
+          echo "[1/5] install binary"
           # Identical bytes mean there is nothing to swap -- and, just as
           # importantly, no reason to restart the service and drop requests.
           if [ -f "$APP_DIR/alice-website" ] && cmp -s "$APP_DIR/alice-website" "$APP_DIR/alice-website.new"; then
-            echo "  binary unchanged; keeping the running process"
-            rm -f "$APP_DIR/alice-website.new"
-            BINARY_CHANGED=0
+            echo "  binary unchanged"
           else
             mv -f "$APP_DIR/alice-website.new" "$APP_DIR/alice-website"
             chmod +x "$APP_DIR/alice-website"
             BINARY_CHANGED=1
           fi
-          echo "[2/6] write supervisord ini"
-          mkdir -p "$REAL_HOME/etc/services.d"
+          # Keep a copy next to the binary: the next deploy compares against it
+          # and, when the rebuild is byte-identical, skips the upload entirely.
+          [ -f "$APP_DIR/alice-website.new" ] || cp -p "$APP_DIR/alice-website" "$APP_DIR/alice-website.new"
+
+          echo "[2/5] supervisord ini"
+          mkdir -p "$SERVICE_DIR"
           # The blog is a WriteFreely instance on this same host, so the site
           # reads its feeds over loopback: plain HTTP, never off the machine,
           # which is why the binary carries no TLS client. Keep this port in
           # step with `port` in the WriteFreely config.ini.
+          NEW_INI="$(mktemp "$SERVICE_DIR/.$SERVICE_NAME.XXXXXX")"
           printf '%s\n' \
             "[program:$SERVICE_NAME]" \
             "command=$APP_DIR/alice-website" \
@@ -172,19 +182,44 @@ jobs:
             'autorestart=true' \
             'redirect_stderr=true' \
             'environment=BLOG_FEED_BASE="http://127.0.0.1:8082"' \
-            > "$REAL_HOME/etc/services.d/$SERVICE_NAME.ini"
-          echo "[3/6] supervisorctl reread"
-          supervisorctl reread
-          echo "[4/6] supervisorctl update"
-          supervisorctl update
-          echo "[5/6] restart service"
-          if [ "$BINARY_CHANGED" = 1 ] || ! supervisorctl status "$SERVICE_NAME" | grep -q RUNNING; then
+            > "$NEW_INI"
+          if cmp -s "$NEW_INI" "$INI"; then
+            rm -f "$NEW_INI"
+            echo "  unchanged"
+          else
+            mv -f "$NEW_INI" "$INI"
+            CONFIG_CHANGED=1
+            echo "  updated"
+          fi
+
+          echo "[3/5] supervisorctl reread/update"
+          STATUS="$(supervisorctl status "$SERVICE_NAME" 2>/dev/null || true)"
+          if [ -z "$STATUS" ] || [ "$CONFIG_CHANGED" = 1 ]; then
+            supervisorctl reread
+            supervisorctl update
+            STATUS="$(supervisorctl status "$SERVICE_NAME" 2>/dev/null || true)"
+          else
+            echo "  nothing changed"
+          fi
+
+          echo "[4/5] restart service"
+          # Compare the executable the process is actually running with the one
+          # on disk, so a deploy that got killed between swap and restart (or a
+          # crashed process) still ends up on the current binary.
+          PID="$(printf '%s\n' "$STATUS" | sed -n 's/.*pid \([0-9]\+\).*/\1/p')"
+          RUNNING_BIN=""
+          if [ -n "$PID" ]; then
+            RUNNING_BIN="$(readlink "/proc/$PID/exe" 2>/dev/null || true)"
+          fi
+          if [ "$BINARY_CHANGED" = 1 ] || [ "$CONFIG_CHANGED" = 1 ] \
+             || [ "$RUNNING_BIN" != "$APP_DIR/alice-website" ]; then
             supervisorctl restart "$SERVICE_NAME" || supervisorctl start "$SERVICE_NAME"
           else
-            echo "  service already running the current binary"
+            echo "  already running the current binary and config"
           fi
           supervisorctl status "$SERVICE_NAME" || true
-          echo "[6/6] set web backend"
+
+          echo "[5/5] set web backend"
           command -v uberspace >/dev/null 2>&1 || export PATH="$PATH:/usr/local/bin"
           uberspace web backend set / --http --port 8080
           echo "REMOTE setup complete"
