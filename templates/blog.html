@@ -114,7 +114,7 @@
         .post-body blockquote { padding-left: 2ch; box-shadow: inset 2px 0 0 rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); }
         .post-body pre { overflow-x: auto; padding-left: 2ch; box-shadow: inset 2px 0 0 rgba(255,255,255,0.2); }
         .post-body code { font-family: inherit; font-size: 1em; }
-        .post-body img { display: block; max-width: 100%; height: auto; margin: 1em 0; border: 1px solid var(--line); }
+        .post-body img, .post-body picture { display: none; }
         .post-body hr { border: 0; border-top: 1px dashed rgba(255,255,255,0.15); }
 
         .empty { color: var(--dim); }
@@ -191,6 +191,54 @@
         (function () {
             'use strict';
 
+            function watchFrame(sim) {
+                if (!sim || !sim.pause || !sim.resume) return;
+                var frame;
+                try {
+                    frame = window.frameElement;
+                    if (!frame || window.parent === window) return;
+                } catch (e) {
+                    return;
+                }
+                var host = window.parent;
+                var pending = false;
+
+                function sync() {
+                    pending = false;
+                    var box = frame.getBoundingClientRect();
+                    var onScreen = box.bottom > 0 && box.top < (host.innerHeight || 0);
+                    var landing = host.__pageWaterSim;
+                    if (onScreen) {
+                        sim.resume();
+                        if (landing && landing.pause) landing.pause();
+                    } else {
+                        sim.pause();
+                        if (landing && landing.resume) landing.resume();
+                    }
+                }
+
+                function schedule() {
+                    if (pending) return;
+                    pending = true;
+                    setTimeout(sync, 120);
+                }
+
+                try {
+                    host.addEventListener('scroll', schedule, { passive: true, capture: true });
+                    host.document.addEventListener('scroll', schedule, { passive: true, capture: true });
+                    host.addEventListener('resize', schedule);
+                } catch (e) {
+                    return;
+                }
+
+                function release() {
+                    var landing = host.__pageWaterSim;
+                    if (landing && landing.resume) landing.resume();
+                }
+                window.addEventListener('pagehide', release);
+                sync();
+            }
+
             if (window.createWaterSim) {
                 var water = window.createWaterSim({
                     mount: document.getElementById('bg-water'),
@@ -205,6 +253,8 @@
                     size: function () { return { width: window.innerWidth, height: window.innerHeight }; }
                 });
                 if (water && water.stir) water.stir();
+                window.__blogWater = water;
+                watchFrame(water);
             }
 
             function fitGrid() {
@@ -293,19 +343,21 @@
             function step() {
                 if (!current) return;
                 var line = current;
-                var item;
-                for (;;) {
-                    item = line.nodes[line.index];
-                    if (!item) return finishLine();
-                    if (item.at < item.text.length) break;
-                    line.index += 1;
+                var burst = line.speed < 0.5 ? 2 : 1;
+                var item = null;
+                var ch = '';
+                for (var n = 0; n < burst; n++) {
+                    for (;;) {
+                        item = line.nodes[line.index];
+                        if (!item) return finishLine();
+                        if (item.at < item.text.length) break;
+                        line.index += 1;
+                    }
+                    ch = item.text.charAt(item.at);
+                    item.at += 1;
+                    while (item.at < item.text.length && /\s/.test(item.text.charAt(item.at))) item.at += 1;
+                    item.node.nodeValue = item.text.slice(0, item.at);
                 }
-
-                var run = 1;
-                while (item.at + run < item.text.length && /\s/.test(item.text.charAt(item.at + run))) run += 1;
-                var ch = item.text.charAt(item.at);
-                item.at += run;
-                item.node.nodeValue = item.text.slice(0, item.at);
 
                 if (!caret) {
                     caret = document.createElement('span');
@@ -314,9 +366,9 @@
                 }
                 if (item.node.parentNode) item.node.parentNode.insertBefore(caret, item.node.nextSibling);
 
-                var delay = 24 * line.speed;
-                if (/\s/.test(ch)) delay *= 0.25;
-                else if (/[.,;:!?]/.test(ch)) delay *= 2.1;
+                var delay = 10 * line.speed;
+                if (/\s/.test(ch)) delay *= 0.35;
+                else if (/[.,;:!?]/.test(ch)) delay *= 1.6;
                 timer = setTimeout(step, delay);
             }
 
@@ -357,6 +409,21 @@
                 current = null;
             }
 
+            function stripImages() {
+                var media = document.querySelectorAll('.post-body img, .post-body picture');
+                for (var i = 0; i < media.length; i++) {
+                    if (media[i].parentNode) media[i].parentNode.removeChild(media[i]);
+                }
+                var blocks = document.querySelectorAll('.post-body > *');
+                for (var j = 0; j < blocks.length; j++) {
+                    if (blocks[j].tagName === 'HR') continue;
+                    if (!blocks[j].textContent.trim() && !blocks[j].querySelector('img, video, iframe')) {
+                        if (blocks[j].parentNode) blocks[j].parentNode.removeChild(blocks[j]);
+                    }
+                }
+            }
+
+            stripImages();
             collect();
 
             if (!queue.length) return;
