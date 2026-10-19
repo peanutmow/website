@@ -43,7 +43,7 @@
         ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
         ::selection { background: #fff; color: #000; text-shadow: none; }
 
-        .page-wrap { position: relative; z-index: 1; padding: 0 1ch 4em; }
+        .page-wrap { position: relative; z-index: 1; max-width: 88ch; margin: 0 auto; padding: 0 2ch 4em; }
 
         #bg-water {
             position: fixed;
@@ -99,11 +99,14 @@
         .post-meta a { color: inherit; text-decoration: none; }
         .post-meta a:hover { color: #fff; }
 
-        .post-body { margin-top: 1em; }
+        .post-body { margin-top: 1em; text-align: justify; hyphens: auto; overflow-wrap: break-word; }
         .post-body > * + * { margin-top: 1em; }
         .post-body a { color: inherit; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.4); text-underline-offset: 2px; }
         .post-body a:hover { text-decoration-color: #fff; }
-        .post-body h1, .post-body h2, .post-body h3 { font-size: 1em; font-weight: 400; line-height: 1; }
+        .post-body h1, .post-body h2, .post-body h3, .post-body h4, .post-body h5, .post-body h6 { font-size: 1em; font-weight: 400; line-height: 1; }
+        .post-body strong { font-weight: 700; }
+        .post-body em { font-style: italic; }
+        .post-body del { text-decoration: line-through; color: rgba(255,255,255,0.6); }
         .post-body ul, .post-body ol { padding-left: 2ch; }
         .post-body ul { list-style: none; }
         .post-body li { list-style: none; }
@@ -111,9 +114,15 @@
         .post-body ol { counter-reset: item; }
         .post-body ol > li { counter-increment: item; }
         .post-body ol > li::before { content: counter(item) '. '; color: var(--faint); }
+        .post-body li > * + * { margin-top: 1em; }
         .post-body blockquote { padding-left: 2ch; box-shadow: inset 2px 0 0 rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); }
-        .post-body pre { overflow-x: auto; padding-left: 2ch; box-shadow: inset 2px 0 0 rgba(255,255,255,0.2); }
+        .post-body blockquote > * + * { margin-top: 1em; }
+        .post-body pre { overflow-x: auto; padding-left: 2ch; box-shadow: inset 2px 0 0 rgba(255,255,255,0.2); text-align: left; }
         .post-body code { font-family: inherit; font-size: 1em; }
+        .post-body table { border-collapse: collapse; text-align: left; }
+        .post-body th, .post-body td { padding: 0 2ch 0 0; text-align: left; vertical-align: top; font-weight: 400; }
+        .post-body th { color: var(--dim); }
+        .post-body figcaption { color: var(--dim); }
         .post-body img, .post-body picture { display: none; }
         .post-body hr { border: 0; border-top: 1px dashed rgba(255,255,255,0.15); }
 
