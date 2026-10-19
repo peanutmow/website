@@ -2,6 +2,28 @@ use axum::response::{Html, IntoResponse, Response};
 use minijinja::Environment;
 use serde::Serialize;
 
+const TEMPLATES: &[(&str, &str, &str)] = &[
+    ("index.html", "templates/index.html", include_str!("../templates/index.html")),
+    ("projects.html", "templates/projects.html", include_str!("../templates/projects.html")),
+    ("redherring.html", "templates/redherring.html", include_str!("../templates/redherring.html")),
+    ("conejillo.html", "templates/conejillo.html", include_str!("../templates/conejillo.html")),
+    ("content_gallery.html", "gallery/index.html", include_str!("../gallery/index.html")),
+    ("content_socials.html", "socials/index.html", include_str!("../socials/index.html")),
+    ("blog.html", "templates/blog.html", include_str!("../templates/blog.html")),
+    ("meta.html", "templates/meta.html", include_str!("../templates/meta.html")),
+    ("embed_scene.html", "templates/embed_scene.html", include_str!("../templates/embed_scene.html")),
+];
+
+fn read_template(path: &str, embedded: &'static str) -> String {
+    match std::fs::read_to_string(path) {
+        Ok(text) => text,
+        Err(error) => {
+            tracing::warn!("could not read {path} ({error}); using the embedded copy");
+            embedded.to_string()
+        }
+    }
+}
+
 pub struct TemplateEngine {
     env: Environment<'static>,
 }
@@ -9,25 +31,9 @@ pub struct TemplateEngine {
 impl TemplateEngine {
     pub fn new() -> Self {
         let mut env = Environment::new();
-        env.add_template("index.html", include_str!("../templates/index.html")).unwrap();
-        env.add_template("projects.html", include_str!("../templates/projects.html")).unwrap();
-        env.add_template("redherring.html", include_str!("../templates/redherring.html")).unwrap();
-        env.add_template("conejillo.html", include_str!("../templates/conejillo.html")).unwrap();
-        // Gallery / socials used to be served as static files behind a
-        // placeholder SSR stub that iframed them. They are rendered directly now,
-        // so the profile's name reaches them and nothing is nested twice.
-        env.add_template("content_gallery.html", include_str!("../gallery/index.html")).unwrap();
-        env.add_template("content_socials.html", include_str!("../socials/index.html")).unwrap();
-        // The blog is a WriteFreely instance on this host that refuses to be
-        // framed from here, so its feeds are rendered through this template
-        // instead — see `crate::blog`.
-        env.add_template("blog.html", include_str!("../templates/blog.html")).unwrap();
-        // Shared <head> block for link previews (OpenGraph + Discord's
-        // component-embed payload). Kept in one place so every page emits the
-        // same tags in the same order.
-        env.add_template("meta.html", include_str!("../templates/meta.html")).unwrap();
-        // The fixed-size surface the Discord artwork is recorded from.
-        env.add_template("embed_scene.html", include_str!("../templates/embed_scene.html")).unwrap();
+        for &(name, path, embedded) in TEMPLATES {
+            env.add_template_owned(name, read_template(path, embedded)).unwrap();
+        }
         TemplateEngine { env }
     }
 

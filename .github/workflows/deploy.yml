@@ -60,7 +60,7 @@ jobs:
           else
             echo "[gallery] refresh failed; keeping the previous photos.json"
           fi
-          rsync -rlp --checksum --delete --delete-after --itemize-changes \
+          rsync -rlpz --checksum --delete --delete-after --itemize-changes \
             --exclude=/.git/ --exclude=/.github/ --exclude=/.deploy/ \
             --exclude=/target/ --exclude=node_modules/ --exclude=__pycache__/ \
             --exclude='*.md' --exclude=/alice-website --exclude='/alice-website.*' \
@@ -88,7 +88,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .deploy/alice-website
-          key: alice-binary-v1-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'src/**', 'templates/**', 'gallery/curation.json', 'gallery/index.html', 'socials/**') }}
+          key: alice-binary-v1-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'src/**') }}
 
       # The runner image ships Rust, so adding the musl target is all that is
       # needed; the rustup installer is only a fallback for a bare image.
@@ -154,13 +154,19 @@ jobs:
           # running executable is never touched, and an identical (cached)
           # build is not transferred at all.
           APP_DIR="/var/www/virtual/$SFTP_USERNAME/html"
+          TEMPLATE_CHANGED=false
+          if grep -Eq '(^[<>]f[^ ]* (templates/|gallery/index\.html$|socials/)|^\*deleting +(templates/|gallery/index\.html$|socials/))' \
+               "$RUNNER_TEMP/sync.log" 2>/dev/null \
+             || grep -q 'falling back to a full lftp mirror' "$RUNNER_TEMP/sync.log" 2>/dev/null; then
+            TEMPLATE_CHANGED=true
+          fi
           # Reuse one SSH connection for the upload and the setup below.
           SSH_OPTS="-p $SFTP_PORT -o StrictHostKeyChecking=no \
                     -o ControlMaster=auto -o ControlPath=$RUNNER_TEMP/ssh.sock -o ControlPersist=60"
           RSYNC_SSH="sshpass -e ssh $SSH_OPTS"
 
           echo "==> [rsync] uploading binary ..."
-          if ! rsync -p --checksum --itemize-changes -e "$RSYNC_SSH" \
+          if ! rsync -pz --checksum --itemize-changes -e "$RSYNC_SSH" \
                .deploy/alice-website \
                "$SFTP_USERNAME@$SFTP_HOST:$APP_DIR/alice-website.new"; then
             # lftp is only needed on this path, so it is not installed upfront.
@@ -183,7 +189,7 @@ jobs:
           echo "==> [ssh] running remote setup ..."
           sshpass -p "$SFTP_PASSWORD" ssh $SSH_OPTS \
             "$SFTP_USERNAME@$SFTP_HOST" \
-            "SFTP_USER='$SFTP_USERNAME' VERIFY_BACKEND='$VERIFY_BACKEND' bash -l -s" <<'REMOTE'
+            "SFTP_USER='$SFTP_USERNAME' VERIFY_BACKEND='$VERIFY_BACKEND' TEMPLATE_CHANGED='$TEMPLATE_CHANGED' bash -l -s" <<'REMOTE'
           set -e
           trap 'echo "REMOTE FAILED at line $LINENO: $BASH_COMMAND"' ERR
           USER_NAME="${SFTP_USER:?SFTP_USER not set}"
@@ -195,6 +201,7 @@ jobs:
           SERVICE_DIR="$REAL_HOME/etc/services.d"
           INI="$SERVICE_DIR/$SERVICE_NAME.ini"
           BACKEND_MARKER="$REAL_HOME/.alice-website-backend"
+          TEMPLATES_CHANGED="${TEMPLATE_CHANGED:-false}"
           BINARY_CHANGED=0
           CONFIG_CHANGED=0
 
@@ -260,10 +267,11 @@ jobs:
             RUNNING_BIN="$(readlink "/proc/$PID/exe" 2>/dev/null || true)"
           fi
           if [ "$BINARY_CHANGED" = 1 ] || [ "$CONFIG_CHANGED" = 1 ] \
+             || [ "$TEMPLATES_CHANGED" = "true" ] \
              || [ "$RUNNING_BIN" != "$APP_DIR/alice-website" ]; then
             supervisorctl restart "$SERVICE_NAME" || supervisorctl start "$SERVICE_NAME"
           else
-            echo "  already running the current binary and config"
+            echo "  already running the current binary, templates and config"
           fi
           supervisorctl status "$SERVICE_NAME" || true
 

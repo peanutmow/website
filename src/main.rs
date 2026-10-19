@@ -317,7 +317,9 @@ async fn not_found(uri: Uri) -> Response {
 }
 
 fn page_404() -> Response {
-    (StatusCode::NOT_FOUND, Html(include_str!("../templates/404.html"))).into_response()
+    let body = std::fs::read_to_string("templates/404.html")
+        .unwrap_or_else(|_| include_str!("../templates/404.html").to_string());
+    (StatusCode::NOT_FOUND, Html(body)).into_response()
 }
 
 /// Map a request path to a root-level image, e.g. `/webring-button.png`.
