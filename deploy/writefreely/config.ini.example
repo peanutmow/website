@@ -40,11 +40,12 @@ site_name = Alice
 host = https://blog.alicemow.org
 
 ; Multi-user mode is what lets one account own more than one blog.
-; This is not a public instance: registration stays closed and the landing page
-; is the login form, so only you can post.
+; This is not a public instance: registration stays closed, and the landing
+; page is the main blog so the root URL is content rather than a login form.
+; Only you can post.
 single_user       = false
 open_registration = false
-landing           = /login
+landing           = /alice
 
 ; ActivityPub, so the blogs are followable from Mastodon as
 ; @alice@blog.alicemow.org and @politics@blog.alicemow.org.

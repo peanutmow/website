@@ -152,6 +152,10 @@ else
     uberspace web backend list 2>/dev/null || true
 fi
 
+if [ -f "$HERE/seo.sh" ]; then
+    bash "$HERE/seo.sh"
+fi
+
 cat <<EOF
 
 Done. Federation must be reachable at the domain root -- check all of these
@@ -166,6 +170,7 @@ Then:
   2. Blogs -> "New blog" -> create the second blog (slug "politics")
   3. confirm both feeds: /$ADMIN_USER/feed/ and /politics/feed/
   4. follow @politics@$DOMAIN from Mastodon to prove federation works
+  5. re-run deploy/writefreely/seo.sh after publishing to refresh sitemap.xml
 
 Keep the DNS record for $DOMAIN DNS-only (grey cloud). Proxying it through a
 CDN with bot protection would challenge the other servers that fetch the

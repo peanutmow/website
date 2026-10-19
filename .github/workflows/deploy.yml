@@ -236,7 +236,7 @@ jobs:
             'startsecs=2' \
             'autorestart=true' \
             'redirect_stderr=true' \
-            'environment=BLOG_FEED_BASE="http://127.0.0.1:8082"' \
+            'environment=BLOG_FEED_BASE="http://127.0.0.1:8082",SITE_CANONICAL_REDIRECT="1"' \
             > "$NEW_INI"
           if cmp -s "$NEW_INI" "$INI"; then
             rm -f "$NEW_INI"
