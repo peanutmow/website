@@ -56,7 +56,7 @@
             label: 'overview',
             mode: 'ascii',
             text: true,
-            copy: 'Every character on this screen is computed each frame. Inspect mode peels the page into the layers it is made of. Move the pointer — the water still answers.',
+            copy: 'Every character on this screen is drawn by the page as it runs. This tour goes through the parts it is built from. You can still move the pointer the whole time.',
             seed: seedFrame
         },
         {
@@ -65,7 +65,7 @@
             mode: 'text',
             text: false,
             canvas: 'field',
-            copy: 'Before the letters: brightness. Each cell holds a number between zero and one; here the lattice is smoothed away. It spreads, swirls, and loses a fraction of itself every frame, so black always comes back.',
+            copy: 'Start with the water itself. Each cell holds a shade between empty and full. It spreads out, swirls around, and fades a little every frame, so the dark comes back on its own.',
             seed: seedField
         },
         {
@@ -73,7 +73,7 @@
             label: 'the lattice',
             mode: 'grid',
             text: false,
-            copy: 'Rows are fixed at about fourteen pixels; columns are whatever fits the measured width of one character. Text is placed by row and column, not by pixels, so the waves and the words share one grid.',
+            copy: 'Everything here sits on a grid of characters. Rows are about fourteen pixels tall and the columns fit as many characters as the window allows. The water and the words use the same grid.',
             callout: 'cell'
         },
         {
@@ -82,7 +82,7 @@
             mode: 'text',
             text: false,
             canvas: 'current',
-            copy: 'Every cell carries a direction and a strength. The solver diffuses them, projects them until they stop overlapping, then carries the brightness along the result. These lines follow that field — drop a mote of ink anywhere and it would ride one.',
+            copy: 'Each cell also knows which way the water is moving and how fast. The page works that out every frame, then carries the shade along with it, which is what makes the ripples travel.',
             seed: seedCurrent
         },
         {
@@ -90,7 +90,7 @@
             label: 'the alphabet',
             mode: 'text',
             text: false,
-            copy: 'Density becomes brightness, and brightness picks a character. There is no image underneath: the character is the pixel. A bunny of triangles turns through the light, and every shade of it lands on this same ramp - lit thin, shadow heavy.',
+            copy: 'Brighter cells get heavier characters. That is the whole trick. There is no image underneath, just letters. The bunny is only triangles, and its shading comes from the same set of characters.',
             bunny: true
         },
         {
@@ -98,7 +98,7 @@
             label: 'the type',
             mode: 'text',
             text: true,
-            copy: 'The greeting, menu and bio are stamped into the grid after the fluid is drawn, in fixed rows near the bottom. The menu is a row of real links, positioned over the characters they name.',
+            copy: 'The name, menu and bio are written into the same grid after the water is drawn, near the bottom. The menu items are real links sitting on the letters they name.',
             callout: 'type'
         },
         {
@@ -106,7 +106,7 @@
             label: 'the frame',
             mode: 'ascii',
             text: true,
-            copy: 'One field, one ramp, one line of type. The pointer is the only input. Close this and make a mess.',
+            copy: 'That is all of it. One grid, one set of characters, one bit of text. Move the pointer around. Close this and make a mess.',
             cta: 'return to the page',
             seed: seedFrame
         }
