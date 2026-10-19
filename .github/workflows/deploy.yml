@@ -27,14 +27,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Regenerate gallery/photos.json from Flickr before building. The
-      # archive lives in that file, so new uploads reach the live page without
-      # anyone editing HTML. Non-fatal: a Flickr outage keeps the last copy.
-      - name: Refresh gallery from Flickr
+      - name: Refresh gallery from Flickr (background)
         continue-on-error: true
         run: |
-          python3 -m pip install --quiet --disable-pip-version-check pillow
-          python3 tools/gallery/sync.py
+          nohup bash -c '
+            python3 -m pip install --quiet --disable-pip-version-check pillow &&
+              python3 tools/gallery/sync.py
+            echo $? > "$RUNNER_TEMP/gallery.exit"
+          ' > "$RUNNER_TEMP/gallery.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/gallery.pid"
       - name: Restore the built binary
         id: binary
         uses: actions/cache@v4
@@ -42,10 +43,13 @@ jobs:
           path: .deploy/alice-website
           key: alice-binary-v1-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'src/**', 'templates/**', 'gallery/curation.json', 'gallery/index.html', 'socials/**') }}
 
-      - name: Install transfer tools (lftp, sshpass)
+      - name: Install transfer tools (sshpass, rsync)
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends lftp sshpass rsync
+          sudo apt-get install -y --no-install-recommends sshpass rsync \
+            || {
+              sudo apt-get update -qq
+              sudo apt-get install -y --no-install-recommends sshpass rsync
+            }
 
       - name: Install Rust
         if: steps.binary.outputs.cache-hit != 'true'
@@ -59,7 +63,12 @@ jobs:
 
       - name: Install musl-tools (static link)
         if: steps.binary.outputs.cache-hit != 'true'
-        run: sudo apt-get install -y --no-install-recommends musl-tools
+        run: |
+          sudo apt-get install -y --no-install-recommends musl-tools \
+            || {
+              sudo apt-get update -qq
+              sudo apt-get install -y --no-install-recommends musl-tools
+            }
 
       - name: Build release binary (static, for the server)
         if: steps.binary.outputs.cache-hit != 'true'
@@ -71,6 +80,17 @@ jobs:
           strip target/x86_64-unknown-linux-musl/release/alice-website \
             -o .deploy/alice-website \
             || cp target/x86_64-unknown-linux-musl/release/alice-website .deploy/alice-website
+
+      - name: Wait for gallery refresh
+        run: |
+          if [ -f "$RUNNER_TEMP/gallery.pid" ]; then
+            pid="$(cat "$RUNNER_TEMP/gallery.pid")"
+            while kill -0 "$pid" 2>/dev/null; do sleep 1; done
+          fi
+          tail -n 20 "$RUNNER_TEMP/gallery.log" 2>/dev/null || true
+          if [ "$(cat "$RUNNER_TEMP/gallery.exit" 2>/dev/null || echo 1)" -ne 0 ]; then
+            echo "::warning title=Gallery refresh failed::keeping the last gallery/photos.json"
+          fi
 
       - name: Deploy to Uberspace
         env:
@@ -102,26 +122,26 @@ jobs:
             --exclude=__pycache__/
             --exclude='*.md'
             --exclude=/alice-website
-            --exclude='/alice-website.*'
           )
           RSYNC_SSH="sshpass -e ssh -p $SFTP_PORT -o StrictHostKeyChecking=no"
+          # Stage the binary inside the tree so ONE rsync connection carries
+          # both the site files and the executable (as alice-website.new).
+          # rsync renames a temp file over the destination, so the running
+          # binary is never touched, and an identical (cached) build is not
+          # transferred at all.
+          cp .deploy/alice-website ./alice-website.new
           if rsync -rlpt --omit-dir-times --checksum \
                --delete --delete-after --itemize-changes \
                "${SYNC_EXCLUDES[@]}" -e "$RSYNC_SSH" \
                ./ "$SFTP_USERNAME@$SFTP_HOST:$APP_DIR/"; then
-            # 2) Upload the binary the same way: an identical (cached) build
-            #    is not transferred at all, and rsync renames a temp file over
-            #    alice-website.new, so the running executable is never touched.
-            echo "==> [rsync] uploading binary ..."
-            rsync -pt --checksum --itemize-changes -e "$RSYNC_SSH" \
-              .deploy/alice-website \
-              "$SFTP_USERNAME@$SFTP_HOST:$APP_DIR/alice-website.new"
             echo "==> [rsync] sync done"
           else
             # Safety net: fall back to the previous behaviour (full lftp
             # mirror) if rsync is unusable on the host. Keep this exclude
             # list in sync with SYNC_EXCLUDES above.
             echo "!! [rsync] failed — falling back to a full lftp mirror" >&2
+            # lftp is only needed on this path, so it is not installed upfront.
+            sudo apt-get install -y --no-install-recommends lftp
             printf '%s\n' \
               'set sftp:auto-confirm yes' \
               'set cmd:fail-exit yes' \
@@ -133,7 +153,7 @@ jobs:
               "sftp://$SFTP_HOST:$SFTP_PORT" -f "$RUNNER_TEMP/mirror.lftp"
           fi
 
-          # 3) Install/refresh the service and set the web backend.
+          # 2) Install/refresh the service and set the web backend.
           #    Uberspace manages persistent daemons with supervisord (NOT
           #    systemd user services — `systemctl --user` / linger don't
           #    exist there). Service config = one .ini in ~/etc/services.d/.
@@ -174,11 +194,14 @@ jobs:
           # which is why the binary carries no TLS client. Keep this port in
           # step with `port` in the WriteFreely config.ini.
           NEW_INI="$(mktemp "$SERVICE_DIR/.$SERVICE_NAME.XXXXXX")"
+          # `supervisorctl restart` blocks until the program has been RUNNING
+          # for startsecs, so keep this small — the server binds its port in
+          # milliseconds and 60s turned every deploy into a 60s wait.
           printf '%s\n' \
             "[program:$SERVICE_NAME]" \
             "command=$APP_DIR/alice-website" \
             "directory=$APP_DIR" \
-            'startsecs=60' \
+            'startsecs=5' \
             'autorestart=true' \
             'redirect_stderr=true' \
             'environment=BLOG_FEED_BASE="http://127.0.0.1:8082"' \
@@ -219,9 +242,15 @@ jobs:
           fi
           supervisorctl status "$SERVICE_NAME" || true
 
-          echo "[5/5] set web backend"
+          echo "[5/5] web backend"
           command -v uberspace >/dev/null 2>&1 || export PATH="$PATH:/usr/local/bin"
-          uberspace web backend set / --http --port 8080
+          # `set` reloads the frontend config and took ~11s per deploy. Only
+          # call it when the backend isn't already pointing at this port.
+          if uberspace web backend list 2>/dev/null | grep -Eq '^/ http:8080([ ,]|$)'; then
+            echo "  already http:8080"
+          else
+            uberspace web backend set / --http --port 8080
+          fi
           echo "REMOTE setup complete"
           REMOTE
           echo "==> [ssh] remote setup done"
