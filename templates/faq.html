@@ -8,6 +8,7 @@
     <script type="application/ld+json">{{ faq_json_ld | safe }}</script>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/prose.css">
+    <link rel="stylesheet" href="/static/site-links.css">
 </head>
 <body>
     <main class="prose">
@@ -28,7 +29,7 @@
         </div>
 
         <footer>
-            <p><a href="/about">About</a> &middot; <a href="/projects">Projects</a> &middot; <a href="/">Home</a></p>
+            {% include "site_footer.html" %}
         </footer>
     </main>
 </body>

@@ -24,6 +24,11 @@ Status: {{ project.status }}
 {{ project.blurb }}
 Tags: {{ project.tags | join(", ") }}
 {% endfor %}
+{% if site.blogs %}
+## Blog
+
+{% for blog in site.blogs %}- [{{ blog.label }}]({{ blog.public_url }}) — feed: {{ blog.feed }}
+{% endfor %}{% endif %}
 ## Pages
 
 - [Home]({{ origin }}/)
@@ -32,9 +37,6 @@ Tags: {{ project.tags | join(", ") }}
 - [FAQ]({{ origin }}/faq)
 - [Gallery]({{ origin }}/gallery)
 - [Socials]({{ origin }}/socials)
-{% if site.blogs %}
-- [Blog](https://blog.alicemow.org/)
-{% endif %}
 ## Machine-readable
 
 - Sitemap: {{ origin }}/sitemap.xml

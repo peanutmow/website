@@ -38,6 +38,8 @@ pub struct Blog {
     pub label: &'static str,
     /// Same-origin path the switcher loads (rendered by `crate::blog`).
     pub url: &'static str,
+    /// Canonical public URL of the collection on the blog host.
+    pub public_url: &'static str,
     /// Feed advertised for this section through `<link rel="alternate">`.
     pub feed: &'static str,
     /// The WriteFreely collection this section reads.
@@ -112,12 +114,14 @@ const PERSONAL_BLOGS: &[Blog] = &[
     Blog {
         label: "Main",
         url: "/blog",
+        public_url: "https://blog.alicemow.org/alice/",
         feed: "https://blog.alicemow.org/alice/feed/",
         slug: "alice",
     },
     Blog {
         label: "Politics",
         url: "/blog/politics",
+        public_url: "https://blog.alicemow.org/politics/",
         feed: "https://blog.alicemow.org/politics/feed/",
         slug: "politics",
     },
@@ -355,6 +359,8 @@ mod tests {
         assert_eq!(site.blogs[1].label, "Politics");
         assert_eq!(site.blogs[0].slug, "alice");
         assert_eq!(site.blogs[1].slug, "politics");
+        assert_eq!(site.blogs[0].public_url, "https://blog.alicemow.org/alice/");
+        assert_eq!(site.blogs[1].public_url, "https://blog.alicemow.org/politics/");
         assert_eq!(site.blogs[0].feed, "https://blog.alicemow.org/alice/feed/");
         assert_eq!(site.blogs[1].feed, "https://blog.alicemow.org/politics/feed/");
         // The switcher loads pages of this site, because a frame pointed at the

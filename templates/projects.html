@@ -6,6 +6,7 @@
     <title>{{ title }}</title>
     {% include "meta.html" %}
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/site-links.css">
     <!-- Load the small preview immediately; the full-resolution artwork is swapped in after load -->
     <link rel="preload" as="image" href="/assets/tree-preview.avif" fetchpriority="high">
     <link rel="preload" as="image" href="/assets/treebranch-preview.avif">
@@ -359,6 +360,7 @@
             </p>
             <p class="f-note">poured concrete <span class="m">·</span> moss <span class="r">·</span> rust &mdash; {{ site.short }}, mmxxvi</p>
             <p class="back"><a href="/">← return to interface</a></p>
+            {% include "site_footer.html" %}
         </footer>
     </div>
     </div>

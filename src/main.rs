@@ -396,13 +396,19 @@ fn text_file(body: String) -> Response {
 }
 
 async fn sitemap_xml(
+    State(state): State<Arc<AppState>>,
     Extension(site): Extension<Site>,
     Extension(origin): Extension<site::Origin>,
 ) -> Response {
+    let sections = state.blog.sections(&site).await;
     Response::builder()
         .header("Content-Type", "application/xml; charset=utf-8")
         .header("Cache-Control", "public, max-age=3600")
-        .body(axum::body::Body::from(seo::sitemap(&site, &origin.0)))
+        .body(axum::body::Body::from(seo::sitemap(
+            &site,
+            &origin.0,
+            &sections,
+        )))
         .unwrap()
 }
 

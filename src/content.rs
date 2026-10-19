@@ -97,7 +97,10 @@ fn personal() -> Vec<Qa> {
         qa(
             "What does Alice write about?",
             "The blog has two sections: Main, for technology and personal writing, and Politics. Both are published with a self-hosted WriteFreely instance at blog.alicemow.org.",
-            &[("blog.alicemow.org", "https://blog.alicemow.org/")],
+            &[
+                ("Main blog", "https://blog.alicemow.org/alice/"),
+                ("Politics blog", "https://blog.alicemow.org/politics/"),
+            ],
         ),
         qa(
             "Is the source code available?",

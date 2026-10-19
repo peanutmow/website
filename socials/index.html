@@ -6,6 +6,7 @@
     <title>Socials — {{ site.name }}</title>
     {% include "meta.html" %}
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/site-links.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -256,5 +257,8 @@
         })();
     </script>
     {% endif %}
+    <footer class="site-footer">
+        {% include "site_footer.html" %}
+    </footer>
 </body>
 </html>

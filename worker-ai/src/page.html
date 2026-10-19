@@ -166,6 +166,24 @@
         .composer button:hover { color: #fff; border-color: var(--line-strong); background: rgba(255,255,255,0.06); }
         .composer button:active { transform: scale(0.96); }
 
+        .built-by {
+            flex-shrink: 0;
+            padding: 0.55rem 1rem 0.7rem;
+            text-align: center;
+            font-family: 'Share Tech Mono', 'Courier New', monospace;
+            font-size: 0.6rem;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            color: var(--faint);
+        }
+        .built-by a {
+            color: var(--dim);
+            text-decoration: none;
+            border-bottom: 1px solid var(--line);
+            padding-bottom: 1px;
+        }
+        .built-by a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+
     </style>
 </head>
 <body>
@@ -183,6 +201,10 @@
         <input id="input" type="text" placeholder="type a message" aria-label="message">
         <button type="submit">send</button>
     </form>
+
+    <footer class="built-by">
+        <a href="https://alicemow.org" target="_blank" rel="noopener">Built by Alice — alicemow.org</a>
+    </footer>
 
     <script>
         (function () {

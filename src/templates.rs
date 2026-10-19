@@ -13,6 +13,7 @@ const TEMPLATES: &[(&str, &str, &str)] = &[
     ("content_socials.html", "socials/index.html", include_str!("../socials/index.html")),
     ("blog.html", "templates/blog.html", include_str!("../templates/blog.html")),
     ("meta.html", "templates/meta.html", include_str!("../templates/meta.html")),
+    ("site_footer.html", "templates/site_footer.html", include_str!("../templates/site_footer.html")),
     ("robots.txt", "templates/robots.txt", include_str!("../templates/robots.txt")),
     ("llms.txt", "templates/llms.txt", include_str!("../templates/llms.txt")),
     ("llms-full.txt", "templates/llms-full.txt", include_str!("../templates/llms-full.txt")),
@@ -377,7 +378,8 @@ mod tests {
         assert!(text.starts_with("# Alice (alicemow)"));
         assert!(text.contains("https://example.test/projects"));
         assert!(text.contains("https://mastodon.social/@alicemow"));
-        assert!(text.contains("https://blog.alicemow.org/"));
+        assert!(text.contains("https://blog.alicemow.org/alice/"));
+        assert!(text.contains("https://blog.alicemow.org/politics/"));
         assert!(text.contains("BunGPT"));
     }
 
@@ -412,6 +414,7 @@ mod tests {
             assert!(text.contains(title), "missing {title}");
         }
         assert!(text.contains("Rust, 3D, ASCII"));
+        assert!(text.contains("https://blog.alicemow.org/alice/"));
         assert!(text.contains("https://example.test/sitemap.xml"));
     }
 
@@ -421,6 +424,8 @@ mod tests {
         assert!(personal.contains("(alicemow)"));
         assert!(personal.contains("ascii-render"));
         assert!(personal.contains("alice@herkula.info"));
+        assert!(personal.contains("https://blog.alicemow.org/alice/"));
+        assert!(personal.contains("https://blog.alicemow.org/politics/"));
 
         let professional = decode_escapes(&about_page(Site::professional()));
         assert!(!professional.contains("alicemow"));

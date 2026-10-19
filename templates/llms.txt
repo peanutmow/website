@@ -11,8 +11,8 @@
 - [FAQ]({{ origin }}/faq): answers about the work, projects, tools and contact details.
 - [Gallery]({{ origin }}/gallery): photography, 3D art and visual experiments.
 - [Socials]({{ origin }}/socials): accounts and contact links.
-{% if site.blogs %}- [Blog](https://blog.alicemow.org/): writing on technology and politics, published with WriteFreely.
-{% endif %}
+{% if site.blogs %}{% for blog in site.blogs %}- [{{ blog.label }} blog]({{ blog.public_url }}): a federated collection published with WriteFreely.
+{% endfor %}{% endif %}
 ## Optional
 
 {% if site.mastodon_url %}- [Mastodon]({{ site.mastodon_url }}): @{{ site.mastodon_handle }}

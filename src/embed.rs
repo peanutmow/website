@@ -499,7 +499,9 @@ fn structured_data(site: &Site, origin: &str, page_url: &str) -> String {
             same_as.push(url);
         }
         same_as.push(site.github_url);
-        same_as.push("https://blog.alicemow.org/");
+        for blog in site.blogs {
+            same_as.push(blog.public_url);
+        }
     }
     person["sameAs"] = json!(same_as);
 

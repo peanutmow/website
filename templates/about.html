@@ -7,6 +7,7 @@
     {% include "meta.html" %}
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/prose.css">
+    <link rel="stylesheet" href="/static/site-links.css">
 </head>
 <body>
     <main class="prose">
@@ -33,8 +34,12 @@
 
         {% if site.blogs %}
         <h2>Writing</h2>
-        <p>The blog has two sections: Main, for technology and personal writing, and Politics. Both are published with a self-hosted WriteFreely instance.</p>
-        <p><a href="https://blog.alicemow.org/">blog.alicemow.org</a></p>
+        <p>The blog has two sections, published with a self-hosted WriteFreely instance.</p>
+        <ul>
+            {% for blog in site.blogs %}
+            <li><a href="{{ blog.public_url }}">{{ blog.label }}</a> &mdash; <a href="{{ blog.feed }}">RSS</a></li>
+            {% endfor %}
+        </ul>
         {% endif %}
 
         <h2>Elsewhere</h2>
@@ -47,7 +52,7 @@
         </ul>
 
         <footer>
-            <p><a href="/faq">Common questions</a> &middot; <a href="/projects">Projects</a> &middot; <a href="/">Home</a></p>
+            {% include "site_footer.html" %}
         </footer>
     </main>
 </body>
