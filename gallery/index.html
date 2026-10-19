@@ -6,50 +6,54 @@
     <title>Gallery — {{ site.name }}</title>
     {% include "meta.html" %}
     <link rel="preconnect" href="https://live.staticflickr.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400&family=Instrument+Serif:ital@0;1&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/gallery.css">
 </head>
 <body>
-    <div class="grain" aria-hidden="true"></div>
-
-    <header class="topbar">
-        <a class="back" href="/">← {{ site.name }}</a>
-        <div class="title-wrap">
-            <h1>Gallery</h1>
-            <p class="sub">an archive of light <span class="dot">·</span> <span id="frame-count">—</span> frames</p>
+    <header class="masthead">
+        <div class="masthead-bar">
+            <a class="back" href="/">← {{ site.name }}</a>
+            <span class="eyebrow">working archive · photographs</span>
         </div>
-        <div class="lab-mark" aria-hidden="true"><span>film lab</span><span>35mm · colour</span></div>
+
+        <div class="masthead-main">
+            <h1><span class="the">The</span><em>Archive</em></h1>
+            <div class="masthead-aside">
+                <p class="lede"><span id="frame-count">—</span> frames, kept as they came off the card.</p>
+                <p class="note">Dates omitted — they record the upload batch, not the moment.</p>
+            </div>
+        </div>
+
+        <div class="masthead-rule">
+            <span>contact sheets <span id="sheet-count">—</span></span>
+            <span>arranged by light, not by time</span>
+        </div>
     </header>
 
     <main class="page">
-        <section class="controls" aria-label="Filter the archive">
-            <div class="spectrum-wrap">
-                <div class="spectrum-labels" aria-hidden="true">
-                    <span>0°</span><span>120°</span><span>240°</span><span>360°</span>
-                </div>
-                <div class="spectrum" id="spectrum" role="slider" tabindex="0"
-                     aria-label="Filter frames by colour" aria-valuemin="0" aria-valuemax="360" aria-valuenow="0">
-                    <div class="spectrum-track" aria-hidden="true"></div>
-                    <div class="spectrum-handle" id="spectrum-handle" aria-hidden="true"></div>
-                </div>
-                <div class="spectrum-readout">
-                    <span class="readout-name" id="spectrum-name">all light</span>
-                    <span class="readout-count" id="spectrum-count"></span>
-                    <span class="readout-spacer"></span>
-                    <button type="button" class="mono-toggle" id="mono-toggle" aria-pressed="false" title="Show only monochrome frames">mono</button>
-                    <button type="button" class="clear-btn" id="clear-filters" hidden>reset</button>
-                </div>
+        <section class="index" aria-label="Filter the archive">
+            <div class="index-row">
+                <span class="index-key">Colour</span>
+                <div class="swatches" id="swatches"></div>
             </div>
-            <div class="tag-row" id="tag-row" aria-label="Filter by tag"></div>
+            <div class="index-row">
+                <span class="index-key">Index</span>
+                <div class="tags" id="tags"></div>
+            </div>
+            <div class="index-foot">
+                <span id="status">all frames</span>
+                <button type="button" id="reset" hidden>clear filter</button>
+            </div>
         </section>
 
         <div id="archive"></div>
         <noscript><p class="empty">This archive needs JavaScript to develop its frames.</p></noscript>
-        <p class="empty" id="empty" hidden>no frames match this light.</p>
+        <p class="empty" id="empty" hidden>nothing in the archive answers to that.</p>
     </main>
 
-    <footer class="foot">
-        <span id="foot-count"></span>
+    <footer class="colophon">
+        <span id="foot-count">—</span>
+        <span class="colophon-note">an archive of light</span>
         <a href="https://www.flickr.com/photos/185219841@N08/" target="_blank" rel="noopener">source negatives ↗</a>
     </footer>
 
