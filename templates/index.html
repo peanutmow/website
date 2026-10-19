@@ -39,6 +39,12 @@
         .button-bar .btn:hover { color: rgba(255,255,255,0.85); background: rgba(255,255,255,0.07); border-color: rgba(255,255,255,0.08); text-shadow: 0 0 15px rgba(255,255,255,0.15); }
         .button-bar .btn:active { background: rgba(255,255,255,0.12); transform: scale(0.96); }
         #ui-overlay .bio { font-size: 0.65rem; color: rgba(255,255,255,0.15); letter-spacing: 1.5px; line-height: 1.5; max-width: 420px; opacity: 0.6; }
+        .no-js { position: fixed; inset: 0; z-index: 500; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem; padding: 2rem; text-align: center; background: #000; color: rgba(255,255,255,0.8); }
+        .no-js h2 { font-size: 1.1rem; font-weight: 300; letter-spacing: 4px; text-transform: uppercase; }
+        .no-js p { font-size: 0.8rem; color: rgba(255,255,255,0.55); letter-spacing: 1px; line-height: 1.6; }
+        .no-js ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.75rem 1.5rem; list-style: none; font-size: 0.75rem; letter-spacing: 1px; text-transform: uppercase; }
+        .no-js a { color: rgba(255,255,255,0.6); text-decoration: none; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 2px; }
+        .no-js a:hover { color: #fff; border-color: rgba(255,255,255,0.6); }
         #content-panel { position: relative; z-index: 50; margin-top: 100vh; min-height: 100vh; width: 100%; padding: 1.5rem; display: flex; flex-direction: column; }
         #content-frame { flex: 1; width: 100%; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; background: transparent; min-height: 0; }
         #socials-inline { display: none; flex: 1; width: 100%; border-radius: 8px; background: url('/assets/glassblock4k-preview.avif') center/cover no-repeat, rgba(255,255,255,0.015); backdrop-filter: blur(1.5px); -webkit-backdrop-filter: blur(1.5px); will-change: transform; transform: translateZ(0); padding: 2rem; overflow-y: auto; color: #fff; font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif; }
@@ -257,6 +263,19 @@
         </div>
     </div>
     <pre id="ascii-water" aria-hidden="true"></pre>
+    <noscript>
+        <div class="no-js">
+            <h2>{{ site.full_name }}{% if site.handle %} — {{ site.handle }}{% endif %}</h2>
+            <p>{{ site.bio }}</p>
+            <ul>
+                {% if site.mastodon_url %}<li><a href="{{ site.mastodon_url }}" rel="me">{{ site.mastodon_handle }}</a></li>{% endif %}
+                {% if site.x_url %}<li><a href="{{ site.x_url }}">{{ site.x_handle }}</a></li>{% endif %}
+                <li><a href="{{ site.github_url }}">{{ site.github_handle }}</a></li>
+                {% if site.discord_url %}<li><a href="{{ site.discord_url }}">{{ site.discord_handle }}</a></li>{% endif %}
+            </ul>
+            <p><a href="/projects">Projects</a> &middot; <a href="/gallery">Gallery</a>{% if site.blogs %} &middot; <a href="/blog">Blog</a>{% endif %}</p>
+        </div>
+    </noscript>
     <div id="ui-overlay">
         <h1 class="name">{{ site.greeting }}</h1>
         <div class="button-bar" id="button-bar">

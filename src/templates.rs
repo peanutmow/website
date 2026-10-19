@@ -268,4 +268,29 @@ mod tests {
         assert!(html.contains("rel=\"me\""));
         assert!(html.contains("href=\"https://mastodon.social/@alicemow\""));
     }
+
+    #[test]
+    fn the_home_page_describes_the_person_for_search_engines() {
+        let html = home(Site::personal());
+        assert!(html.contains("application/ld+json"));
+        assert!(html.contains("\"alternateName\":\"alicemow\""));
+        assert!(html.contains("https://mastodon.social/@alicemow"));
+        assert!(html.contains("index, follow, max-image-preview:large"));
+    }
+
+    #[test]
+    fn the_professional_schema_has_no_personal_handle() {
+        let html = home(Site::professional());
+        assert!(html.contains("application/ld+json"));
+        assert!(!html.contains("alternateName"));
+        assert!(!html.contains("alicemow"));
+    }
+
+    #[test]
+    fn the_home_page_still_names_itself_without_javascript() {
+        let html = decode_escapes(&home(Site::personal()));
+        assert!(html.contains("<noscript>"));
+        assert!(html.contains("Alice — alicemow"));
+        assert!(html.contains("@alicemow@mastodon.social"));
+    }
 }

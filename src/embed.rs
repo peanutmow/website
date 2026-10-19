@@ -56,6 +56,7 @@ pub struct Meta {
     pub oembed: String,
     /// Already escaped for a `<script type="application/json">` block.
     pub component_json: String,
+    pub json_ld: String,
 }
 
 /// The scene artwork is recorded at this size; keeping the OG dimensions in
@@ -113,7 +114,10 @@ pub fn home(site: &Site, origin: &str) -> Meta {
         Page {
             path: "/",
             title: site.greeting.to_string(),
-            description: site.bio.to_string(),
+            description: match site.handle {
+                Some(handle) => format!("{} — {}", site.bio, handle),
+                None => site.bio.to_string(),
+            },
             og_type: "website",
         },
         component,
@@ -382,13 +386,15 @@ fn meta(site: &Site, origin: &str, page: Page<'_>, component: Value) -> Meta {
     let description = truncate_words(&page.description, DESCRIPTION_LIMIT);
     let image = artwork(origin);
     let image_alt = format!("ASCII water rippling behind the words \"{}\"", site.greeting);
+    let url = format!("{origin}{}", page.path);
+    let json_ld = structured_data(site, origin, &url);
 
     Meta {
         title: title.clone(),
         description,
         site_name: site.full_name.to_string(),
         og_type: page.og_type,
-        url: format!("{origin}{}", page.path),
+        url,
         image,
         image_width: IMAGE_WIDTH,
         image_height: IMAGE_HEIGHT,
@@ -396,7 +402,45 @@ fn meta(site: &Site, origin: &str, page: Page<'_>, component: Value) -> Meta {
         accent: ACCENT_HEX,
         oembed: format!("{origin}/oembed.json"),
         component_json: encode(component, &title),
+        json_ld,
     }
+}
+
+fn structured_data(site: &Site, origin: &str, page_url: &str) -> String {
+    let mut person = json!({
+        "@type": "Person",
+        "name": site.full_name,
+        "url": format!("{origin}/"),
+        "description": site.bio,
+    });
+    if let Some(handle) = site.handle {
+        person["alternateName"] = json!(handle);
+    }
+
+    let mut same_as = Vec::new();
+    if site.professional {
+        same_as.push(site.github_url);
+    } else {
+        if let Some(url) = site.mastodon_url {
+            same_as.push(url);
+        }
+        if let Some(url) = site.x_url {
+            same_as.push(url);
+        }
+        same_as.push(site.github_url);
+        same_as.push("https://blog.alicemow.org/");
+    }
+    person["sameAs"] = json!(same_as);
+
+    json!({
+        "@context": "https://schema.org",
+        "@type": "ProfilePage",
+        "url": page_url,
+        "name": site.full_name,
+        "mainEntity": person,
+    })
+    .to_string()
+    .replace('<', "\\u003c")
 }
 
 /// The recorded scene. There is one file: the artwork is the water alone, so

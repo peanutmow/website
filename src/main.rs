@@ -17,6 +17,7 @@ mod blog;
 mod embed;
 mod gallery;
 mod projects;
+mod seo;
 mod site;
 mod templates;
 
@@ -88,6 +89,8 @@ async fn main() {
         // recorded from, and the oEmbed document that credits the author.
         .route("/embed-scene", get(embed_scene))
         .route("/oembed.json", get(oembed))
+        .route("/robots.txt", get(robots_txt))
+        .route("/sitemap.xml", get(sitemap_xml))
         // The bunny page — any /conejillo/… URL (long paths, matrix params,
         // percent-encoding, query strings, fragments) lands here.
         .route("/conejillo", get(conejillo_page))
@@ -99,8 +102,12 @@ async fn main() {
         .layer(middleware::from_fn(resolve_site))
         .with_state(state);
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
-    tracing::info!("Server running on http://0.0.0.0:8080");
+    let port = std::env::var("PORT")
+        .ok()
+        .and_then(|value| value.parse::<u16>().ok())
+        .unwrap_or(8080);
+    let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await.unwrap();
+    tracing::info!("Server running on http://0.0.0.0:{port}");
     axum::serve(listener, app).await.unwrap();
 }
 
@@ -109,6 +116,14 @@ async fn main() {
 /// Attach the identity (personal vs professional) to every request so handlers
 /// can render the matching profile. See [`site::detect`].
 async fn resolve_site(mut req: Request, next: Next) -> Response {
+    let path_and_query = req
+        .uri()
+        .path_and_query()
+        .map(|value| value.as_str())
+        .unwrap_or("/");
+    if let Some(target) = site::canonical_redirect(req.headers(), path_and_query) {
+        return Redirect::permanent(&target).into_response();
+    }
     let site = site::detect(req.headers());
     let origin = site::origin(req.headers());
     req.extensions_mut().insert(site);
@@ -123,7 +138,10 @@ async fn root_page(
     Extension(site): Extension<Site>,
     Extension(origin): Extension<site::Origin>,
 ) -> Response {
-    let title = format!("{} Portfolio", site.full_name);
+    let title = match site.handle {
+        Some(handle) => format!("{} ({}) — {}", site.full_name, handle, site.bio),
+        None => format!("{} Portfolio", site.full_name),
+    };
     let meta = embed::home(&site, &origin.0);
     state.tmpl.render_response("index.html", &serde_json::json!({
         "title": title,
@@ -282,6 +300,27 @@ async fn conejillo_page(State(state): State<Arc<AppState>>, Extension(site): Ext
         return page_404();
     }
     state.tmpl.render_response("conejillo.html", &serde_json::json!({"title": "🐰 conejillo de indias", "site": site}))
+}
+
+// ─── Search engine files ──────────────────────────────────────────
+
+async fn robots_txt(Extension(origin): Extension<site::Origin>) -> Response {
+    Response::builder()
+        .header("Content-Type", "text/plain; charset=utf-8")
+        .header("Cache-Control", "public, max-age=3600")
+        .body(axum::body::Body::from(seo::robots(&origin.0)))
+        .unwrap()
+}
+
+async fn sitemap_xml(
+    Extension(site): Extension<Site>,
+    Extension(origin): Extension<site::Origin>,
+) -> Response {
+    Response::builder()
+        .header("Content-Type", "application/xml; charset=utf-8")
+        .header("Cache-Control", "public, max-age=3600")
+        .body(axum::body::Body::from(seo::sitemap(&site, &origin.0)))
+        .unwrap()
 }
 
 // ─── Link previews ────────────────────────────────────────────────

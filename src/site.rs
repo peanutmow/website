@@ -21,6 +21,9 @@ use serde::Serialize;
 /// the `SITE_PROFESSIONAL_HOSTS` env var) once DNS is pointed at this server.
 const PROFESSIONAL_HOSTS: &[&str] = &["daveherkula.org"];
 
+const PERSONAL_ORIGIN: &str = "https://alicemow.org";
+const PROFESSIONAL_ORIGIN: &str = "https://daveherkula.org";
+
 /// One section of the blog, offered by the blog switcher.
 ///
 /// The blog is a self-hosted WriteFreely instance (see `deploy/writefreely`) with
@@ -53,6 +56,8 @@ pub struct Site {
     pub full_name: &'static str,
     /// Lowercase first name for wordmarks ("alice" / "dave").
     pub short: &'static str,
+    /// Public handle for the personal identity ("alicemow"); `None` here.
+    pub handle: Option<&'static str>,
     /// The line type-written into the ASCII water.
     pub greeting: &'static str,
     /// The one-line bio under the button bar.
@@ -125,6 +130,7 @@ impl Site {
             name: "Alice",
             full_name: "Alice",
             short: "alice",
+            handle: Some("alicemow"),
             greeting: "Hi, I'm Alice",
             bio: "artist & developer",
             email: "alice@herkula.info",
@@ -149,6 +155,7 @@ impl Site {
             name: "Dave",
             full_name: "Dave Herkula",
             short: "dave",
+            handle: None,
             greeting: "Hi, I'm Dave",
             bio: "developer \u{2014} building software and systems that hold up under real use.",
             email: "dave@herkula.info",
@@ -190,13 +197,14 @@ fn from_env() -> Option<Site> {
     })
 }
 
-/// The absolute origin of a request, e.g. `https://alicemow.uber.space`.
+/// The absolute origin of a request, e.g. `https://alicemow.org`.
 ///
 /// Link previews need absolute URLs: Discord's crawler fetches them from its
-/// own servers, so a root-relative `og:image` would point at nowhere. The
-/// origin is taken from the request rather than hard-coded so the same binary
-/// works on every domain that fronts it (including local development). Set
-/// `SITE_ORIGIN` to force one when the proxy does not forward the scheme.
+/// own servers, so a root-relative `og:image` would point at nowhere. Known
+/// production hosts collapse to the canonical domain for their profile, so the
+/// same content served from a second host still advertises one canonical URL.
+/// Local development keeps its own origin. Set `SITE_ORIGIN` to force one when
+/// the proxy does not forward the scheme.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Origin(pub String);
 
@@ -219,7 +227,41 @@ fn origin_with(headers: &HeaderMap, forced: Option<&str>) -> Origin {
     let Some(host) = host_with_port(headers) else {
         return Origin("http://localhost:8080".to_string());
     };
+    if let Some(canonical) = canonical_origin(&host) {
+        return Origin(canonical.to_string());
+    }
     Origin(format!("{}://{host}", scheme(headers, &host)))
+}
+
+fn canonical_origin(host: &str) -> Option<&'static str> {
+    match host.split(':').next().unwrap_or(host) {
+        "alicemow.org" | "www.alicemow.org" | "alicemow.uber.space" => Some(PERSONAL_ORIGIN),
+        "daveherkula.org" | "www.daveherkula.org" => Some(PROFESSIONAL_ORIGIN),
+        _ => None,
+    }
+}
+
+/// The canonical URL to send a request to, when `SITE_CANONICAL_REDIRECT=1`
+/// asks for the alias hosts to redirect instead of just advertising a canonical.
+/// Local requests, `SITE_ORIGIN` overrides and the canonical host itself are
+/// left alone.
+pub fn canonical_redirect(headers: &HeaderMap, path_and_query: &str) -> Option<String> {
+    if std::env::var("SITE_ORIGIN").is_ok() {
+        return None;
+    }
+    if std::env::var("SITE_CANONICAL_REDIRECT").ok().as_deref() != Some("1") {
+        return None;
+    }
+    let host = host_with_port(headers)?;
+    if is_local(&host) {
+        return None;
+    }
+    let canonical = canonical_origin(&host)?;
+    let current = format!("{}://{host}", scheme(headers, &host));
+    if current == canonical {
+        return None;
+    }
+    Some(format!("{canonical}{path_and_query}"))
 }
 
 /// The public scheme, as the reverse proxy saw it.
@@ -232,14 +274,17 @@ fn scheme<'a>(headers: &'a HeaderMap, host: &str) -> &'a str {
     }
     // Without a proxy header the scheme has to be inferred. Uberspace fronts
     // the app with HTTPS, while local runs are plain HTTP.
-    let local = host.starts_with("localhost")
-        || host.starts_with("127.0.0.1")
-        || host.starts_with("[::1]");
-    if local {
+    if is_local(host) {
         "http"
     } else {
         "https"
     }
+}
+
+fn is_local(host: &str) -> bool {
+    host.starts_with("localhost")
+        || host.starts_with("127.0.0.1")
+        || host.starts_with("[::1]")
 }
 
 /// The `Host` header as sent, port included. Unlike [`host_of`] this keeps a
@@ -352,7 +397,7 @@ mod tests {
     fn origins_are_absolute_and_pick_up_the_proxy_scheme() {
         assert_eq!(
             origin_with(&host_header("alicemow.uber.space"), None).0,
-            "https://alicemow.uber.space"
+            "https://alicemow.org"
         );
 
         // Local runs are plain HTTP, so previews built during development still
@@ -365,12 +410,32 @@ mod tests {
         // Uberspace terminates TLS in front of the app.
         let mut headers = host_header("alicemow.uber.space");
         headers.insert("x-forwarded-proto", "http,https".parse().unwrap());
-        assert_eq!(origin_with(&headers, None).0, "http://alicemow.uber.space");
+        assert_eq!(origin_with(&headers, None).0, "https://alicemow.org");
 
         // An explicit override wins.
         assert_eq!(
             origin_with(&host_header("alicemow.uber.space"), Some("https://alicemow.org/")).0,
             "https://alicemow.org"
         );
+    }
+
+    #[test]
+    fn alias_hosts_share_one_canonical_origin() {
+        for host in ["alicemow.org", "www.alicemow.org", "alicemow.uber.space"] {
+            assert_eq!(origin_with(&host_header(host), None).0, "https://alicemow.org");
+        }
+        for host in ["daveherkula.org", "www.daveherkula.org"] {
+            assert_eq!(origin_with(&host_header(host), None).0, "https://daveherkula.org");
+        }
+        assert_eq!(
+            origin_with(&host_header("127.0.0.1:8080"), None).0,
+            "http://127.0.0.1:8080"
+        );
+    }
+
+    #[test]
+    fn the_personal_profile_carries_its_handle() {
+        assert_eq!(Site::personal().handle, Some("alicemow"));
+        assert_eq!(Site::professional().handle, None);
     }
 }
