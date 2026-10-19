@@ -8,7 +8,7 @@
     {% include "meta.html" %}
     <link rel="preconnect" href="https://live.staticflickr.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400&family=Instrument+Serif:ital@0;1&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/static/gallery.css">
+    <link rel="stylesheet" href="/static/gallery.css?v=2">
 </head>
 <body>
     <div class="atmosphere" aria-hidden="true"></div>
@@ -76,5 +76,23 @@
 
     <script type="application/json" id="gallery-data">{{ photos_json | safe }}</script>
     <script src="/static/gallery.js" defer></script>
+    <script>
+        (function () {
+            if (window.self === window.top) return;
+            var host;
+            try { host = window.parent.document; } catch (error) { return; }
+            var frame = host.getElementById('content-frame');
+            if (!frame) return;
+            document.addEventListener('pointermove', function (event) {
+                if (event.pointerType && event.pointerType !== 'mouse') return;
+                var rect = frame.getBoundingClientRect();
+                host.dispatchEvent(new MouseEvent('mousemove', {
+                    clientX: rect.left + event.clientX,
+                    clientY: rect.top + event.clientY,
+                    bubbles: true
+                }));
+            }, { passive: true });
+        })();
+    </script>
 </body>
 </html>

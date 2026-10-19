@@ -1003,14 +1003,12 @@
         // ── Overlay text directly into the character grid ──
         // Auto-hide text when scrolled past the first viewport (content panel visible)
         if (opts.pageHooks) {
-            const socials = document.getElementById('socials-inline');
-            if (socials && socials.classList.contains('visible')) {
-                if (window.scrollY > window.innerHeight * 0.4) {
-                    document.body.classList.add('hide-ui-text');
-                } else {
-                    document.body.classList.remove('hide-ui-text');
-                }
-            }
+            const scrolled = Math.max(
+                window.scrollY || 0,
+                document.documentElement.scrollTop || 0,
+                document.body.scrollTop || 0
+            );
+            document.body.classList.toggle('hide-ui-text', scrolled > window.innerHeight * 0.4);
         }
 
         const hiddenByPage = opts.pageHooks && document.body.classList.contains('hide-ui-text');
