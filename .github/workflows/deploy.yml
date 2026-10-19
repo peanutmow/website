@@ -27,22 +27,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Refresh gallery from Flickr (background)
-        continue-on-error: true
-        run: |
-          nohup bash -c '
-            python3 -m pip install --quiet --disable-pip-version-check pillow &&
-              python3 tools/gallery/sync.py
-            echo $? > "$RUNNER_TEMP/gallery.exit"
-          ' > "$RUNNER_TEMP/gallery.log" 2>&1 &
-          echo $! > "$RUNNER_TEMP/gallery.pid"
-      - name: Restore the built binary
-        id: binary
-        uses: actions/cache@v4
-        with:
-          path: .deploy/alice-website
-          key: alice-binary-v1-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'src/**', 'templates/**', 'gallery/curation.json', 'gallery/index.html', 'socials/**') }}
-
+      # sshpass/rsync are needed by the background sync below, so install them
+      # first. The runner image ships fresh apt lists, so the common case
+      # installs straight away; the update is only a fallback for stale lists.
       - name: Install transfer tools (sshpass, rsync)
         run: |
           sudo apt-get install -y --no-install-recommends sshpass rsync \
@@ -51,29 +38,82 @@ jobs:
               sudo apt-get install -y --no-install-recommends sshpass rsync
             }
 
-      - name: Install Rust
-        if: steps.binary.outputs.cache-hit != 'true'
-        uses: dtolnay/rust-toolchain@stable
+      # Everything that does not need the compiled binary runs here, in the
+      # background, while Rust builds: the Flickr crawl and the incremental
+      # rsync of the site files. The deploy step then only ships the binary
+      # and touches the service.
+      - name: Start site sync (background)
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_PORT: ${{ secrets.SFTP_PORT }}
+          SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
+          SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+          SSHPASS: ${{ secrets.SFTP_PASSWORD }}
+        run: |
+          cat > "$RUNNER_TEMP/sync.sh" <<'SYNC'
+          set -uo pipefail
+          APP_DIR="/var/www/virtual/$SFTP_USERNAME/html"
+          # Gallery refresh is best-effort: a Flickr outage keeps the last copy.
+          if python3 -m pip install --quiet --disable-pip-version-check pillow \
+             && python3 tools/gallery/sync.py; then
+            :
+          else
+            echo "[gallery] refresh failed; keeping the previous photos.json"
+          fi
+          rsync -rlp --checksum --delete --delete-after --itemize-changes \
+            --exclude=/.git/ --exclude=/.github/ --exclude=/.deploy/ \
+            --exclude=/target/ --exclude=node_modules/ --exclude=__pycache__/ \
+            --exclude='*.md' --exclude=/alice-website --exclude='/alice-website.*' \
+            --exclude='*.tmp' \
+            -e "sshpass -e ssh -p $SFTP_PORT -o StrictHostKeyChecking=no" \
+            ./ "$SFTP_USERNAME@$SFTP_HOST:$APP_DIR/" && exit 0
+          # Safety net: full lftp mirror if rsync is unusable on the host.
+          echo "[rsync] failed; falling back to a full lftp mirror"
+          sudo apt-get install -y --no-install-recommends lftp
+          printf '%s\n' \
+            'set sftp:auto-confirm yes' \
+            'set cmd:fail-exit yes' \
+            'set net:max-retries 3' \
+            'mirror --reverse --delete --verbose --exclude=.git/ --exclude=.github/ --exclude=.deploy/ --exclude=target/ --exclude=node_modules/ --exclude=__pycache__/ --exclude-glob=*.md --exclude=alice-website ./ html/' \
+            'bye' > "$RUNNER_TEMP/tree.lftp"
+          lftp -u "$SFTP_USERNAME,$SFTP_PASSWORD" \
+            "sftp://$SFTP_HOST:$SFTP_PORT" -f "$RUNNER_TEMP/tree.lftp"
+          SYNC
+          nohup bash -c 'bash "$RUNNER_TEMP/sync.sh"; echo $? > "$RUNNER_TEMP/sync.exit"' \
+            > "$RUNNER_TEMP/sync.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/sync.pid"
+
+      - name: Restore the built binary
+        id: binary
+        uses: actions/cache@v4
         with:
-          targets: x86_64-unknown-linux-musl
+          path: .deploy/alice-website
+          key: alice-binary-v1-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'src/**', 'templates/**', 'gallery/curation.json', 'gallery/index.html', 'socials/**') }}
+
+      # The runner image ships Rust, so adding the musl target is all that is
+      # needed; the rustup installer is only a fallback for a bare image.
+      - name: Add musl target
+        if: steps.binary.outputs.cache-hit != 'true'
+        run: |
+          if ! rustup target add x86_64-unknown-linux-musl; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+              | sh -s -- -y --profile minimal --target x86_64-unknown-linux-musl
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          fi
 
       - name: Cache Rust build
         if: steps.binary.outputs.cache-hit != 'true'
         uses: Swatinem/rust-cache@v2
 
-      - name: Install musl-tools (static link)
-        if: steps.binary.outputs.cache-hit != 'true'
-        run: |
-          sudo apt-get install -y --no-install-recommends musl-tools \
-            || {
-              sudo apt-get update -qq
-              sudo apt-get install -y --no-install-recommends musl-tools
-            }
-
       - name: Build release binary (static, for the server)
         if: steps.binary.outputs.cache-hit != 'true'
         run: |
-          cargo build --locked --release --target x86_64-unknown-linux-musl
+          # Pure-Rust deps, so the bundled musl linker is normally enough;
+          # musl-tools is only installed if the link fails.
+          cargo build --locked --release --target x86_64-unknown-linux-musl || {
+            sudo apt-get install -y --no-install-recommends musl-tools
+            cargo build --locked --release --target x86_64-unknown-linux-musl
+          }
           mkdir -p .deploy
           # Symbols are dead weight over SFTP; GNU strip handles the static
           # musl ELF fine. Fall back to the unstripped file if it refuses.
@@ -81,15 +121,18 @@ jobs:
             -o .deploy/alice-website \
             || cp target/x86_64-unknown-linux-musl/release/alice-website .deploy/alice-website
 
-      - name: Wait for gallery refresh
+      # Join the background site sync (it ran during the build) before the
+      # deploy touches the service.
+      - name: Wait for site sync
         run: |
-          if [ -f "$RUNNER_TEMP/gallery.pid" ]; then
-            pid="$(cat "$RUNNER_TEMP/gallery.pid")"
+          if [ -f "$RUNNER_TEMP/sync.pid" ]; then
+            pid="$(cat "$RUNNER_TEMP/sync.pid")"
             while kill -0 "$pid" 2>/dev/null; do sleep 1; done
           fi
-          tail -n 20 "$RUNNER_TEMP/gallery.log" 2>/dev/null || true
-          if [ "$(cat "$RUNNER_TEMP/gallery.exit" 2>/dev/null || echo 1)" -ne 0 ]; then
-            echo "::warning title=Gallery refresh failed::keeping the last gallery/photos.json"
+          tail -n 40 "$RUNNER_TEMP/sync.log" 2>/dev/null || true
+          if [ "$(cat "$RUNNER_TEMP/sync.exit" 2>/dev/null || echo 1)" -ne 0 ]; then
+            echo "::error title=Site sync failed::the site files were not uploaded"
+            exit 1
           fi
 
       - name: Deploy to Uberspace
@@ -99,58 +142,38 @@ jobs:
           SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
           SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
           SSHPASS: ${{ secrets.SFTP_PASSWORD }}
+          # Scheduled/manual runs re-verify the web backend; pushes trust the
+          # marker so they don't pay for the ~5s API round-trip.
+          VERIFY_BACKEND: ${{ github.event_name != 'push' }}
         run: |
           set -euo pipefail
 
-          # 1) Sync the site incrementally. rsync compares checksums, so only
-          #    new/changed files are uploaded and unchanged ones are left
-          #    alone (lftp's mirror compared size+mtime, and actions/checkout
-          #    stamps every file with "now", so it re-uploaded everything on
-          #    every run). --delete still removes files that no longer exist
-          #    in the repo, but excluded paths (the running binary) are kept.
-          #    NOTE: the destination is the absolute web root (on Uberspace
-          #    ~/html is a symlink into /var/www/virtual/<user>/html), which
-          #    is the same path the remote setup step below uses.
-          echo "==> [rsync] syncing repo to html/ ..."
+          # The site files were already synced in the background (see the
+          # "Start site sync" step), so only the binary is left. It goes to
+          # alice-website.new: rsync writes a temp file and renames it, so the
+          # running executable is never touched, and an identical (cached)
+          # build is not transferred at all.
           APP_DIR="/var/www/virtual/$SFTP_USERNAME/html"
-          SYNC_EXCLUDES=(
-            --exclude=/.git/
-            --exclude=/.github/
-            --exclude=/.deploy/
-            --exclude=/target/
-            --exclude=node_modules/
-            --exclude=__pycache__/
-            --exclude='*.md'
-            --exclude=/alice-website
-          )
-          RSYNC_SSH="sshpass -e ssh -p $SFTP_PORT -o StrictHostKeyChecking=no"
-          # Stage the binary inside the tree so ONE rsync connection carries
-          # both the site files and the executable (as alice-website.new).
-          # rsync renames a temp file over the destination, so the running
-          # binary is never touched, and an identical (cached) build is not
-          # transferred at all.
-          cp .deploy/alice-website ./alice-website.new
-          if rsync -rlpt --omit-dir-times --checksum \
-               --delete --delete-after --itemize-changes \
-               "${SYNC_EXCLUDES[@]}" -e "$RSYNC_SSH" \
-               ./ "$SFTP_USERNAME@$SFTP_HOST:$APP_DIR/"; then
-            echo "==> [rsync] sync done"
-          else
-            # Safety net: fall back to the previous behaviour (full lftp
-            # mirror) if rsync is unusable on the host. Keep this exclude
-            # list in sync with SYNC_EXCLUDES above.
-            echo "!! [rsync] failed — falling back to a full lftp mirror" >&2
+          # Reuse one SSH connection for the upload and the setup below.
+          SSH_OPTS="-p $SFTP_PORT -o StrictHostKeyChecking=no \
+                    -o ControlMaster=auto -o ControlPath=$RUNNER_TEMP/ssh.sock -o ControlPersist=60"
+          RSYNC_SSH="sshpass -e ssh $SSH_OPTS"
+
+          echo "==> [rsync] uploading binary ..."
+          if ! rsync -p --checksum --itemize-changes -e "$RSYNC_SSH" \
+               .deploy/alice-website \
+               "$SFTP_USERNAME@$SFTP_HOST:$APP_DIR/alice-website.new"; then
             # lftp is only needed on this path, so it is not installed upfront.
+            echo "!! [rsync] failed — falling back to lftp put" >&2
             sudo apt-get install -y --no-install-recommends lftp
             printf '%s\n' \
               'set sftp:auto-confirm yes' \
               'set cmd:fail-exit yes' \
               'set net:max-retries 3' \
-              'mirror --reverse --delete --verbose --exclude=.git/ --exclude=.github/ --exclude=.deploy/ --exclude=target/ --exclude=node_modules/ --exclude=__pycache__/ --exclude-glob=*.md --exclude=alice-website ./ html/' \
               'put .deploy/alice-website -o html/alice-website.new' \
-              'bye' > "$RUNNER_TEMP/mirror.lftp"
+              'bye' > "$RUNNER_TEMP/binary.lftp"
             lftp -u "$SFTP_USERNAME,$SFTP_PASSWORD" \
-              "sftp://$SFTP_HOST:$SFTP_PORT" -f "$RUNNER_TEMP/mirror.lftp"
+              "sftp://$SFTP_HOST:$SFTP_PORT" -f "$RUNNER_TEMP/binary.lftp"
           fi
 
           # 2) Install/refresh the service and set the web backend.
@@ -158,8 +181,9 @@ jobs:
           #    systemd user services — `systemctl --user` / linger don't
           #    exist there). Service config = one .ini in ~/etc/services.d/.
           echo "==> [ssh] running remote setup ..."
-          sshpass -p "$SFTP_PASSWORD" ssh -p "$SFTP_PORT" -o StrictHostKeyChecking=no \
-            "$SFTP_USERNAME@$SFTP_HOST" "SFTP_USER='$SFTP_USERNAME' bash -l -s" <<'REMOTE'
+          sshpass -p "$SFTP_PASSWORD" ssh $SSH_OPTS \
+            "$SFTP_USERNAME@$SFTP_HOST" \
+            "SFTP_USER='$SFTP_USERNAME' VERIFY_BACKEND='$VERIFY_BACKEND' bash -l -s" <<'REMOTE'
           set -e
           trap 'echo "REMOTE FAILED at line $LINENO: $BASH_COMMAND"' ERR
           USER_NAME="${SFTP_USER:?SFTP_USER not set}"
@@ -170,6 +194,7 @@ jobs:
 
           SERVICE_DIR="$REAL_HOME/etc/services.d"
           INI="$SERVICE_DIR/$SERVICE_NAME.ini"
+          BACKEND_MARKER="$REAL_HOME/.alice-website-backend"
           BINARY_CHANGED=0
           CONFIG_CHANGED=0
 
@@ -201,7 +226,7 @@ jobs:
             "[program:$SERVICE_NAME]" \
             "command=$APP_DIR/alice-website" \
             "directory=$APP_DIR" \
-            'startsecs=5' \
+            'startsecs=2' \
             'autorestart=true' \
             'redirect_stderr=true' \
             'environment=BLOG_FEED_BASE="http://127.0.0.1:8082"' \
@@ -243,13 +268,20 @@ jobs:
           supervisorctl status "$SERVICE_NAME" || true
 
           echo "[5/5] web backend"
-          command -v uberspace >/dev/null 2>&1 || export PATH="$PATH:/usr/local/bin"
-          # `set` reloads the frontend config and took ~11s per deploy. Only
-          # call it when the backend isn't already pointing at this port.
-          if uberspace web backend list 2>/dev/null | grep -Eq '^/ http:8080([ ,]|$)'; then
-            echo "  already http:8080"
+          # `list`/`set` round-trip to the Uberspace API (~5s), so a push only
+          # configures the backend until it is known to be correct; scheduled
+          # and manual runs re-verify it.
+          if [ "${VERIFY_BACKEND:-false}" = "true" ] \
+             || [ "$(cat "$BACKEND_MARKER" 2>/dev/null || true)" != "http:8080" ]; then
+            command -v uberspace >/dev/null 2>&1 || export PATH="$PATH:/usr/local/bin"
+            if uberspace web backend list 2>/dev/null | grep -Eq '^/ http:8080([ ,]|$)'; then
+              echo "  already http:8080"
+            else
+              uberspace web backend set / --http --port 8080
+            fi
+            printf '%s\n' "http:8080" > "$BACKEND_MARKER"
           else
-            uberspace web backend set / --http --port 8080
+            echo "  unchanged (re-verified on scheduled runs)"
           fi
           echo "REMOTE setup complete"
           REMOTE

@@ -323,18 +323,18 @@ def main() -> int:
             log("--exif given but FLICKR_API_KEY is unset; skipping")
 
     records = sorted(merged.values(), key=lambda p: (p.get("date") or "", p["id"]), reverse=True)
-    PHOTOS_PATH.write_text(
-        json.dumps(
-            {
-                "generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                "owner": NSID,
-                "photos": records,
-            },
-            indent=1,
-            ensure_ascii=False,
-        ) + "\n",
-        encoding="utf-8",
-    )
+    payload = json.dumps(
+        {
+            "generated": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "owner": NSID,
+            "photos": records,
+        },
+        indent=1,
+        ensure_ascii=False,
+    ) + "\n"
+    tmp_path = PHOTOS_PATH.with_name(PHOTOS_PATH.name + ".tmp")
+    tmp_path.write_text(payload, encoding="utf-8")
+    os.replace(tmp_path, PHOTOS_PATH)
     log(f"wrote {len(records)} photos to {PHOTOS_PATH.relative_to(ROOT)}")
     return 0
 
