@@ -1,21 +1,16 @@
 use crate::site::Site;
 
-pub fn robots(origin: &str) -> String {
-    format!(
-        "User-agent: *\n\
-         Allow: /\n\
-         Disallow: /oembed.json\n\
-         Disallow: /embed-scene\n\
-         Disallow: /dev/null\n\
-         Disallow: /conejillo\n\
-         Disallow: /redherring\n\
-         \n\
-         Sitemap: {origin}/sitemap.xml\n"
-    )
-}
-
 pub fn sitemap(site: &Site, origin: &str) -> String {
-    let mut paths = vec!["/", "/projects", "/gallery", "/socials"];
+    let mut paths = vec![
+        "/",
+        "/projects",
+        "/about",
+        "/faq",
+        "/gallery",
+        "/socials",
+        "/llms.txt",
+        "/llms-full.txt",
+    ];
     for blog in site.blogs {
         paths.push(blog.url);
     }
@@ -47,21 +42,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn robots_points_crawlers_at_the_sitemap() {
-        let body = robots("https://alicemow.org");
-        assert!(body.contains("Allow: /"));
-        assert!(body.contains("Sitemap: https://alicemow.org/sitemap.xml"));
-        assert!(body.contains("Disallow: /oembed.json"));
-    }
-
-    #[test]
     fn the_personal_sitemap_lists_every_public_page() {
         let body = sitemap(&Site::personal(), "https://alicemow.org");
         for url in [
             "https://alicemow.org/</loc>",
             "https://alicemow.org/projects</loc>",
+            "https://alicemow.org/about</loc>",
+            "https://alicemow.org/faq</loc>",
             "https://alicemow.org/gallery</loc>",
             "https://alicemow.org/socials</loc>",
+            "https://alicemow.org/llms.txt</loc>",
+            "https://alicemow.org/llms-full.txt</loc>",
             "https://alicemow.org/blog</loc>",
             "https://alicemow.org/blog/politics</loc>",
         ] {

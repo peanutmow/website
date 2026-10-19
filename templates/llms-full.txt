@@ -1,0 +1,41 @@
+# {{ site.full_name }}{% if site.handle %} ({{ site.handle }}){% endif %} — full site summary
+
+> {{ site.bio }}
+
+{% if site.handle %}Alice is an artist and developer. Her work spans interactive ASCII art, photography, 3D rendering and software. She publishes personal and political writing on a self-hosted WriteFreely instance.{% else %}Dave Herkula is a developer who builds software and systems that hold up under real use. He publishes projects and selected work on this site.{% endif %}
+
+## Projects
+
+{% for project in projects %}
+### {{ project.title }}
+
+Status: {{ project.status }}
+{{ project.blurb }}
+Tags: {{ project.tags | join(", ") }}
+{% if project.href %}Link: {{ project.href }}{% endif %}
+{% if project.url %}Link: {{ project.url }}{% endif %}
+{% endfor %}
+## Ideas
+
+{% for project in dreams %}
+### {{ project.title }}
+
+Status: {{ project.status }}
+{{ project.blurb }}
+Tags: {{ project.tags | join(", ") }}
+{% endfor %}
+## Pages
+
+- [Home]({{ origin }}/)
+- [Projects]({{ origin }}/projects)
+- [About]({{ origin }}/about)
+- [FAQ]({{ origin }}/faq)
+- [Gallery]({{ origin }}/gallery)
+- [Socials]({{ origin }}/socials)
+{% if site.blogs %}
+- [Blog](https://blog.alicemow.org/)
+{% endif %}
+## Machine-readable
+
+- Sitemap: {{ origin }}/sitemap.xml
+- LLM summary: {{ origin }}/llms.txt

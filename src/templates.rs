@@ -5,12 +5,17 @@ use serde::Serialize;
 const TEMPLATES: &[(&str, &str, &str)] = &[
     ("index.html", "templates/index.html", include_str!("../templates/index.html")),
     ("projects.html", "templates/projects.html", include_str!("../templates/projects.html")),
+    ("about.html", "templates/about.html", include_str!("../templates/about.html")),
+    ("faq.html", "templates/faq.html", include_str!("../templates/faq.html")),
     ("redherring.html", "templates/redherring.html", include_str!("../templates/redherring.html")),
     ("conejillo.html", "templates/conejillo.html", include_str!("../templates/conejillo.html")),
     ("content_gallery.html", "gallery/index.html", include_str!("../gallery/index.html")),
     ("content_socials.html", "socials/index.html", include_str!("../socials/index.html")),
     ("blog.html", "templates/blog.html", include_str!("../templates/blog.html")),
     ("meta.html", "templates/meta.html", include_str!("../templates/meta.html")),
+    ("robots.txt", "templates/robots.txt", include_str!("../templates/robots.txt")),
+    ("llms.txt", "templates/llms.txt", include_str!("../templates/llms.txt")),
+    ("llms-full.txt", "templates/llms-full.txt", include_str!("../templates/llms-full.txt")),
     ("embed_scene.html", "templates/embed_scene.html", include_str!("../templates/embed_scene.html")),
 ];
 
@@ -194,6 +199,32 @@ mod tests {
         )
     }
 
+    fn about_page(site: Site) -> String {
+        TemplateEngine::new().render(
+            "about.html",
+            &serde_json::json!({
+                "title": "About",
+                "site": site,
+                "meta": crate::embed::about(&site, "https://example.test"),
+                "projects": crate::projects::load_projects(),
+            }),
+        )
+    }
+
+    fn faq_page(site: Site) -> String {
+        let faqs = crate::content::faq(&site);
+        TemplateEngine::new().render(
+            "faq.html",
+            &serde_json::json!({
+                "title": "FAQ",
+                "site": site,
+                "meta": crate::embed::faq(&site, "https://example.test"),
+                "faqs": faqs,
+                "faq_json_ld": crate::content::faq_json_ld(&faqs),
+            }),
+        )
+    }
+
     fn gallery_page(site: Site) -> String {
         TemplateEngine::new().render(
             "content_gallery.html",
@@ -223,6 +254,8 @@ mod tests {
             for (name, html) in [
                 ("home", home(site)),
                 ("projects", projects_page(site)),
+                ("about", about_page(site)),
+                ("faq", faq_page(site)),
                 ("gallery", gallery_page(site)),
                 ("socials", socials_page(site)),
                 ("blog", blog_page(site)),
@@ -236,6 +269,10 @@ mod tests {
                 assert!(
                     html.contains("application/json+oembed"),
                     "{name} has no oEmbed discovery"
+                );
+                assert!(
+                    html.contains("rel=\"alternate\" type=\"text/plain\" href=\"/llms.txt\""),
+                    "{name} has no llms.txt discovery"
                 );
             }
         }
@@ -292,5 +329,116 @@ mod tests {
         assert!(html.contains("<noscript>"));
         assert!(html.contains("Alice — alicemow"));
         assert!(html.contains("@alicemow@mastodon.social"));
+    }
+
+    #[test]
+    fn robots_points_crawlers_at_the_canonical_sitemap() {
+        let body = TemplateEngine::new().render(
+            "robots.txt",
+            &serde_json::json!({ "origin": "https://alicemow.org" }),
+        );
+        assert!(body.contains("Allow: /"));
+        assert!(body.contains("Sitemap: https://alicemow.org/sitemap.xml"));
+        assert!(body.contains("Disallow: /oembed.json"));
+        assert!(!body.contains("&#x2f;"));
+    }
+
+    #[test]
+    fn robots_opted_into_ai_crawling() {
+        let body = TemplateEngine::new().render(
+            "robots.txt",
+            &serde_json::json!({ "origin": "https://alicemow.org" }),
+        );
+        assert!(body.contains("Content-Signal: search=yes, ai-input=yes, ai-train=yes"));
+        for agent in [
+            "GPTBot",
+            "OAI-SearchBot",
+            "ChatGPT-User",
+            "ClaudeBot",
+            "PerplexityBot",
+            "Google-Extended",
+            "Applebot-Extended",
+            "CCBot",
+        ] {
+            assert!(body.contains(&format!("User-agent: {agent}")), "missing {agent}");
+        }
+    }
+
+    fn llms_page(site: Site) -> String {
+        TemplateEngine::new().render(
+            "llms.txt",
+            &serde_json::json!({ "site": site, "origin": "https://example.test" }),
+        )
+    }
+
+    #[test]
+    fn the_personal_llm_summary_names_the_handle_and_links() {
+        let text = llms_page(Site::personal());
+        assert!(text.starts_with("# Alice (alicemow)"));
+        assert!(text.contains("https://example.test/projects"));
+        assert!(text.contains("https://mastodon.social/@alicemow"));
+        assert!(text.contains("https://blog.alicemow.org/"));
+        assert!(text.contains("BunGPT"));
+    }
+
+    #[test]
+    fn the_professional_llm_summary_hides_personal_accounts() {
+        let text = llms_page(Site::professional());
+        assert!(text.starts_with("# Dave Herkula"));
+        assert!(!text.contains("alicemow"));
+        assert!(!text.contains("mastodon"));
+        assert!(!text.contains("blog."));
+        assert!(!text.contains("BunGPT"));
+    }
+
+    fn llms_full_page(site: Site) -> String {
+        let projects = crate::projects::load_projects();
+        let dreams = crate::projects::load_dreams();
+        TemplateEngine::new().render(
+            "llms-full.txt",
+            &serde_json::json!({
+                "site": site,
+                "origin": "https://example.test",
+                "projects": projects,
+                "dreams": dreams,
+            }),
+        )
+    }
+
+    #[test]
+    fn the_full_llm_summary_lists_the_projects() {
+        let text = llms_full_page(Site::personal());
+        for title in ["ascii-render", "polyaxis", "marx-knowledge-base"] {
+            assert!(text.contains(title), "missing {title}");
+        }
+        assert!(text.contains("Rust, 3D, ASCII"));
+        assert!(text.contains("https://example.test/sitemap.xml"));
+    }
+
+    #[test]
+    fn the_about_page_is_profile_aware() {
+        let personal = decode_escapes(&about_page(Site::personal()));
+        assert!(personal.contains("(alicemow)"));
+        assert!(personal.contains("ascii-render"));
+        assert!(personal.contains("alice@herkula.info"));
+
+        let professional = decode_escapes(&about_page(Site::professional()));
+        assert!(!professional.contains("alicemow"));
+        assert!(professional.contains("dave@herkula.info"));
+    }
+
+    #[test]
+    fn the_faq_page_carries_faq_structured_data() {
+        let html = decode_escapes(&faq_page(Site::personal()));
+        assert!(html.contains("\"@type\":\"FAQPage\""));
+        assert!(html.contains("Who is Alice?"));
+        assert!(html.contains("BunGPT"));
+        assert!(html.contains("href=\"https://github.com/peanutmow/ascii-render\""));
+        assert!(html.contains("href=\"https://polyaxis.link/\""));
+        assert!(html.contains("href=\"/projects\""));
+
+        let professional = faq_page(Site::professional());
+        assert!(!professional.contains("alicemow"));
+        assert!(!professional.contains("mastodon"));
     }
 }

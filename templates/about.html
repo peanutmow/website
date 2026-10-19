@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    {% include "meta.html" %}
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/prose.css">
+</head>
+<body>
+    <main class="prose">
+        <p class="eyebrow"><a href="/">&larr; {{ site.name }}</a></p>
+        <h1>{{ site.full_name }}{% if site.handle %} <span class="handle">({{ site.handle }})</span>{% endif %}</h1>
+        <p class="lede">{{ site.bio }}</p>
+
+        {% if site.professional %}
+        <p>Dave Herkula is a software developer who builds software and systems that hold up under real use. This site collects his projects and selected work.</p>
+        {% else %}
+        <p>Alice, who publishes as alicemow, is an artist and developer. This site is her portfolio and sandbox: interactive ASCII art, photography, writing and software projects.</p>
+        {% endif %}
+
+        <h2>Projects</h2>
+        {% for project in projects %}
+        <article>
+            <h3>{{ project.title }}</h3>
+            <p>{{ project.blurb }}</p>
+            <p class="tags">{{ project.tags | join(" · ") }} &mdash; {{ project.status }}</p>
+            {% if project.url %}<p><a href="{{ project.url }}" target="_blank" rel="noopener">{{ project.url }}</a></p>{% endif %}
+            {% if project.href %}<p><a href="{{ project.href }}" target="_blank" rel="noopener">{{ project.href }}</a></p>{% endif %}
+        </article>
+        {% endfor %}
+
+        {% if site.blogs %}
+        <h2>Writing</h2>
+        <p>The blog has two sections: Main, for technology and personal writing, and Politics. Both are published with a self-hosted WriteFreely instance.</p>
+        <p><a href="https://blog.alicemow.org/">blog.alicemow.org</a></p>
+        {% endif %}
+
+        <h2>Elsewhere</h2>
+        <ul>
+            {% if site.mastodon_url %}<li><a href="{{ site.mastodon_url }}" rel="me noopener" target="_blank">Mastodon</a> &mdash; @{{ site.mastodon_handle }}</li>{% endif %}
+            {% if site.x_url %}<li><a href="{{ site.x_url }}" target="_blank" rel="noopener">X</a> &mdash; {{ site.x_handle }}</li>{% endif %}
+            <li><a href="{{ site.github_url }}" target="_blank" rel="noopener">GitHub</a> &mdash; {{ site.github_handle }}</li>
+            {% if site.discord_url %}<li><a href="{{ site.discord_url }}" target="_blank" rel="noopener">Discord</a> &mdash; {{ site.discord_handle }}</li>{% endif %}
+            <li><a href="mailto:{{ site.email }}">{{ site.email }}</a></li>
+        </ul>
+
+        <footer>
+            <p><a href="/faq">Common questions</a> &middot; <a href="/projects">Projects</a> &middot; <a href="/">Home</a></p>
+        </footer>
+    </main>
+</body>
+</html>

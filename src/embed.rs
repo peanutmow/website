@@ -288,6 +288,77 @@ pub fn socials(site: &Site, origin: &str) -> Meta {
     )
 }
 
+pub fn about(site: &Site, origin: &str) -> Meta {
+    simple_page(
+        site,
+        origin,
+        "/about",
+        format!("About — {}", site.name),
+        format!(
+            "Who {} is, what they build, and where to find their work.",
+            site.full_name
+        ),
+        "About",
+    )
+}
+
+pub fn faq(site: &Site, origin: &str) -> Meta {
+    simple_page(
+        site,
+        origin,
+        "/faq",
+        format!("FAQ — {}", site.name),
+        format!(
+            "Answers about {}'s work, projects, tools and contact details.",
+            site.full_name
+        ),
+        "FAQ",
+    )
+}
+
+fn simple_page(
+    site: &Site,
+    origin: &str,
+    path: &str,
+    title: String,
+    description: String,
+    heading: &str,
+) -> Meta {
+    let component = json!({
+        "component": {
+            "type": 17,
+            "accent_color": ACCENT_DECIMAL,
+            "components": [
+                {
+                    "type": 10,
+                    "content": format!("# {heading} — {}\n-# {}", site.full_name, site.bio)
+                },
+                {
+                    "type": 1,
+                    "components": [
+                        link_button(format!("{origin}/"), "Home"),
+                        link_button(format!("{origin}/about"), "About"),
+                        link_button(format!("{origin}/faq"), "FAQ"),
+                        link_button(format!("{origin}/projects"), "Projects")
+                    ]
+                }
+            ]
+        }
+    });
+
+    meta(
+        site,
+        origin,
+        Page {
+            path,
+            title,
+            description,
+            og_type: "website",
+        },
+        component,
+    )
+}
+
 /// One blog section: the latest three posts as masked links.
 pub fn blog(site: &Site, origin: &str, section: &Section) -> Meta {
     let mut content = format!("# {} — {}\n-# latest from the blog", section.label, site.name);

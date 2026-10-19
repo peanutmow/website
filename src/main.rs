@@ -14,6 +14,7 @@ use tower_http::set_header::{SetResponseHeader, SetResponseHeaderLayer};
 use tracing_subscriber::EnvFilter;
 
 mod blog;
+mod content;
 mod embed;
 mod gallery;
 mod projects;
@@ -73,6 +74,10 @@ async fn main() {
         .route("/projects", get(projects_page))
         .route("/projects/", get(projects_page))
         .route("/projects/index.html", get(projects_page))
+        .route("/about", get(about_page))
+        .route("/about/", get(about_page))
+        .route("/faq", get(faq_page))
+        .route("/faq/", get(faq_page))
         // Static directories (avoid conflicts with SSR routes). Cache-Control
         // keeps repeat navigation from re-downloading artwork and scripts.
         .nest_service("/fonts", cached(ServeDir::new("fonts"), "public, max-age=31536000, immutable"))
@@ -91,6 +96,9 @@ async fn main() {
         .route("/oembed.json", get(oembed))
         .route("/robots.txt", get(robots_txt))
         .route("/sitemap.xml", get(sitemap_xml))
+        .route("/llms.txt", get(llms_txt))
+        .route("/llms-full.txt", get(llms_full_txt))
+        .route("/llm.txt", get(llm_txt_redirect))
         // The bunny page — any /conejillo/… URL (long paths, matrix params,
         // percent-encoding, query strings, fragments) lands here.
         .route("/conejillo", get(conejillo_page))
@@ -181,6 +189,38 @@ async fn projects_page(
 }
 
 // ─── Content pages (rendered so the profile's name reaches them) ───
+
+async fn about_page(
+    State(state): State<Arc<AppState>>,
+    Extension(site): Extension<Site>,
+    Extension(origin): Extension<site::Origin>,
+) -> Response {
+    let title = format!("About — {}", site.full_name);
+    let meta = embed::about(&site, &origin.0);
+    state.tmpl.render_response("about.html", &serde_json::json!({
+        "title": title,
+        "site": site,
+        "meta": meta,
+        "projects": &state.projects,
+    }))
+}
+
+async fn faq_page(
+    State(state): State<Arc<AppState>>,
+    Extension(site): Extension<Site>,
+    Extension(origin): Extension<site::Origin>,
+) -> Response {
+    let entries = content::faq(&site);
+    let title = format!("FAQ — {}", site.full_name);
+    let meta = embed::faq(&site, &origin.0);
+    state.tmpl.render_response("faq.html", &serde_json::json!({
+        "title": title,
+        "site": site,
+        "meta": meta,
+        "faqs": &entries,
+        "faq_json_ld": content::faq_json_ld(&entries),
+    }))
+}
 
 async fn gallery_content_page(
     State(state): State<Arc<AppState>>,
@@ -304,11 +344,54 @@ async fn conejillo_page(State(state): State<Arc<AppState>>, Extension(site): Ext
 
 // ─── Search engine files ──────────────────────────────────────────
 
-async fn robots_txt(Extension(origin): Extension<site::Origin>) -> Response {
+async fn robots_txt(
+    State(state): State<Arc<AppState>>,
+    Extension(origin): Extension<site::Origin>,
+) -> Response {
+    let body = state
+        .tmpl
+        .render("robots.txt", &serde_json::json!({ "origin": origin.0 }));
+    text_file(body)
+}
+
+async fn llms_txt(
+    State(state): State<Arc<AppState>>,
+    Extension(site): Extension<Site>,
+    Extension(origin): Extension<site::Origin>,
+) -> Response {
+    let body = state.tmpl.render(
+        "llms.txt",
+        &serde_json::json!({ "site": site, "origin": origin.0 }),
+    );
+    text_file(body)
+}
+
+async fn llms_full_txt(
+    State(state): State<Arc<AppState>>,
+    Extension(site): Extension<Site>,
+    Extension(origin): Extension<site::Origin>,
+) -> Response {
+    let body = state.tmpl.render(
+        "llms-full.txt",
+        &serde_json::json!({
+            "site": site,
+            "origin": origin.0,
+            "projects": &state.projects,
+            "dreams": &state.dreams,
+        }),
+    );
+    text_file(body)
+}
+
+async fn llm_txt_redirect() -> Redirect {
+    Redirect::permanent("/llms.txt")
+}
+
+fn text_file(body: String) -> Response {
     Response::builder()
         .header("Content-Type", "text/plain; charset=utf-8")
         .header("Cache-Control", "public, max-age=3600")
-        .body(axum::body::Body::from(seo::robots(&origin.0)))
+        .body(axum::body::Body::from(body))
         .unwrap()
 }
 
