@@ -1,14 +1,16 @@
 use axum::{
     extract::{Extension, Path, Request, State},
-    http::{StatusCode, Uri},
+    http::{header, HeaderValue, StatusCode, Uri},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
     Router,
 };
 use std::sync::Arc;
+use tower::Layer;
 use tower_http::services::ServeDir;
 use tower_http::compression::CompressionLayer;
+use tower_http::set_header::{SetResponseHeader, SetResponseHeaderLayer};
 use tracing_subscriber::EnvFilter;
 
 mod blog;
@@ -70,11 +72,12 @@ async fn main() {
         .route("/projects", get(projects_page))
         .route("/projects/", get(projects_page))
         .route("/projects/index.html", get(projects_page))
-        // Static directories (avoid conflicts with SSR routes)
-        .nest_service("/fonts", ServeDir::new("fonts"))
-        .nest_service("/static", ServeDir::new("static"))
-        .nest_service("/assets", ServeDir::new("assets"))
-        .nest_service("/wasm", ServeDir::new("wasm-sim/pkg"))
+        // Static directories (avoid conflicts with SSR routes). Cache-Control
+        // keeps repeat navigation from re-downloading artwork and scripts.
+        .nest_service("/fonts", cached(ServeDir::new("fonts"), "public, max-age=31536000, immutable"))
+        .nest_service("/static", cached(ServeDir::new("static"), "public, max-age=3600"))
+        .nest_service("/assets", cached(ServeDir::new("assets"), "public, max-age=604800"))
+        .nest_service("/wasm", cached(ServeDir::new("wasm-sim/pkg"), "public, max-age=86400"))
         // Root-level static files
         .route("/water-sim.js", get(|| serve_file("water-sim.js", "application/javascript")))
         .route("/qr-error.png", get(|| serve_file("templates/QRCode(3).png", "image/png")))
@@ -243,10 +246,19 @@ async fn render_blog(state: &AppState, site: &Site, origin: &str, index: usize) 
 
 // ─── File serving ──────────────────────────────────────────────────
 
+fn cached<S>(service: S, cache_control: &'static str) -> SetResponseHeader<S, HeaderValue> {
+    SetResponseHeaderLayer::overriding(
+        header::CACHE_CONTROL,
+        HeaderValue::from_static(cache_control),
+    )
+    .layer(service)
+}
+
 async fn serve_file(path: &str, mime: &str) -> Response {
     match tokio::fs::read(path).await {
         Ok(data) => Response::builder()
             .header("Content-Type", mime)
+            .header("Cache-Control", "public, max-age=3600")
             .body(axum::body::Body::from(data)).unwrap(),
         Err(_) => StatusCode::NOT_FOUND.into_response(),
     }
@@ -309,6 +321,7 @@ async fn not_found(uri: Uri) -> Response {
         if let Ok(data) = tokio::fs::read(&file).await {
             return Response::builder()
                 .header("Content-Type", mime)
+                .header("Cache-Control", "public, max-age=604800")
                 .body(axum::body::Body::from(data))
                 .unwrap();
         }

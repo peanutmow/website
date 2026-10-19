@@ -6,9 +6,9 @@
     <title>{{ title }}</title>
     {% include "meta.html" %}
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <!-- Warm the big tree artwork ASAP so it never pops in blank -->
-    <link rel="preload" as="image" href="/assets/tree.avif" fetchpriority="high">
-    <link rel="preload" as="image" href="/assets/treebranch.avif">
+    <!-- Load the small preview immediately; the full-resolution artwork is swapped in after load -->
+    <link rel="preload" as="image" href="/assets/tree-preview.avif" fetchpriority="high">
+    <link rel="preload" as="image" href="/assets/treebranch-preview.avif">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -273,11 +273,11 @@
     <aside class="marginalia">{{ site.short }} — mmxxvi</aside>
 
     <aside class="tree-wrap">
-        <img class="tree" src="/assets/tree.avif" width="3240" height="5760" alt="an oak tree" draggable="false" fetchpriority="high" decoding="async">
+        <img class="tree" src="/assets/tree-preview.avif" data-full="/assets/tree.avif?v=3" width="1080" height="1920" alt="an oak tree" draggable="false" fetchpriority="high" decoding="async">
     </aside>
 
     <aside class="branch-wrap">
-        <img class="branch" src="/assets/treebranch.avif" width="3240" height="5760" alt="" draggable="false" decoding="async">
+        <img class="branch" src="/assets/treebranch-preview.avif" data-full="/assets/treebranch.avif?v=3" width="1080" height="1920" alt="" draggable="false" decoding="async">
     </aside>
 
     <div class="layout">
@@ -362,6 +362,22 @@
         </footer>
     </div>
     </div>
+
+    <script>
+        /* Swap the preview for the full-resolution artwork once it is ready. */
+        (function () {
+            function upgrade() {
+                document.querySelectorAll('img[data-full]').forEach(function (img) {
+                    var full = new Image();
+                    full.decoding = 'async';
+                    full.onload = function () { img.src = full.src; };
+                    full.src = img.getAttribute('data-full');
+                });
+            }
+            if (document.readyState === 'complete') upgrade();
+            else window.addEventListener('load', upgrade);
+        })();
+    </script>
 
     <script>
         /* cursor parallax with built-in easing: on every mousemove we glide a

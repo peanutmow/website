@@ -5,9 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>404</title>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@100;200;300;400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
-    <link rel="preload" as="image" href="/assets/earth.avif">
-    <link rel="preload" as="image" href="/assets/ship.avif">
-    <link rel="preload" as="image" href="/assets/glass.avif">
+    <link rel="preload" as="image" href="/assets/earth-preview.avif">
+    <link rel="preload" as="image" href="/assets/ship-preview.avif">
+    <link rel="preload" as="image" href="/assets/glass-preview.avif">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -264,9 +264,9 @@
 </head>
 <body>
     <div class="scene" id="scene" aria-hidden="true">
-        <div class="layer layer--earth" id="layer-earth"><img src="/assets/earth.avif" alt="" draggable="false"></div>
-        <div class="layer layer--ship" id="layer-ship"><img src="/assets/ship.avif" alt="" draggable="false"></div>
-        <div class="layer layer--glass" id="layer-glass"><img src="/assets/glass.avif" alt="" draggable="false"></div>
+        <div class="layer layer--earth" id="layer-earth"><img src="/assets/earth-preview.avif" data-full="/assets/earth.avif?v=3" alt="" draggable="false"></div>
+        <div class="layer layer--ship" id="layer-ship"><img src="/assets/ship-preview.avif" data-full="/assets/ship.avif?v=3" alt="" draggable="false"></div>
+        <div class="layer layer--glass" id="layer-glass"><img src="/assets/glass-preview.avif" data-full="/assets/glass.avif?v=3" alt="" draggable="false"></div>
     </div>
 
     <div class="grid"></div>
@@ -364,6 +364,23 @@
                 if (x < 0) x = 0;
                 if (y < 0) y = 0;
             });
+        })();
+    </script>
+
+    <script>
+        /* Swap each preview for its full-resolution layer once it is ready. */
+        (function () {
+            'use strict';
+            function upgrade() {
+                document.querySelectorAll('#scene img[data-full]').forEach(function (img) {
+                    var full = new Image();
+                    full.decoding = 'async';
+                    full.onload = function () { img.src = full.src; };
+                    full.src = img.getAttribute('data-full');
+                });
+            }
+            if (document.readyState === 'complete') upgrade();
+            else window.addEventListener('load', upgrade);
         })();
     </script>
 
