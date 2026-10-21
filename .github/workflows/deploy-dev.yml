@@ -1,0 +1,168 @@
+name: Deploy dev to Uberspace
+on:
+  push:
+    branches:
+      - rust-test
+    paths-ignore:
+      - '**.md'
+      - '.github/**'
+  workflow_dispatch:
+concurrency:
+  group: deploy-uberspace-dev
+  cancel-in-progress: true
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install transfer tools (sshpass, rsync)
+        run: |
+          sudo apt-get install -y --no-install-recommends sshpass rsync \
+            || {
+              sudo apt-get update -qq
+              sudo apt-get install -y --no-install-recommends sshpass rsync
+            }
+
+      - name: Add musl target
+        run: |
+          if ! rustup target add x86_64-unknown-linux-musl; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+              | sh -s -- -y --profile minimal --target x86_64-unknown-linux-musl
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          fi
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: dev
+
+      - name: Build release binary (static, for the server)
+        run: |
+          cargo build --locked --release --target x86_64-unknown-linux-musl || {
+            sudo apt-get install -y --no-install-recommends musl-tools
+            cargo build --locked --release --target x86_64-unknown-linux-musl
+          }
+          mkdir -p .deploy
+          strip target/x86_64-unknown-linux-musl/release/alice-website \
+            -o .deploy/alice-website \
+            || cp target/x86_64-unknown-linux-musl/release/alice-website .deploy/alice-website
+
+      - name: Deploy dev to Uberspace
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_PORT: ${{ secrets.SFTP_PORT }}
+          SFTP_USERNAME: ${{ secrets.SFTP_USERNAME }}
+          SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+          SSHPASS: ${{ secrets.SFTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          APP_DIR="/var/www/virtual/$SFTP_USERNAME/html-dev"
+          SSH_OPTS="-p $SFTP_PORT -o StrictHostKeyChecking=no \
+                    -o ControlMaster=auto -o ControlPath=$RUNNER_TEMP/ssh.sock -o ControlPersist=60"
+          RSYNC_SSH="sshpass -e ssh $SSH_OPTS"
+
+          echo "==> [rsync] uploading site files ..."
+          rsync -rlpz --checksum --delete --delete-after --itemize-changes \
+            --exclude=/.git/ --exclude=/.github/ --exclude=/.deploy/ \
+            --exclude=/target/ --exclude=node_modules/ --exclude=__pycache__/ \
+            --exclude='*.md' --exclude=/alice-website --exclude='/alice-website.*' \
+            --exclude='*.tmp' \
+            -e "$RSYNC_SSH" \
+            ./ "$SFTP_USERNAME@$SFTP_HOST:$APP_DIR/"
+
+          echo "==> [rsync] uploading binary ..."
+          rsync -pz --checksum --itemize-changes -e "$RSYNC_SSH" \
+            .deploy/alice-website \
+            "$SFTP_USERNAME@$SFTP_HOST:$APP_DIR/alice-website.new"
+
+          echo "==> [ssh] running remote setup ..."
+          sshpass -p "$SFTP_PASSWORD" ssh $SSH_OPTS \
+            "$SFTP_USERNAME@$SFTP_HOST" \
+            "SFTP_USER='$SFTP_USERNAME' bash -l -s" <<'REMOTE'
+          set -e
+          trap 'echo "REMOTE FAILED at line $LINENO: $BASH_COMMAND"' ERR
+          USER_NAME="${SFTP_USER:?SFTP_USER not set}"
+          APP_DIR="/var/www/virtual/$USER_NAME/html-dev"
+          SERVICE_NAME="alice-website-dev"
+          DEV_DOMAIN="dev.alicemow.org"
+          DEV_PORT="8081"
+          REAL_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
+          [ -n "$REAL_HOME" ] || REAL_HOME="$HOME"
+          SERVICE_DIR="$REAL_HOME/etc/services.d"
+          INI="$SERVICE_DIR/$SERVICE_NAME.ini"
+          command -v uberspace >/dev/null 2>&1 || export PATH="$PATH:/usr/local/bin"
+
+          echo "[1/6] install binary"
+          if [ -f "$APP_DIR/alice-website" ] && cmp -s "$APP_DIR/alice-website" "$APP_DIR/alice-website.new"; then
+            echo "  binary unchanged"
+          else
+            mv -f "$APP_DIR/alice-website.new" "$APP_DIR/alice-website"
+            chmod +x "$APP_DIR/alice-website"
+            RESTART=1
+          fi
+
+          echo "[2/6] supervisord ini"
+          mkdir -p "$SERVICE_DIR"
+          NEW_INI="$(mktemp "$SERVICE_DIR/.$SERVICE_NAME.XXXXXX")"
+          printf '%s\n' \
+            "[program:$SERVICE_NAME]" \
+            "command=$APP_DIR/alice-website" \
+            "directory=$APP_DIR" \
+            'startsecs=2' \
+            'autorestart=true' \
+            'redirect_stderr=true' \
+            "environment=PORT=\"$DEV_PORT\",BLOG_FEED_BASE=\"http://127.0.0.1:8082\",SITE_CANONICAL_REDIRECT=\"1\"" \
+            > "$NEW_INI"
+          if cmp -s "$NEW_INI" "$INI"; then
+            rm -f "$NEW_INI"
+            echo "  unchanged"
+          else
+            mv -f "$NEW_INI" "$INI"
+            CONFIG_CHANGED=1
+            echo "  updated"
+          fi
+
+          echo "[3/6] supervisorctl reread/update"
+          STATUS="$(supervisorctl status "$SERVICE_NAME" 2>/dev/null || true)"
+          if [ -z "$STATUS" ] || [ "${CONFIG_CHANGED:-0}" = 1 ]; then
+            supervisorctl reread
+            supervisorctl update
+            STATUS="$(supervisorctl status "$SERVICE_NAME" 2>/dev/null || true)"
+          else
+            echo "  nothing changed"
+          fi
+
+          echo "[4/6] restart service"
+          if [ "${RESTART:-0}" = 1 ] || [ "${CONFIG_CHANGED:-0}" = 1 ]; then
+            supervisorctl restart "$SERVICE_NAME" || supervisorctl start "$SERVICE_NAME"
+          else
+            echo "  already running the current binary and config"
+          fi
+          supervisorctl status "$SERVICE_NAME" || true
+
+          echo "[5/6] web domain"
+          if uberspace web domain list 2>/dev/null | grep -Fq "$DEV_DOMAIN"; then
+            echo "  $DEV_DOMAIN already added"
+          elif uberspace web domain add "$DEV_DOMAIN"; then
+            echo "  added $DEV_DOMAIN"
+          else
+            echo "  !! could not add $DEV_DOMAIN (does the Cloudflare CNAME exist yet?)"
+          fi
+
+          echo "[6/6] web backend"
+          if uberspace web domain list 2>/dev/null | grep -Fq "$DEV_DOMAIN"; then
+            if uberspace web backend set "$DEV_DOMAIN/" --http --port "$DEV_PORT"; then
+              echo "  $DEV_DOMAIN -> http:$DEV_PORT"
+            else
+              echo "  !! backend for $DEV_DOMAIN was not set"
+            fi
+          else
+            echo "  skipped (domain not on this account yet)"
+          fi
+          echo "REMOTE setup complete"
+          REMOTE
+          echo "==> [ssh] remote setup done"
