@@ -7,7 +7,7 @@ pub const PRESSURE_ITERS: u32 = 25;
 pub const FORCE_STRENGTH: f64 = 3.0;
 pub const MAX_PUSH_CELLS: f64 = 22.0;
 pub const MOUSE_SPEED_FORCE: f64 = 0.125;
-pub const MOUSE_FORCE_CAP: f64 = 3.0;
+pub const MOUSE_FORCE_CAP: f64 = 6.0;
 pub const VORTICITY: f64 = 8.0;
 pub const VORTICITY_CAP: f64 = 0.05;
 pub const DENSITY_PER_FRAME: f64 = 1.0;
@@ -721,6 +721,24 @@ mod tests {
         let slow_force = slow.u[slow.at(6, 5)].abs();
         let fast_force = fast.u[fast.at(6, 5)].abs();
         assert!(fast_force > slow_force * 2.0);
+    }
+
+    #[test]
+    fn extreme_pointer_speed_stays_finite() {
+        let mut fluid = Fluid::new(60, 40);
+        let mut rng = Rng::new(7);
+        for _ in 0..120 {
+            let mut trail = vec![TrailSeg {
+                x0: 2.0,
+                y0: 2.0,
+                x1: 58.0,
+                y1: 38.0,
+            }];
+            fluid.step(&mut trail, true, true, &mut rng);
+        }
+        assert!(fluid.dens.iter().all(|value| value.is_finite()));
+        assert!(fluid.u.iter().all(|value| value.is_finite()));
+        assert!(fluid.v.iter().all(|value| value.is_finite()));
     }
 
     #[test]
