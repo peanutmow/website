@@ -264,9 +264,9 @@
 </head>
 <body>
     <div class="scene" id="scene" aria-hidden="true">
-        <div class="layer layer--earth" id="layer-earth"><img src="/assets/earth-preview.avif" data-full="/assets/earth.avif?v=3" alt="" draggable="false"></div>
-        <div class="layer layer--ship" id="layer-ship"><img src="/assets/ship-preview.avif" data-full="/assets/ship.avif?v=3" alt="" draggable="false"></div>
-        <div class="layer layer--glass" id="layer-glass"><img src="/assets/glass-preview.avif" data-full="/assets/glass.avif?v=3" alt="" draggable="false"></div>
+        <div class="layer layer--earth" id="layer-earth"><img src="/assets/earth.avif?v=3" alt="" draggable="false"></div>
+        <div class="layer layer--ship" id="layer-ship"><img src="/assets/ship.avif?v=3" alt="" draggable="false"></div>
+        <div class="layer layer--glass" id="layer-glass"><img src="/assets/glass.avif?v=3" alt="" draggable="false"></div>
     </div>
 
     <div class="grid"></div>
@@ -299,156 +299,7 @@
 
     <a href="/" class="return">Return to interface &#8592;</a>
 
-    <script>
-        (function() {
-            'use strict';
+    <script src="/static/app.js" defer></script>
 
-            var logo = document.getElementById('dvd-logo');
-
-            var vx = 1.1;
-            var vy = 0.9;
-            var x = 100;
-            var y = 200;
-            if (Math.random() > 0.5) vx = -vx;
-            if (Math.random() > 0.5) vy = -vy;
-
-            function getImgSize() {
-                var rect = document.getElementById('qr-img').getBoundingClientRect();
-                return { w: rect.width, h: rect.height };
-            }
-
-            function getViewSize() {
-                return { w: window.innerWidth, h: window.innerHeight };
-            }
-
-            function tick() {
-                var view = getViewSize();
-                var size = getImgSize();
-
-                x += vx;
-                y += vy;
-
-                if (x <= 0) { x = 0; vx = -vx; }
-                else if (x + size.w >= view.w) { x = view.w - size.w; vx = -vx; }
-
-                if (y <= 0) { y = 0; vy = -vy; }
-                else if (y + size.h >= view.h) { y = view.h - size.h; vy = -vy; }
-
-                logo.style.transform = 'translate(' + x + 'px,' + y + 'px)';
-                requestAnimationFrame(tick);
-            }
-
-            var qrImg = document.getElementById('qr-img');
-            var code = document.querySelector('.code');
-            var running = false;
-
-            function startBounce() {
-                if (running) return;
-                running = true;
-                tick();
-            }
-
-            // QR appears only when the 404 text is pressed
-            if (code) {
-                code.addEventListener('click', function () {
-                    var visible = logo.classList.toggle('visible');
-                    if (visible) startBounce();
-                });
-            }
-
-            window.addEventListener('resize', function() {
-                var view = getViewSize();
-                var size = getImgSize();
-                if (x + size.w > view.w) x = view.w - size.w;
-                if (y + size.h > view.h) y = view.h - size.h;
-                if (x < 0) x = 0;
-                if (y < 0) y = 0;
-            });
-        })();
-    </script>
-
-    <script>
-        /* Swap each preview for its full-resolution layer once it is ready. */
-        (function () {
-            'use strict';
-            function upgrade() {
-                document.querySelectorAll('#scene img[data-full]').forEach(function (img) {
-                    var full = new Image();
-                    full.decoding = 'async';
-                    full.onload = function () { img.src = full.src; };
-                    full.src = img.getAttribute('data-full');
-                });
-            }
-            if (document.readyState === 'complete') upgrade();
-            else window.addEventListener('load', upgrade);
-        })();
-    </script>
-
-    <script>
-        /* Parallax scene — earth (slow) / ship (mid) / glass (fast) */
-        (function () {
-            'use strict';
-
-            var scene = document.getElementById('scene');
-            if (!scene) return;
-
-            var earth = document.getElementById('layer-earth');
-            var ship = document.getElementById('layer-ship');
-            var glass = document.getElementById('layer-glass');
-            if (!earth || !ship || !glass) return;
-
-            // Fade the scene in only once the layers are available
-            function reveal() { scene.classList.add('ready'); }
-            if (document.readyState === 'complete') {
-                reveal();
-            } else {
-                window.addEventListener('load', reveal);
-            }
-
-            var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-            // Max displacement per layer, scaled to viewport
-            var DEPTH = { earth: 0.010, ship: 0.020, glass: 0.030 };
-            function resize() {
-                var s = Math.min(window.innerWidth, window.innerHeight);
-                DEPTH.earth = s * 0.002;
-                DEPTH.ship = s * 0.010;
-                DEPTH.glass = s * 0.020;
-            }
-            resize();
-            window.addEventListener('resize', resize, { passive: true });
-
-            var tx = 0, ty = 0;   // target (normalized -1..1)
-            var cx = 0, cy = 0;   // eased current
-            var lastMove = -1e9;
-
-            function render() {
-                cx += (tx - cx) * 0.09;
-                cy += (ty - cy) * 0.09;
-                earth.style.transform = 'translate3d(' + (cx * DEPTH.earth).toFixed(2) + 'px,' + (cy * DEPTH.earth).toFixed(2) + 'px,0)';
-                ship.style.transform  = 'translate3d(' + (cx * DEPTH.ship).toFixed(2) + 'px,' + (cy * DEPTH.ship).toFixed(2) + 'px,0)';
-                glass.style.transform = 'translate3d(' + (cx * DEPTH.glass).toFixed(2) + 'px,' + (cy * DEPTH.glass).toFixed(2) + 'px,0)';
-            }
-
-            function loop(now) {
-                if (reduce) { render(); return; }
-                if (now - lastMove > 2200) {
-                    // Idle sway — also runs continuously on touch (no mousemove ever fires)
-                    tx = Math.sin(now * 0.0005) * 0.75;
-                    ty = Math.cos(now * 0.0004) * 0.75;
-                }
-                render();
-                requestAnimationFrame(loop);
-            }
-
-            window.addEventListener('mousemove', function (e) {
-                tx = (e.clientX / window.innerWidth) * 2 - 1;
-                ty = (e.clientY / window.innerHeight) * 2 - 1;
-                lastMove = performance.now();
-            }, { passive: true });
-
-            requestAnimationFrame(loop);
-        })();
-    </script>
 </body>
 </html>

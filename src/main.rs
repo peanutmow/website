@@ -1,6 +1,6 @@
 use axum::{
     extract::{Extension, Path, Request, State},
-    http::{header, HeaderValue, StatusCode, Uri},
+    http::{header, HeaderMap, HeaderValue, StatusCode, Uri},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
@@ -8,8 +8,8 @@ use axum::{
 };
 use std::sync::Arc;
 use tower::Layer;
-use tower_http::services::ServeDir;
 use tower_http::compression::CompressionLayer;
+use tower_http::services::ServeDir;
 use tower_http::set_header::{SetResponseHeader, SetResponseHeaderLayer};
 use tracing_subscriber::EnvFilter;
 
@@ -23,6 +23,21 @@ mod site;
 mod templates;
 
 use site::Site;
+
+const HELLO_HOST: &str = "q.m.x.b.r.t.v.k.p.d.h.n.w.c.l.s.f.j.y.z.a.e.i.o.u.g.alicemow.org";
+
+const HELLO_HTML: &str = r#"<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hello</title>
+</head>
+<body>
+<p>hello</p>
+</body>
+</html>
+"#;
 
 pub struct AppState {
     pub tmpl: templates::TemplateEngine,
@@ -84,13 +99,66 @@ async fn main() {
         .route("/music/index.html", get(music_page))
         // Static directories (avoid conflicts with SSR routes). Cache-Control
         // keeps repeat navigation from re-downloading artwork and scripts.
-        .nest_service("/fonts", cached(ServeDir::new("fonts"), "public, max-age=31536000, immutable"))
-        .nest_service("/static", cached(ServeDir::new("static"), "public, max-age=3600"))
-        .nest_service("/assets", cached(ServeDir::new("assets"), "public, max-age=604800"))
-        .nest_service("/wasm", cached(ServeDir::new("wasm-sim/pkg"), "public, max-age=86400"))
+        .nest_service(
+            "/fonts",
+            cached(
+                ServeDir::new("fonts"),
+                "public, max-age=31536000, immutable",
+            ),
+        )
+        .nest_service(
+            "/static",
+            cached(
+                ServeDir::new("static"),
+                if cfg!(debug_assertions) {
+                    "no-cache"
+                } else {
+                    "public, max-age=3600"
+                },
+            ),
+        )
+        .nest_service(
+            "/assets",
+            cached(ServeDir::new("assets"), "public, max-age=604800"),
+        )
+        .nest_service(
+            "/wasm",
+            cached(
+                ServeDir::new("wasm-sim/pkg"),
+                if cfg!(debug_assertions) {
+                    "no-cache"
+                } else {
+                    "public, max-age=86400"
+                },
+            ),
+        )
+        .nest_service(
+            "/wasm-bunny",
+            cached(
+                ServeDir::new("wasm-bunny/pkg"),
+                if cfg!(debug_assertions) {
+                    "no-cache"
+                } else {
+                    "public, max-age=86400"
+                },
+            ),
+        )
+        .nest_service(
+            "/wasm-app",
+            cached(
+                ServeDir::new("wasm-app/pkg"),
+                if cfg!(debug_assertions) {
+                    "no-cache"
+                } else {
+                    "public, max-age=86400"
+                },
+            ),
+        )
         // Root-level static files
-        .route("/water-sim.js", get(|| serve_file("water-sim.js", "application/javascript")))
-        .route("/qr-error.png", get(|| serve_file("templates/QRCode(3).png", "image/png")))
+        .route(
+            "/qr-error.png",
+            get(|| serve_file("templates/QRCode(3).png", "image/png")),
+        )
         // Easter egg pages
         .route("/dev/null", get(dev_null_redirect))
         .route("/redherring", get(redherring_page))
@@ -118,7 +186,9 @@ async fn main() {
         .ok()
         .and_then(|value| value.parse::<u16>().ok())
         .unwrap_or(8080);
-    let listener = tokio::net::TcpListener::bind(("0.0.0.0", port)).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(("0.0.0.0", port))
+        .await
+        .unwrap();
     tracing::info!("Server running on http://0.0.0.0:{port}");
     axum::serve(listener, app).await.unwrap();
 }
@@ -128,6 +198,9 @@ async fn main() {
 /// Attach the identity (personal vs professional) to every request so handlers
 /// can render the matching profile. See [`site::detect`].
 async fn resolve_site(mut req: Request, next: Next) -> Response {
+    if is_hello_host(req.headers()) {
+        return Html(HELLO_HTML).into_response();
+    }
     let path_and_query = req
         .uri()
         .path_and_query()
@@ -143,6 +216,14 @@ async fn resolve_site(mut req: Request, next: Next) -> Response {
     next.run(req).await
 }
 
+fn is_hello_host(headers: &HeaderMap) -> bool {
+    let Some(value) = headers.get(header::HOST).and_then(|v| v.to_str().ok()) else {
+        return false;
+    };
+    let host = value.split(':').next().unwrap_or(value).trim_end_matches('.');
+    host.eq_ignore_ascii_case(HELLO_HOST)
+}
+
 // ─── SSR Handlers ──────────────────────────────────────────────────
 
 async fn root_page(
@@ -155,11 +236,14 @@ async fn root_page(
         None => format!("{} Portfolio", site.full_name),
     };
     let meta = embed::home(&site, &origin.0);
-    state.tmpl.render_response("index.html", &serde_json::json!({
-        "title": title,
-        "site": site,
-        "meta": meta,
-    }))
+    state.tmpl.render_response(
+        "index.html",
+        &serde_json::json!({
+            "title": title,
+            "site": site,
+            "meta": meta,
+        }),
+    )
 }
 
 async fn projects_page(
@@ -174,22 +258,19 @@ async fn projects_page(
         .count();
     let dream_count = state.dreams.len();
     let title = format!("Projects — {}", site.name);
-    let meta = embed::projects(
-        &site,
-        &origin.0,
-        &state.projects,
-        live_count,
-        dream_count,
-    );
-    state.tmpl.render_response("projects.html", &serde_json::json!({
-        "title": title,
-        "site": site,
-        "meta": meta,
-        "projects": state.projects,
-        "dreams": state.dreams,
-        "live_count": live_count,
-        "dream_count": dream_count,
-    }))
+    let meta = embed::projects(&site, &origin.0, &state.projects, live_count, dream_count);
+    state.tmpl.render_response(
+        "projects.html",
+        &serde_json::json!({
+            "title": title,
+            "site": site,
+            "meta": meta,
+            "projects": state.projects,
+            "dreams": state.dreams,
+            "live_count": live_count,
+            "dream_count": dream_count,
+        }),
+    )
 }
 
 // ─── Content pages (rendered so the profile's name reaches them) ───
@@ -207,16 +288,19 @@ async fn project_page(
     let prev = index.checked_sub(1).and_then(|i| state.projects.get(i));
     let next = state.projects.get(index + 1);
     let meta = embed::project(&site, &origin.0, project);
-    state.tmpl.render_response("project.html", &serde_json::json!({
-        "title": format!("{} — {}", project.title, site.name),
-        "site": site,
-        "meta": meta,
-        "project": project,
-        "index": index + 1,
-        "count": state.projects.len(),
-        "prev": prev,
-        "next": next,
-    }))
+    state.tmpl.render_response(
+        "project.html",
+        &serde_json::json!({
+            "title": format!("{} — {}", project.title, site.name),
+            "site": site,
+            "meta": meta,
+            "project": project,
+            "index": index + 1,
+            "count": state.projects.len(),
+            "prev": prev,
+            "next": next,
+        }),
+    )
 }
 
 async fn about_page(
@@ -226,12 +310,15 @@ async fn about_page(
 ) -> Response {
     let title = format!("About — {}", site.full_name);
     let meta = embed::about(&site, &origin.0);
-    state.tmpl.render_response("about.html", &serde_json::json!({
-        "title": title,
-        "site": site,
-        "meta": meta,
-        "projects": &state.projects,
-    }))
+    state.tmpl.render_response(
+        "about.html",
+        &serde_json::json!({
+            "title": title,
+            "site": site,
+            "meta": meta,
+            "projects": &state.projects,
+        }),
+    )
 }
 
 async fn faq_page(
@@ -242,13 +329,16 @@ async fn faq_page(
     let entries = content::faq(&site);
     let title = format!("FAQ — {}", site.full_name);
     let meta = embed::faq(&site, &origin.0);
-    state.tmpl.render_response("faq.html", &serde_json::json!({
-        "title": title,
-        "site": site,
-        "meta": meta,
-        "faqs": &entries,
-        "faq_json_ld": content::faq_json_ld(&entries),
-    }))
+    state.tmpl.render_response(
+        "faq.html",
+        &serde_json::json!({
+            "title": title,
+            "site": site,
+            "meta": meta,
+            "faqs": &entries,
+            "faq_json_ld": content::faq_json_ld(&entries),
+        }),
+    )
 }
 
 async fn music_page(
@@ -260,24 +350,37 @@ async fn music_page(
         return page_404();
     }
     let meta = embed::music(&site, &origin.0);
-    state.tmpl.render_response("music.html", &serde_json::json!({
-        "title": format!("Music — {}", site.name),
-        "site": site,
-        "meta": meta,
-    }))
+    state.tmpl.render_response(
+        "music.html",
+        &serde_json::json!({
+            "title": format!("Music — {}", site.name),
+            "site": site,
+            "meta": meta,
+        }),
+    )
 }
 
 async fn gallery_content_page(
     State(state): State<Arc<AppState>>,
     Extension(site): Extension<Site>,
     Extension(origin): Extension<site::Origin>,
+    uri: Uri,
 ) -> Response {
     let meta = embed::gallery(&site, &origin.0);
-    state.tmpl.render_response("content_gallery.html", &serde_json::json!({
-        "site": site,
-        "meta": meta,
-        "photos_json": gallery::photos_json(),
-    }))
+    let gallery = gallery::data();
+    let embed = uri
+        .query()
+        .map(|query| query.split('&').any(|part| part == "embed=1"))
+        .unwrap_or(false);
+    state.tmpl.render_response(
+        "content_gallery.html",
+        &serde_json::json!({
+            "site": site,
+            "meta": meta,
+            "gallery": gallery.as_ref(),
+            "embed": embed,
+        }),
+    )
 }
 
 async fn socials_content_page(
@@ -286,10 +389,13 @@ async fn socials_content_page(
     Extension(origin): Extension<site::Origin>,
 ) -> Response {
     let meta = embed::socials(&site, &origin.0);
-    state.tmpl.render_response("content_socials.html", &serde_json::json!({
-        "site": site,
-        "meta": meta,
-    }))
+    state.tmpl.render_response(
+        "content_socials.html",
+        &serde_json::json!({
+            "site": site,
+            "meta": meta,
+        }),
+    )
 }
 
 // ─── Blog ─────────────────────────────────────────────────────────
@@ -338,13 +444,16 @@ async fn render_blog(state: &AppState, site: &Site, origin: &str, index: usize) 
         })
         .collect();
 
-    state.tmpl.render_response("blog.html", &serde_json::json!({
-        "title": format!("{} — {}", section.label, site.name),
-        "site": site,
-        "section": section,
-        "nav": nav,
-        "meta": embed::blog(site, origin, section),
-    }))
+    state.tmpl.render_response(
+        "blog.html",
+        &serde_json::json!({
+            "title": format!("{} — {}", section.label, site.name),
+            "site": site,
+            "section": section,
+            "nav": nav,
+            "meta": embed::blog(site, origin, section),
+        }),
+    )
 }
 
 // ─── File serving ──────────────────────────────────────────────────
@@ -361,8 +470,16 @@ async fn serve_file(path: &str, mime: &str) -> Response {
     match tokio::fs::read(path).await {
         Ok(data) => Response::builder()
             .header("Content-Type", mime)
-            .header("Cache-Control", "public, max-age=3600")
-            .body(axum::body::Body::from(data)).unwrap(),
+            .header(
+                "Cache-Control",
+                if cfg!(debug_assertions) {
+                    "no-cache"
+                } else {
+                    "public, max-age=3600"
+                },
+            )
+            .body(axum::body::Body::from(data))
+            .unwrap(),
         Err(_) => StatusCode::NOT_FOUND.into_response(),
     }
 }
@@ -373,18 +490,30 @@ async fn dev_null_redirect() -> Redirect {
     Redirect::to("/")
 }
 
-async fn redherring_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
+async fn redherring_page(
+    State(state): State<Arc<AppState>>,
+    Extension(site): Extension<Site>,
+) -> Response {
     if site.professional {
         return page_404();
     }
-    state.tmpl.render_response("redherring.html", &serde_json::json!({"title": "///", "site": site}))
+    state.tmpl.render_response(
+        "redherring.html",
+        &serde_json::json!({"title": "///", "site": site}),
+    )
 }
 
-async fn conejillo_page(State(state): State<Arc<AppState>>, Extension(site): Extension<Site>) -> Response {
+async fn conejillo_page(
+    State(state): State<Arc<AppState>>,
+    Extension(site): Extension<Site>,
+) -> Response {
     if site.professional {
         return page_404();
     }
-    state.tmpl.render_response("conejillo.html", &serde_json::json!({"title": "🐰 conejillo de indias", "site": site}))
+    state.tmpl.render_response(
+        "conejillo.html",
+        &serde_json::json!({"title": "🐰 conejillo de indias", "site": site}),
+    )
 }
 
 // ─── Search engine files ──────────────────────────────────────────
@@ -535,7 +664,8 @@ fn root_image(path: &str) -> Option<(String, &'static str)> {
 
 #[cfg(test)]
 mod tests {
-    use super::root_image;
+    use super::{is_hello_host, root_image, HELLO_HOST};
+    use axum::http::{header, HeaderMap};
 
     fn served(path: &str) -> Option<String> {
         root_image(path).map(|(file, _)| file)
@@ -543,19 +673,53 @@ mod tests {
 
     #[test]
     fn root_images_are_served() {
-        assert_eq!(served("/stupidwebbuttonthingykys.png").as_deref(), Some("stupidwebbuttonthingykys.png"));
+        assert_eq!(
+            served("/stupidwebbuttonthingykys.png").as_deref(),
+            Some("stupidwebbuttonthingykys.png")
+        );
         assert_eq!(served("/icon.SVG").as_deref(), Some("icon.SVG"));
     }
 
     #[test]
     fn non_images_and_unsafe_paths_are_refused() {
         // Source and config files share the deployed tree — must never be served.
-        for path in ["/Cargo.toml", "/main.rs", "/deploy/deploy.sh", "/index.html", "/water-sim.js"] {
+        for path in [
+            "/Cargo.toml",
+            "/main.rs",
+            "/deploy/deploy.sh",
+            "/index.html",
+        ] {
             assert!(root_image(path).is_none(), "{path} should not be served");
         }
         // No traversal, no dotfiles, no nested paths, no bare root.
-        for path in ["/", "/.gitignore", "/.hidden.png", "/../secret.png", "/a/b.png", "nope.png"] {
+        for path in [
+            "/",
+            "/.gitignore",
+            "/.hidden.png",
+            "/../secret.png",
+            "/a/b.png",
+            "nope.png",
+        ] {
             assert!(root_image(path).is_none(), "{path} should not be served");
         }
+    }
+
+    #[test]
+    fn hello_host_is_exact() {
+        let mut headers = HeaderMap::new();
+        headers.insert(header::HOST, HELLO_HOST.parse().unwrap());
+        assert!(is_hello_host(&headers));
+
+        headers.insert(header::HOST, format!("{HELLO_HOST}:8080").parse().unwrap());
+        assert!(is_hello_host(&headers));
+
+        headers.insert(header::HOST, format!("{HELLO_HOST}.").parse().unwrap());
+        assert!(is_hello_host(&headers));
+
+        headers.insert(header::HOST, HELLO_HOST.to_ascii_uppercase().parse().unwrap());
+        assert!(is_hello_host(&headers));
+
+        headers.insert(header::HOST, "alicemow.org".parse().unwrap());
+        assert!(!is_hello_host(&headers));
     }
 }

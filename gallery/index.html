@@ -1,10 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en"{% if embed %} class="embedded"{% endif %}>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gallery — {{ site.name }}</title>
-    <script>if (window.self !== window.top) document.documentElement.classList.add('embedded');</script>
     {% include "meta.html" %}
     <link rel="preconnect" href="https://live.staticflickr.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400&family=Instrument+Serif:ital@0;1&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -23,13 +22,13 @@
         <div class="masthead-main">
             <h1><span class="the">The</span><em>Archive</em></h1>
             <div class="masthead-aside">
-                <p class="lede"><span id="frame-count">—</span> Photos so far.</p>
+                <p class="lede"><span id="frame-count">{{ gallery.total }}</span> Photos so far.</p>
                 <p class="note">In my collection.</p>
             </div>
         </div>
 
         <div class="masthead-rule">
-            <span>contact sheets <span id="sheet-count">—</span></span>
+            <span>contact sheets <span id="sheet-count">{{ gallery.sheet_count }}</span></span>
             <span>sort by color</span>
         </div>
     </header>
@@ -38,25 +37,56 @@
         <section class="index" aria-label="Filter the archive">
             <div class="index-row">
                 <span class="index-key">Colour</span>
-                <div class="swatches" id="swatches"></div>
+                <div class="swatches" id="swatches">
+                    {% for swatch in gallery.swatches %}
+                    <button type="button" class="swatch" data-hue="{{ swatch.hue }}" style="background-color: {{ swatch.colour }}" title="{{ swatch.name }} · {{ swatch.count }} frames" aria-label="{{ swatch.name }}, {{ swatch.count }} frames" aria-pressed="false"></button>
+                    {% endfor %}
+                    <button type="button" class="swatch mono" title="monochrome · {{ gallery.mono_count }} frames" aria-label="monochrome, {{ gallery.mono_count }} frames" aria-pressed="false"></button>
+                </div>
             </div>
             <div class="index-row">
                 <span class="index-key">Index</span>
-                <div class="tags" id="tags"></div>
+                <div class="tags" id="tags">
+                    <button type="button" class="tag" data-tag="" aria-pressed="true"><span>all</span><span class="n">{{ gallery.total }}</span></button>
+                    {% if gallery.untagged %}
+                    <button type="button" class="tag" data-tag="__untagged" aria-pressed="false"><span>untagged</span><span class="n">{{ gallery.untagged }}</span></button>
+                    {% endif %}
+                    {% for tag in gallery.tags %}
+                    <button type="button" class="tag" data-tag="{{ tag.name }}" aria-pressed="false"><span>{{ tag.name }}</span><span class="n">{{ tag.count }}</span></button>
+                    {% endfor %}
+                </div>
             </div>
             <div class="index-foot">
-                <span id="status">all frames</span>
+                <span id="status">all {{ gallery.total }} frames</span>
                 <button type="button" id="reset" hidden>clear filter</button>
             </div>
         </section>
 
-        <div id="archive"></div>
-        <noscript><p class="empty">This archive needs JavaScript to develop its frames.</p></noscript>
+        <div id="archive">
+            {% for sheet in gallery.sheets %}
+            <section class="sheet" data-total="{{ sheet.total }}" data-start="{{ sheet.start }}" data-end="{{ sheet.end }}">
+                <div class="sheet-label">
+                    <span class="sheet-no">{{ sheet.number }}</span>
+                    <span class="sheet-title">contact sheet</span>
+                    <span class="sheet-meta">{{ sheet.total }} frames · {{ sheet.start }}–{{ sheet.end }}</span>
+                </div>
+                <div class="frames">
+                    {% for frame in sheet.frames %}
+                    <button type="button" class="frame" data-id="{{ frame.id }}" data-frame="{{ frame.number }}" data-sat="{{ frame.sat }}"{% if frame.hue is not none %} data-hue="{{ frame.hue }}"{% endif %} data-tags="{{ frame.tags_json }}" data-meta="{{ frame.meta }}" aria-label="{{ frame.alt }} — open frame {{ frame.number }}">
+                        <span class="shot"><img{% if frame.src %} src="{{ frame.src }}"{% endif %}{% if frame.srcset %} srcset="{{ frame.srcset }}"{% endif %} sizes="{{ frame.sizes }}" alt="{{ frame.alt }}" loading="{{ frame.loading }}" decoding="async"{% if frame.eager %} fetchpriority="high"{% endif %}></span>
+                        <span class="frame-meta"><span class="frame-no">{{ frame.number }}</span><span class="frame-tags">{{ frame.label }}</span></span>
+                    </button>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endfor %}
+        </div>
+        <noscript><p class="empty">The archive is complete without JavaScript; filtering and the viewer need it.</p></noscript>
         <p class="empty" id="empty" hidden>nothing in the archive answers to that.</p>
     </main>
 
     <footer class="colophon">
-        <span id="foot-count">—</span>
+        <span id="foot-count">{{ gallery.total }} frames · {{ gallery.sheet_count }} contact sheets</span>
         <span class="colophon-note">an archive of color</span>
         <a href="https://www.flickr.com/photos/185219841@N08/" target="_blank" rel="noopener">source ↗</a>
     </footer>
@@ -75,26 +105,7 @@
         <div class="lb-counter" id="lb-counter"></div>
     </div>
 
-    <script type="application/json" id="gallery-data">{{ photos_json | safe }}</script>
-    <script src="/static/gallery.js" defer></script>
-    <script>
-        (function () {
-            if (window.self === window.top) return;
-            var host;
-            try { host = window.parent.document; } catch (error) { return; }
-            var frame = host.getElementById('content-frame');
-            if (!frame) return;
-            document.addEventListener('pointermove', function (event) {
-                if (event.pointerType && event.pointerType !== 'mouse') return;
-                var rect = frame.getBoundingClientRect();
-                host.dispatchEvent(new MouseEvent('mousemove', {
-                    clientX: rect.left + event.clientX,
-                    clientY: rect.top + event.clientY,
-                    bubbles: true
-                }));
-            }, { passive: true });
-        })();
-    </script>
+    <script src="/static/app.js" defer></script>
     <footer class="site-footer">
         {% include "site_footer.html" %}
     </footer>

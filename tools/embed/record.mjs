@@ -152,7 +152,7 @@ try {
   }, session);
 
   const armed = frames.length;
-  await runtimeValue(session, 'window.__arm(), true');
+  await runtimeValue(session, 'window.__arm().then(function () { return true; })');
   await sleep(seconds * 1000);
 
   await send('Page.stopScreencast', {}, session);

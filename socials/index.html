@@ -163,7 +163,7 @@
         <div class="section">
             <div class="section-header">Experiments</div>
             <div class="link-list" data-embed>
-                <a href="https://ai.alicemow.org/" data-name="ai.alicemow.org" class="link-item">
+                <a href="/?site=https%3A%2F%2Fai.alicemow.org%2F" target="_top" class="link-item">
                     <span class="tag">AI</span>
                     <span class="name">alice-1b &mdash; talk to the tiny brain</span>
                 </a>
@@ -173,15 +173,15 @@
         <div class="section">
             <div class="section-header">Friends</div>
             <div class="link-list" data-embed>
-                <a href="https://alexinabox.de/" target="_blank" class="link-item">
+                <a href="/?site=https%3A%2F%2Falexinabox.de%2F" target="_top" class="link-item">
                     <span class="tag">Link</span>
                     <span class="name">alexinabox.de &mdash; Alex</span>
                 </a>
-                <a href="https://lovesick.wtf/" target="_blank" class="link-item">
+                <a href="/?site=https%3A%2F%2Flovesick.wtf%2F" target="_top" class="link-item">
                     <span class="tag">Link</span>
                     <span class="name">lovesick.wtf &mdash; Rachel</span>
                 </a>
-                <a href="https://pheebnest.nekoweb.org/" target="_blank" class="link-item">
+                <a href="/?site=https%3A%2F%2Fpheebnest.nekoweb.org%2F" target="_top" class="link-item">
                     <span class="tag">Link</span>
                     <span class="name">pheebnest.nekoweb.org &mdash; Phoebe</span>
                 </a>
@@ -191,23 +191,23 @@
         <div class="section">
             <div class="section-header">Cool Sites</div>
             <div class="link-list" data-embed>
-                <a href="https://valdevia.art/" target="_blank" class="link-item">
+                <a href="/?site=https%3A%2F%2Fvaldevia.art%2F" target="_top" class="link-item">
                     <span class="tag">Link</span>
                     <span class="name">valdevia.art</span>
                 </a>
-                <a href="https://fontjoy.com/" target="_blank" class="link-item">
+                <a href="/?site=https%3A%2F%2Ffontjoy.com%2F" target="_top" class="link-item">
                     <span class="tag">Link</span>
                     <span class="name">fontjoy.com</span>
                 </a>
-                <a href="https://64f.de/" target="_blank" class="link-item">
+                <a href="/?site=https%3A%2F%2F64f.de%2F" target="_top" class="link-item">
                     <span class="tag">Link</span>
                     <span class="name">64f.de</span>
                 </a>
-                <a href="https://meye.dk/" target="_blank" class="link-item">
+                <a href="/?site=https%3A%2F%2Fmeye.dk%2F" target="_top" class="link-item">
                     <span class="tag">Link</span>
                     <span class="name">meye.dk</span>
                 </a>
-                <a href="https://www.tooooools.app" target="_blank" class="link-item">
+                <a href="/?site=https%3A%2F%2Fwww.tooooools.app" target="_top" class="link-item">
                     <span class="tag">Link</span>
                     <span class="name">tooooools.app</span>
                 </a>
@@ -216,47 +216,7 @@
         {% endif %}
     </div>
 
-    <script>
-        // Forward mouse events to parent page so the water sim reacts
-        (function() {
-            if (!window.parent) return;
-            var parentDoc = window.parent.document;
-            document.documentElement.addEventListener('mousemove', function(e) {
-                parentDoc.dispatchEvent(new MouseEvent('mousemove', {
-                    clientX: e.clientX,
-                    clientY: e.clientY,
-                    bubbles: true,
-                    cancelable: true
-                }));
-            });
-        })();
-    </script>
-
-    {% if not site.professional %}
-    <script>
-        // ── Friends / Cool Sites links: go back to the ASCII main page ──
-        // The main page opens them in an in-site window rendered as ASCII;
-        // hovering the window reveals the real site. "My Accounts" links
-        // keep opening in a new tab.
-        (function() {
-            'use strict';
-            function hostOf(url) {
-                try { return new URL(url, window.location.href).hostname; } catch (e) { return url; }
-            }
-            document.querySelectorAll('.link-list[data-embed] a').forEach(function(link) {
-                link.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    var url = link.href;
-                    var name = link.getAttribute('data-name') || hostOf(url);
-                    try { sessionStorage.setItem('alice.siteWindow', url); } catch (err) {}
-                    var dest = '/?site=' + encodeURIComponent(url) + '&name=' + encodeURIComponent(name);
-                    var top = window.top || window;
-                    try { top.location.href = dest; } catch (err) { window.location.href = dest; }
-                });
-            });
-        })();
-    </script>
-    {% endif %}
+    <script src="/static/app.js"></script>
     <footer class="site-footer">
         {% include "site_footer.html" %}
     </footer>
