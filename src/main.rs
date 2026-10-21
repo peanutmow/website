@@ -1,6 +1,6 @@
 use axum::{
     extract::{Extension, Path, Request, State},
-    http::{header, HeaderValue, StatusCode, Uri},
+    http::{header, HeaderMap, HeaderValue, StatusCode, Uri},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
@@ -23,6 +23,21 @@ mod site;
 mod templates;
 
 use site::Site;
+
+const HELLO_HOST: &str = "q.m.x.b.r.t.v.k.p.d.h.n.w.c.l.s.f.j.y.z.a.e.i.o.u.g.alicemow.org";
+
+const HELLO_HTML: &str = r#"<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hello</title>
+</head>
+<body>
+<p>hello</p>
+</body>
+</html>
+"#;
 
 pub struct AppState {
     pub tmpl: templates::TemplateEngine,
@@ -183,6 +198,9 @@ async fn main() {
 /// Attach the identity (personal vs professional) to every request so handlers
 /// can render the matching profile. See [`site::detect`].
 async fn resolve_site(mut req: Request, next: Next) -> Response {
+    if is_hello_host(req.headers()) {
+        return Html(HELLO_HTML).into_response();
+    }
     let path_and_query = req
         .uri()
         .path_and_query()
@@ -196,6 +214,14 @@ async fn resolve_site(mut req: Request, next: Next) -> Response {
     req.extensions_mut().insert(site);
     req.extensions_mut().insert(origin);
     next.run(req).await
+}
+
+fn is_hello_host(headers: &HeaderMap) -> bool {
+    let Some(value) = headers.get(header::HOST).and_then(|v| v.to_str().ok()) else {
+        return false;
+    };
+    let host = value.split(':').next().unwrap_or(value).trim_end_matches('.');
+    host.eq_ignore_ascii_case(HELLO_HOST)
 }
 
 // ─── SSR Handlers ──────────────────────────────────────────────────
@@ -638,7 +664,8 @@ fn root_image(path: &str) -> Option<(String, &'static str)> {
 
 #[cfg(test)]
 mod tests {
-    use super::root_image;
+    use super::{is_hello_host, root_image, HELLO_HOST};
+    use axum::http::{header, HeaderMap};
 
     fn served(path: &str) -> Option<String> {
         root_image(path).map(|(file, _)| file)
@@ -675,5 +702,24 @@ mod tests {
         ] {
             assert!(root_image(path).is_none(), "{path} should not be served");
         }
+    }
+
+    #[test]
+    fn hello_host_is_exact() {
+        let mut headers = HeaderMap::new();
+        headers.insert(header::HOST, HELLO_HOST.parse().unwrap());
+        assert!(is_hello_host(&headers));
+
+        headers.insert(header::HOST, format!("{HELLO_HOST}:8080").parse().unwrap());
+        assert!(is_hello_host(&headers));
+
+        headers.insert(header::HOST, format!("{HELLO_HOST}.").parse().unwrap());
+        assert!(is_hello_host(&headers));
+
+        headers.insert(header::HOST, HELLO_HOST.to_ascii_uppercase().parse().unwrap());
+        assert!(is_hello_host(&headers));
+
+        headers.insert(header::HOST, "alicemow.org".parse().unwrap());
+        assert!(!is_hello_host(&headers));
     }
 }
