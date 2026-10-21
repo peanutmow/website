@@ -3,23 +3,91 @@ use minijinja::Environment;
 use serde::Serialize;
 
 const TEMPLATES: &[(&str, &str, &str)] = &[
-    ("index.html", "templates/index.html", include_str!("../templates/index.html")),
-    ("projects.html", "templates/projects.html", include_str!("../templates/projects.html")),
-    ("project.html", "templates/project.html", include_str!("../templates/project.html")),
-    ("about.html", "templates/about.html", include_str!("../templates/about.html")),
-    ("faq.html", "templates/faq.html", include_str!("../templates/faq.html")),
-    ("redherring.html", "templates/redherring.html", include_str!("../templates/redherring.html")),
-    ("conejillo.html", "templates/conejillo.html", include_str!("../templates/conejillo.html")),
-    ("content_gallery.html", "gallery/index.html", include_str!("../gallery/index.html")),
-    ("content_socials.html", "socials/index.html", include_str!("../socials/index.html")),
-    ("music.html", "templates/music.html", include_str!("../templates/music.html")),
-    ("blog.html", "templates/blog.html", include_str!("../templates/blog.html")),
-    ("meta.html", "templates/meta.html", include_str!("../templates/meta.html")),
-    ("site_footer.html", "templates/site_footer.html", include_str!("../templates/site_footer.html")),
-    ("robots.txt", "templates/robots.txt", include_str!("../templates/robots.txt")),
-    ("llms.txt", "templates/llms.txt", include_str!("../templates/llms.txt")),
-    ("llms-full.txt", "templates/llms-full.txt", include_str!("../templates/llms-full.txt")),
-    ("embed_scene.html", "templates/embed_scene.html", include_str!("../templates/embed_scene.html")),
+    (
+        "index.html",
+        "templates/index.html",
+        include_str!("../templates/index.html"),
+    ),
+    (
+        "projects.html",
+        "templates/projects.html",
+        include_str!("../templates/projects.html"),
+    ),
+    (
+        "project.html",
+        "templates/project.html",
+        include_str!("../templates/project.html"),
+    ),
+    (
+        "about.html",
+        "templates/about.html",
+        include_str!("../templates/about.html"),
+    ),
+    (
+        "faq.html",
+        "templates/faq.html",
+        include_str!("../templates/faq.html"),
+    ),
+    (
+        "redherring.html",
+        "templates/redherring.html",
+        include_str!("../templates/redherring.html"),
+    ),
+    (
+        "conejillo.html",
+        "templates/conejillo.html",
+        include_str!("../templates/conejillo.html"),
+    ),
+    (
+        "content_gallery.html",
+        "gallery/index.html",
+        include_str!("../gallery/index.html"),
+    ),
+    (
+        "content_socials.html",
+        "socials/index.html",
+        include_str!("../socials/index.html"),
+    ),
+    (
+        "music.html",
+        "templates/music.html",
+        include_str!("../templates/music.html"),
+    ),
+    (
+        "blog.html",
+        "templates/blog.html",
+        include_str!("../templates/blog.html"),
+    ),
+    (
+        "meta.html",
+        "templates/meta.html",
+        include_str!("../templates/meta.html"),
+    ),
+    (
+        "site_footer.html",
+        "templates/site_footer.html",
+        include_str!("../templates/site_footer.html"),
+    ),
+    (
+        "robots.txt",
+        "templates/robots.txt",
+        include_str!("../templates/robots.txt"),
+    ),
+    (
+        "llms.txt",
+        "templates/llms.txt",
+        include_str!("../templates/llms.txt"),
+    ),
+    (
+        "llms-full.txt",
+        "templates/llms-full.txt",
+        include_str!("../templates/llms-full.txt"),
+    ),
+    (
+        "embed_scene.html",
+        "templates/embed_scene.html",
+        include_str!("../templates/embed_scene.html"),
+    ),
 ];
 
 fn read_template(path: &str, embedded: &'static str) -> String {
@@ -40,7 +108,8 @@ impl TemplateEngine {
     pub fn new() -> Self {
         let mut env = Environment::new();
         for &(name, path, embedded) in TEMPLATES {
-            env.add_template_owned(name, read_template(path, embedded)).unwrap();
+            env.add_template_owned(name, read_template(path, embedded))
+                .unwrap();
         }
         TemplateEngine { env }
     }
@@ -54,7 +123,11 @@ impl TemplateEngine {
             Ok(html) => Html(html).into_response(),
             Err(e) => {
                 tracing::error!("Template error: {}", e);
-                (axum::http::StatusCode::INTERNAL_SERVER_ERROR, "Template error").into_response()
+                (
+                    axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+                    "Template error",
+                )
+                    .into_response()
             }
         }
     }
@@ -64,6 +137,25 @@ impl TemplateEngine {
 mod tests {
     use super::*;
     use crate::site::Site;
+
+    #[test]
+    fn templates_have_no_executable_inline_scripts() {
+        for &(_, path, text) in TEMPLATES {
+            for line in text.lines() {
+                let Some(index) = line.find("<script") else {
+                    continue;
+                };
+                let rest = &line[index..];
+                if rest.starts_with("<script src=")
+                    || rest.contains("type=\"application/ld+json\"")
+                    || rest.contains("type=\"application/json\"")
+                {
+                    continue;
+                }
+                panic!("{path}: executable inline script remains: {line}");
+            }
+        }
+    }
 
     fn home(site: Site) -> String {
         TemplateEngine::new().render(
@@ -108,7 +200,8 @@ mod tests {
         for site in [Site::personal(), Site::professional()] {
             let html = home(site);
             assert!(html.contains("data-page=\"how\""));
-            assert!(html.contains("'How'"));
+            assert!(html.contains("data-buttons=\"Socials|Gallery|"));
+            assert!(html.contains("|How\""));
         }
     }
 
@@ -252,7 +345,7 @@ mod tests {
             &serde_json::json!({
                 "site": site,
                 "meta": crate::embed::gallery(&site, "https://example.test"),
-                "photos_json": crate::gallery::photos_json(),
+                "gallery": crate::gallery::data().as_ref(),
             }),
         )
     }
@@ -314,8 +407,14 @@ mod tests {
                 pages.push(("music", music_page(site)));
             }
             for (name, html) in pages {
-                assert!(html.contains("property=\"og:title\""), "{name} has no OG title");
-                assert!(html.contains("name=\"theme-color\""), "{name} has no accent");
+                assert!(
+                    html.contains("property=\"og:title\""),
+                    "{name} has no OG title"
+                );
+                assert!(
+                    html.contains("name=\"theme-color\""),
+                    "{name} has no accent"
+                );
                 assert!(
                     html.contains("id=\"discord:component-embed\""),
                     "{name} has no component payload"
@@ -337,7 +436,9 @@ mod tests {
         let personal = music_page(Site::personal());
         assert!(personal.contains("open.spotify.com/embed/playlist/4GcHDrtPr1Ok3PGVWHx5Jq"));
         assert!(personal.contains("height=\"352\""));
-        assert!(personal.contains("href=\"https://open.spotify.com/playlist/4GcHDrtPr1Ok3PGVWHx5Jq\""));
+        assert!(
+            personal.contains("href=\"https://open.spotify.com/playlist/4GcHDrtPr1Ok3PGVWHx5Jq\"")
+        );
         assert!(personal.contains("href=\"/music\""));
 
         let professional = music_page(Site::professional());
@@ -427,7 +528,10 @@ mod tests {
             "Applebot-Extended",
             "CCBot",
         ] {
-            assert!(body.contains(&format!("User-agent: {agent}")), "missing {agent}");
+            assert!(
+                body.contains(&format!("User-agent: {agent}")),
+                "missing {agent}"
+            );
         }
     }
 
