@@ -274,11 +274,11 @@
     <aside class="marginalia">{{ site.short }} — mmxxvi</aside>
 
     <aside class="tree-wrap">
-        <img class="tree" src="/assets/tree-preview.avif" data-full="/assets/tree.avif?v=3" width="1080" height="1920" alt="an oak tree" draggable="false" fetchpriority="high" decoding="async">
+        <img class="tree" src="/assets/tree.avif?v=3" width="1080" height="1920" alt="an oak tree" draggable="false" fetchpriority="high" decoding="async">
     </aside>
 
     <aside class="branch-wrap">
-        <img class="branch" src="/assets/treebranch-preview.avif" data-full="/assets/treebranch.avif?v=3" width="1080" height="1920" alt="" draggable="false" decoding="async">
+        <img class="branch" src="/assets/treebranch.avif?v=3" width="1080" height="1920" alt="" draggable="false" decoding="async">
     </aside>
 
     <div class="layout">
@@ -353,60 +353,8 @@
     </div>
     </div>
 
-    <script>
-        /* Swap the preview for the full-resolution artwork once it is ready. */
-        (function () {
-            function upgrade() {
-                document.querySelectorAll('img[data-full]').forEach(function (img) {
-                    var full = new Image();
-                    full.decoding = 'async';
-                    full.onload = function () { img.src = full.src; };
-                    full.src = img.getAttribute('data-full');
-                });
-            }
-            if (document.readyState === 'complete') upgrade();
-            else window.addEventListener('load', upgrade);
-        })();
-    </script>
+    <script src="/static/app.js" defer></script>
 
-    <script>
-        /* cursor parallax with built-in easing: on every mousemove we glide a
-           fraction of the way toward the target, so the drift stays smooth and
-           slightly laggy without transitions or timers. */
-        (function () {
-            var branch = document.querySelector('.branch');
-            var tree = document.querySelector('.tree');
-            var range = 20;   // max px each drifts (opposite signs)
-            var ease = 0.3;   // fraction of the gap closed per mousemove
-            var bY = 0, tY = 0;
-            function place(e) {
-                var ny = (e.clientY / window.innerHeight - 0.5) * 2;   // -1 .. 1
-                bY += (-ny * range - bY) * ease;
-                tY += (ny * range - tY) * ease;
-                if (branch) branch.style.transform = 'translate3d(0,' + bY.toFixed(2) + 'px,0)';
-                if (tree) tree.style.transform = 'translate3d(0,' + tY.toFixed(2) + 'px,0)';
-            }
-            function reset() {
-                bY = 0; tY = 0;
-                if (branch) branch.style.transform = 'translate3d(0px,0px,0px)';
-                if (tree) tree.style.transform = 'translate3d(0px,0px,0px)';
-            }
-            window.addEventListener('mousemove', place, { passive: true });
-            window.addEventListener('mouseleave', reset);
-        })();
-    </script>
-
-    <script>
-        /* make "return to interface" reliable even where anchor navigation is flaky */
-        (function () {
-            var link = document.querySelector('.back a');
-            if (!link) return;
-            link.addEventListener('click', function (e) {
-                e.preventDefault();
-                window.location.href = link.getAttribute('href') || '/';
-            });
-        })();
-    </script>
 
 </body>
 </html>
