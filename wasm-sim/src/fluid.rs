@@ -6,6 +6,8 @@ pub const DIFFUSE_ITERS: u32 = 10;
 pub const PRESSURE_ITERS: u32 = 25;
 pub const FORCE_STRENGTH: f64 = 3.0;
 pub const MAX_PUSH_CELLS: f64 = 22.0;
+pub const MOUSE_SPEED_FORCE: f64 = 0.125;
+pub const MOUSE_FORCE_CAP: f64 = 3.0;
 pub const VORTICITY: f64 = 8.0;
 pub const VORTICITY_CAP: f64 = 0.05;
 pub const DENSITY_PER_FRAME: f64 = 1.0;
@@ -296,6 +298,17 @@ impl Fluid {
         Self::set_bounds(dst, 0, cols, rows);
     }
 
+    fn trail_distance(trail: &[TrailSeg]) -> f64 {
+        trail
+            .iter()
+            .map(|segment| {
+                let dx = segment.x1 - segment.x0;
+                let dy = segment.y1 - segment.y0;
+                (dx * dx + dy * dy).sqrt()
+            })
+            .sum()
+    }
+
     fn pointer_segment(trail: &[TrailSeg]) -> Option<(f64, f64, f64, f64, f64)> {
         let first = trail.first()?;
         let last = trail.last()?;
@@ -312,9 +325,11 @@ impl Fluid {
         if !mouse_active {
             return;
         }
+        let speed = Self::trail_distance(trail);
         let Some((x0, y0, dx, dy, dist)) = Self::pointer_segment(trail) else {
             return;
         };
+        let boost = (1.0 + speed * MOUSE_SPEED_FORCE).min(MOUSE_FORCE_CAP);
         let span = dist.min(MAX_PUSH_CELLS) / dist;
         let start_x = x0 + dx * (1.0 - span);
         let start_y = y0 + dy * (1.0 - span);
@@ -336,8 +351,8 @@ impl Fluid {
                 self.rows as i64 - 2,
             );
             let p = self.at(gi, gj);
-            self.u[p] = (f64::from(self.u[p]) + sx * FORCE_STRENGTH) as f32;
-            self.v[p] = (f64::from(self.v[p]) + sy * FORCE_STRENGTH) as f32;
+            self.u[p] = (f64::from(self.u[p]) + sx * FORCE_STRENGTH * boost) as f32;
+            self.v[p] = (f64::from(self.v[p]) + sy * FORCE_STRENGTH * boost) as f32;
         }
     }
 
@@ -679,6 +694,33 @@ mod tests {
         fluid.resize(80, 60);
         assert!(fluid.dens.iter().any(|value| *value > 0.0));
         assert_eq!(fluid.dens_prev.len(), fluid.total);
+    }
+
+    #[test]
+    fn faster_pointer_motion_adds_more_force() {
+        let mut slow = Fluid::new(40, 30);
+        let mut fast = Fluid::new(40, 30);
+        slow.add_mouse_forces(
+            &[TrailSeg {
+                x0: 5.0,
+                y0: 5.0,
+                x1: 6.0,
+                y1: 5.0,
+            }],
+            true,
+        );
+        fast.add_mouse_forces(
+            &[TrailSeg {
+                x0: 5.0,
+                y0: 5.0,
+                x1: 20.0,
+                y1: 5.0,
+            }],
+            true,
+        );
+        let slow_force = slow.u[slow.at(6, 5)].abs();
+        let fast_force = fast.u[fast.at(6, 5)].abs();
+        assert!(fast_force > slow_force * 2.0);
     }
 
     #[test]
