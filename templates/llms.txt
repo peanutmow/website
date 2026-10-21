@@ -6,11 +6,13 @@
 
 ## Main
 
-- [Projects]({{ origin }}/projects): software and experiments, with descriptions and links.
+- [Projects]({{ origin }}/projects): software and experiments, each with its own page, description and links.
 - [About]({{ origin }}/about): who {{ site.full_name }} is and what they build.
 - [FAQ]({{ origin }}/faq): answers about the work, projects, tools and contact details.
 - [Gallery]({{ origin }}/gallery): photography, 3D art and visual experiments.
 - [Socials]({{ origin }}/socials): accounts and contact links.
+{% if not site.professional %}- [Music]({{ origin }}/music): a Spotify playlist, playable on the page.
+{% endif %}
 {% if site.blogs %}{% for blog in site.blogs %}- [{{ blog.label }} blog]({{ blog.public_url }}): a federated collection published with WriteFreely.
 {% endfor %}{% endif %}
 ## Optional

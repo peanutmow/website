@@ -9,8 +9,9 @@
 {% for project in projects %}
 ### {{ project.title }}
 
-Status: {{ project.status }}
-{{ project.blurb }}
+{% if project.slug %}Page: {{ origin }}/projects/{{ project.slug }}
+{% endif %}Status: {{ project.status }}
+{{ project.summary or project.blurb }}
 Tags: {{ project.tags | join(", ") }}
 {% if project.href %}Link: {{ project.href }}{% endif %}
 {% if project.url %}Link: {{ project.url }}{% endif %}
@@ -37,6 +38,8 @@ Tags: {{ project.tags | join(", ") }}
 - [FAQ]({{ origin }}/faq)
 - [Gallery]({{ origin }}/gallery)
 - [Socials]({{ origin }}/socials)
+{% if not site.professional %}- [Music]({{ origin }}/music)
+{% endif %}
 ## Machine-readable
 
 - Sitemap: {{ origin }}/sitemap.xml
