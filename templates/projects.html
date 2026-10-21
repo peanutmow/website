@@ -301,15 +301,7 @@
             </div>
 
             {% for p in projects if p.section == 'featured' or p.section == 'work' %}
-            {# a row is "external" when it links off-site — GitHub repos or any other
-               http(s) URL — so those open in a new tab instead of navigating away. #}
-            {% set link = p.url or p.href %}
-            {% set external = p.url is not none or (p.href and "http" in p.href) %}
-            {% if link %}
-            <a class="proj{% if p.section == 'featured' %} proj--featured{% endif %}" href="{{ link }}" {% if external %}target="_blank" rel="noopener"{% endif %}>
-            {% else %}
-            <div class="proj{% if p.section == 'featured' %} proj--featured{% endif %}">
-            {% endif %}
+            <a class="proj{% if p.section == 'featured' %} proj--featured{% endif %}" href="/projects/{{ p.slug }}">
                 <span class="ghost">0{{ loop.index }}</span>
                 <div class="p-meta">
                     <span class="idx">[0{{ loop.index }}]</span>
@@ -317,16 +309,12 @@
                     {% elif p.status|lower == 'wip' %}<span class="st st--wip">◐ wip</span>
                     {% else %}<span class="st st--live">● live</span>{% endif %}
                     {% if p.section == 'featured' %}<span class="star">★</span>{% endif %}
-                    <span class="go"><span class="arr">{% if external %}↗{% else %}→{% endif %}</span> {% if p.url and "github" in p.url %}github{% elif external %}visit{% elif p.href %}open{% endif %}</span>
+                    <span class="go"><span class="arr">→</span> read</span>
                 </div>
                 <h2 class="p-title">{{ p.title }}</h2>
                 <p class="p-blurb">{{ p.blurb }}</p>
                 <div class="p-tags">{% for t in p.tags %}<span>{{ t|lower }}</span>{% endfor %}</div>
-            {% if link %}
             </a>
-            {% else %}
-            </div>
-            {% endif %}
             {% endfor %}
         </section>
 

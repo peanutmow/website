@@ -1,19 +1,37 @@
 use crate::blog::Section;
+use crate::projects::Project;
 use crate::site::Site;
 
-pub fn sitemap(site: &Site, origin: &str, sections: &[Section]) -> String {
-    let mut paths: Vec<(&str, Option<&str>)> = vec![
-        ("/", None),
-        ("/projects", None),
-        ("/about", None),
-        ("/faq", None),
-        ("/gallery", None),
-        ("/socials", None),
-        ("/llms.txt", None),
-        ("/llms-full.txt", None),
+pub fn sitemap(
+    site: &Site,
+    origin: &str,
+    sections: &[Section],
+    projects: &[Project],
+) -> String {
+    let mut paths: Vec<(String, Option<String>)> = vec![
+        ("/".to_string(), None),
+        ("/projects".to_string(), None),
+        ("/about".to_string(), None),
+        ("/faq".to_string(), None),
+        ("/gallery".to_string(), None),
+        ("/socials".to_string(), None),
+        ("/llms.txt".to_string(), None),
+        ("/llms-full.txt".to_string(), None),
     ];
+    if !site.professional {
+        paths.push(("/music".to_string(), None));
+    }
     for blog in site.blogs {
-        paths.push((blog.url, latest_post(blog.url, sections)));
+        paths.push((
+            blog.url.to_string(),
+            latest_post(blog.url, sections).map(|date| date.to_string()),
+        ));
+    }
+    for project in projects
+        .iter()
+        .filter(|p| p.section == "featured" || p.section == "work")
+    {
+        paths.push((format!("/projects/{}", project.slug), None));
     }
 
     let mut xml = String::from(
@@ -21,11 +39,11 @@ pub fn sitemap(site: &Site, origin: &str, sections: &[Section]) -> String {
          <urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n",
     );
     for (path, lastmod) in paths {
-        let loc = format!("{}{}", escape_xml(origin), escape_xml(path));
+        let loc = format!("{}{}", escape_xml(origin), escape_xml(&path));
         match lastmod {
             Some(lastmod) => xml.push_str(&format!(
                 "  <url><loc>{loc}</loc><lastmod>{}</lastmod></url>\n",
-                escape_xml(lastmod)
+                escape_xml(&lastmod)
             )),
             None => xml.push_str(&format!("  <url><loc>{loc}</loc></url>\n")),
         }
@@ -60,14 +78,18 @@ mod tests {
 
     #[test]
     fn the_personal_sitemap_lists_every_public_page() {
-        let body = sitemap(&Site::personal(), "https://alicemow.org", &[]);
+        let projects = crate::projects::load_projects();
+        let body = sitemap(&Site::personal(), "https://alicemow.org", &[], &projects);
         for url in [
             "https://alicemow.org/</loc>",
             "https://alicemow.org/projects</loc>",
+            "https://alicemow.org/projects/ascii-render</loc>",
+            "https://alicemow.org/projects/polyaxis</loc>",
             "https://alicemow.org/about</loc>",
             "https://alicemow.org/faq</loc>",
             "https://alicemow.org/gallery</loc>",
             "https://alicemow.org/socials</loc>",
+            "https://alicemow.org/music</loc>",
             "https://alicemow.org/llms.txt</loc>",
             "https://alicemow.org/llms-full.txt</loc>",
             "https://alicemow.org/blog</loc>",
@@ -79,9 +101,11 @@ mod tests {
 
     #[test]
     fn the_professional_sitemap_has_no_blog() {
-        let body = sitemap(&Site::professional(), "https://daveherkula.org", &[]);
+        let projects = crate::projects::load_projects();
+        let body = sitemap(&Site::professional(), "https://daveherkula.org", &[], &projects);
         assert!(body.contains("https://daveherkula.org/projects</loc>"));
         assert!(!body.contains("/blog"));
+        assert!(!body.contains("/music"));
     }
 
     #[test]
@@ -111,7 +135,7 @@ mod tests {
             ],
         }];
 
-        let body = sitemap(&Site::personal(), "https://alicemow.org", &sections);
+        let body = sitemap(&Site::personal(), "https://alicemow.org", &sections, &[]);
         assert!(body.contains(
             "https://alicemow.org/blog</loc><lastmod>2026-10-06T12:00:00Z</lastmod>"
         ));

@@ -5,12 +5,14 @@ use serde::Serialize;
 const TEMPLATES: &[(&str, &str, &str)] = &[
     ("index.html", "templates/index.html", include_str!("../templates/index.html")),
     ("projects.html", "templates/projects.html", include_str!("../templates/projects.html")),
+    ("project.html", "templates/project.html", include_str!("../templates/project.html")),
     ("about.html", "templates/about.html", include_str!("../templates/about.html")),
     ("faq.html", "templates/faq.html", include_str!("../templates/faq.html")),
     ("redherring.html", "templates/redherring.html", include_str!("../templates/redherring.html")),
     ("conejillo.html", "templates/conejillo.html", include_str!("../templates/conejillo.html")),
     ("content_gallery.html", "gallery/index.html", include_str!("../gallery/index.html")),
     ("content_socials.html", "socials/index.html", include_str!("../socials/index.html")),
+    ("music.html", "templates/music.html", include_str!("../templates/music.html")),
     ("blog.html", "templates/blog.html", include_str!("../templates/blog.html")),
     ("meta.html", "templates/meta.html", include_str!("../templates/meta.html")),
     ("site_footer.html", "templates/site_footer.html", include_str!("../templates/site_footer.html")),
@@ -200,6 +202,24 @@ mod tests {
         )
     }
 
+    fn project_page(site: Site) -> String {
+        let projects = crate::projects::load_projects();
+        let project = &projects[0];
+        TemplateEngine::new().render(
+            "project.html",
+            &serde_json::json!({
+                "title": project.title,
+                "site": site,
+                "meta": crate::embed::project(&site, "https://example.test", project),
+                "project": project,
+                "index": 1,
+                "count": projects.len(),
+                "prev": serde_json::Value::Null,
+                "next": projects.get(1),
+            }),
+        )
+    }
+
     fn about_page(site: Site) -> String {
         TemplateEngine::new().render(
             "about.html",
@@ -247,20 +267,53 @@ mod tests {
         )
     }
 
+    fn music_page(site: Site) -> String {
+        TemplateEngine::new().render(
+            "music.html",
+            &serde_json::json!({
+                "title": "Music",
+                "site": site,
+                "meta": crate::embed::music(&site, "https://example.test"),
+            }),
+        )
+    }
+
+    #[test]
+    fn the_projects_page_links_each_work_to_its_own_page() {
+        let html = decode_escapes(&projects_page(Site::personal()));
+        assert!(html.contains("href=\"/projects/ascii-render\""));
+        assert!(html.contains("href=\"/projects/polyaxis\""));
+        assert!(html.contains("href=\"/projects/this-website\""));
+        assert!(html.contains("href=\"/projects/marx-knowledge-base\""));
+    }
+
+    #[test]
+    fn a_project_page_carries_its_specimen_and_notes() {
+        let html = project_page(Site::personal());
+        assert!(html.contains("specimen"));
+        assert!(html.contains("65,535"));
+        assert!(html.contains("the limits"));
+    }
+
     /// Every page that can be pasted into Discord has to include the shared
     /// head block; one missing include means a bare link.
     #[test]
     fn every_page_template_includes_the_preview() {
         for site in [Site::personal(), Site::professional()] {
-            for (name, html) in [
+            let mut pages = vec![
                 ("home", home(site)),
                 ("projects", projects_page(site)),
+                ("project", project_page(site)),
                 ("about", about_page(site)),
                 ("faq", faq_page(site)),
                 ("gallery", gallery_page(site)),
                 ("socials", socials_page(site)),
                 ("blog", blog_page(site)),
-            ] {
+            ];
+            if !site.professional {
+                pages.push(("music", music_page(site)));
+            }
+            for (name, html) in pages {
                 assert!(html.contains("property=\"og:title\""), "{name} has no OG title");
                 assert!(html.contains("name=\"theme-color\""), "{name} has no accent");
                 assert!(
@@ -277,6 +330,19 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn the_music_page_embeds_the_playlist_only_on_the_personal_site() {
+        let personal = music_page(Site::personal());
+        assert!(personal.contains("open.spotify.com/embed/playlist/4GcHDrtPr1Ok3PGVWHx5Jq"));
+        assert!(personal.contains("height=\"352\""));
+        assert!(personal.contains("href=\"https://open.spotify.com/playlist/4GcHDrtPr1Ok3PGVWHx5Jq\""));
+        assert!(personal.contains("href=\"/music\""));
+
+        let professional = music_page(Site::professional());
+        assert!(!professional.contains("open.spotify.com/embed"));
+        assert!(!professional.contains("open.spotify.com/playlist"));
     }
 
     /// Mastodon 4.3 credits the page author on link previews by reading
@@ -413,7 +479,7 @@ mod tests {
         for title in ["ascii-render", "polyaxis", "marx-knowledge-base"] {
             assert!(text.contains(title), "missing {title}");
         }
-        assert!(text.contains("Rust, 3D, ASCII"));
+        assert!(text.contains("JavaScript, 3D, ASCII"));
         assert!(text.contains("https://blog.alicemow.org/alice/"));
         assert!(text.contains("https://example.test/sitemap.xml"));
     }

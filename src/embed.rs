@@ -187,6 +187,54 @@ pub fn projects(
     )
 }
 
+/// One project's page: the summary, its own links, and the way back to the list.
+pub fn project(site: &Site, origin: &str, project: &Project) -> Meta {
+    let path = format!("/projects/{}", project.slug);
+    let mut content = format!(
+        "# {}\n-# {}",
+        md_text(&project.title),
+        md_text(&truncate_words(&project.summary, 160))
+    );
+    let mut buttons = Vec::new();
+    for entry in project.links.iter().take(3) {
+        content.push_str(&format!(
+            "\n- [{}]({})",
+            md_text(&entry.label),
+            entry.href
+        ));
+        buttons.push(link_button(entry.href.clone(), &entry.label));
+    }
+    buttons.push(link_button(format!("{origin}/projects"), "All projects"));
+    buttons.push(link_button(format!("{origin}/"), "Home"));
+
+    let component = json!({
+        "component": {
+            "type": 17,
+            "accent_color": ACCENT_DECIMAL,
+            "components": [
+                {
+                    "type": 9,
+                    "components": [{ "type": 10, "content": content }],
+                    "accessory": link_button(format!("{origin}{path}"), "Open")
+                },
+                { "type": 1, "components": buttons }
+            ]
+        }
+    });
+
+    meta(
+        site,
+        origin,
+        Page {
+            path: &path,
+            title: format!("{} — {}", project.title, site.name),
+            description: project.summary.clone(),
+            og_type: "website",
+        },
+        component,
+    )
+}
+
 /// The gallery: four photographs straight from the gallery's own collection.
 pub fn gallery(site: &Site, origin: &str) -> Meta {
     let photos = gallery_photos();
@@ -282,6 +330,46 @@ pub fn socials(site: &Site, origin: &str) -> Meta {
             path: "/socials",
             title: format!("Find me — {}", site.name),
             description,
+            og_type: "website",
+        },
+        component,
+    )
+}
+
+pub fn music(site: &Site, origin: &str) -> Meta {
+    let playlist = site
+        .spotify_playlist
+        .map(|id| format!("https://open.spotify.com/playlist/{id}"))
+        .unwrap_or_else(|| format!("{origin}/"));
+
+    let component = json!({
+        "component": {
+            "type": 17,
+            "accent_color": ACCENT_DECIMAL,
+            "components": [
+                {
+                    "type": 10,
+                    "content": format!("# Listening — {}\n-# a playlist kept on Spotify", site.full_name)
+                },
+                {
+                    "type": 1,
+                    "components": [
+                        link_button(playlist, "Spotify"),
+                        link_button(format!("{origin}/"), "Home")
+                    ]
+                }
+            ]
+        }
+    });
+
+    meta(
+        site,
+        origin,
+        Page {
+            path: "/music",
+            title: format!("Music — {}", site.name),
+            description: "A playlist kept on Spotify, played right here. Full tracks need a Spotify account."
+                .to_string(),
             og_type: "website",
         },
         component,
@@ -648,7 +736,7 @@ mod tests {
         }
     }
 
-    fn pages(site: &Site) -> Vec<(&'static str, Meta)> {
+    fn pages(site: &Site) -> Vec<(String, Meta)> {
         let list = crate::projects::load_projects();
         let live = list
             .iter()
@@ -656,15 +744,24 @@ mod tests {
             .count();
         let dreams = crate::projects::load_dreams().len();
         let mut pages = vec![
-            ("home", home(site, ORIGIN)),
-            ("projects", projects_page(site, live, dreams)),
-            ("gallery", gallery(site, ORIGIN)),
-            ("socials", socials(site, ORIGIN)),
+            ("home".to_string(), home(site, ORIGIN)),
+            ("projects".to_string(), projects_page(site, live, dreams)),
+            ("gallery".to_string(), gallery(site, ORIGIN)),
+            ("socials".to_string(), socials(site, ORIGIN)),
         ];
+        for entry in &list {
+            pages.push((
+                format!("project {}", entry.slug),
+                project(site, ORIGIN, entry),
+            ));
+        }
         // The professional mirror has no blogs, so there is no blog card to
         // test there — its handler 404s before it can render one.
         if !site.blogs.is_empty() {
-            pages.push(("blog", blog(site, ORIGIN, &section(5))));
+            pages.push(("blog".to_string(), blog(site, ORIGIN, &section(5))));
+        }
+        if !site.professional {
+            pages.push(("music".to_string(), music(site, ORIGIN)));
         }
         pages
     }

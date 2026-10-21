@@ -74,10 +74,14 @@ async fn main() {
         .route("/projects", get(projects_page))
         .route("/projects/", get(projects_page))
         .route("/projects/index.html", get(projects_page))
+        .route("/projects/:slug", get(project_page))
         .route("/about", get(about_page))
         .route("/about/", get(about_page))
         .route("/faq", get(faq_page))
         .route("/faq/", get(faq_page))
+        .route("/music", get(music_page))
+        .route("/music/", get(music_page))
+        .route("/music/index.html", get(music_page))
         // Static directories (avoid conflicts with SSR routes). Cache-Control
         // keeps repeat navigation from re-downloading artwork and scripts.
         .nest_service("/fonts", cached(ServeDir::new("fonts"), "public, max-age=31536000, immutable"))
@@ -190,6 +194,31 @@ async fn projects_page(
 
 // ─── Content pages (rendered so the profile's name reaches them) ───
 
+async fn project_page(
+    State(state): State<Arc<AppState>>,
+    Path(slug): Path<String>,
+    Extension(site): Extension<Site>,
+    Extension(origin): Extension<site::Origin>,
+) -> Response {
+    let Some(index) = state.projects.iter().position(|p| p.slug == slug) else {
+        return page_404();
+    };
+    let project = &state.projects[index];
+    let prev = index.checked_sub(1).and_then(|i| state.projects.get(i));
+    let next = state.projects.get(index + 1);
+    let meta = embed::project(&site, &origin.0, project);
+    state.tmpl.render_response("project.html", &serde_json::json!({
+        "title": format!("{} — {}", project.title, site.name),
+        "site": site,
+        "meta": meta,
+        "project": project,
+        "index": index + 1,
+        "count": state.projects.len(),
+        "prev": prev,
+        "next": next,
+    }))
+}
+
 async fn about_page(
     State(state): State<Arc<AppState>>,
     Extension(site): Extension<Site>,
@@ -219,6 +248,22 @@ async fn faq_page(
         "meta": meta,
         "faqs": &entries,
         "faq_json_ld": content::faq_json_ld(&entries),
+    }))
+}
+
+async fn music_page(
+    State(state): State<Arc<AppState>>,
+    Extension(site): Extension<Site>,
+    Extension(origin): Extension<site::Origin>,
+) -> Response {
+    if site.professional {
+        return page_404();
+    }
+    let meta = embed::music(&site, &origin.0);
+    state.tmpl.render_response("music.html", &serde_json::json!({
+        "title": format!("Music — {}", site.name),
+        "site": site,
+        "meta": meta,
     }))
 }
 
@@ -408,6 +453,7 @@ async fn sitemap_xml(
             &site,
             &origin.0,
             &sections,
+            &state.projects,
         )))
         .unwrap()
 }
