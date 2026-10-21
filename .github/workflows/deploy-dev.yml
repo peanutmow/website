@@ -25,6 +25,22 @@ jobs:
               sudo apt-get install -y --no-install-recommends sshpass rsync
             }
 
+      - name: Test Rust (server and wasm cores)
+        run: |
+          cargo test --locked
+          cargo test --manifest-path wasm-sim/Cargo.toml
+          cargo test --manifest-path wasm-bunny/Cargo.toml
+
+      - name: Build wasm client cores
+        run: |
+          rustup target add wasm32-unknown-unknown
+          command -v wasm-pack >/dev/null 2>&1 || \
+            curl --proto '=https' --tlsv1.2 -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh -s -- -y
+          sudo apt-get install -y --no-install-recommends binaryen || true
+          wasm-pack build wasm-sim --target web --release
+          wasm-pack build wasm-bunny --target web --release
+          wasm-pack build wasm-app --target web --release
+
       - name: Add musl target
         run: |
           if ! rustup target add x86_64-unknown-linux-musl; then
