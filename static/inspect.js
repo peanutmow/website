@@ -225,26 +225,22 @@
         spinBucket = -1;
     }
 
-    // The mesh is 130 KB and only one layer needs it, so it is fetched the
-    // first time that layer is opened.
+    // The mesh now lives in the wasm binary, so only the loader is fetched,
+    // and only when a layer first needs it.
     function loadBunny() {
         if (bunnyState !== 'idle') return;
         bunnyState = 'loading';
-        const queue = ['/static/bunny-mesh.js', '/static/bunny.js'];
-        const next = function () {
-            const src = queue.shift();
-            if (!src) {
+        const script = el('script');
+        script.src = '/static/bunny.js?v=2';
+        script.onload = function () {
+            const ready = window.bunnyReady || Promise.resolve();
+            ready.then(function () {
                 bunnyState = 'ready';
                 if (STEPS[step].bunny) startSpin();
-                return;
-            }
-            const script = el('script');
-            script.src = src;
-            script.onload = next;
-            script.onerror = function () { bunnyState = 'failed'; };
-            document.head.appendChild(script);
+            }).catch(function () { bunnyState = 'failed'; });
         };
-        next();
+        script.onerror = function () { bunnyState = 'failed'; };
+        document.head.appendChild(script);
     }
 
     // -- the note --------------------------------------------------
@@ -490,7 +486,7 @@
             const layout = window.__asciiLayout;
             if (layout && layout.rows) {
                 const marks = [
-                    { label: 'greeting', row: layout.nameRow, col: layout.nameCol, len: ((window.__SITE__ && window.__SITE__.greeting) || '').length },
+                    { label: 'greeting', row: layout.nameRow, col: layout.nameCol, len: (layout.greeting || '').length },
                     { label: 'menu', row: layout.btnRow, col: layout.btnCol, len: (layout.btnStr || '').length },
                     { label: 'bio', row: layout.bioRow, col: layout.bioCol, len: (layout.bio || '').length }
                 ];
