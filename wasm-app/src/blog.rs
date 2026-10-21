@@ -243,6 +243,16 @@ fn watch_frame(water: JsValue) {
         EventListener::new(&host, "scroll", move |_| schedule())
     };
     std::mem::forget(listener);
+    if let Some(root) = host.document_element() {
+        let schedule = schedule.clone();
+        let listener = EventListener::new(root.as_ref(), "scroll", move |_| schedule());
+        std::mem::forget(listener);
+    }
+    if let Some(body) = host.body() {
+        let schedule = schedule.clone();
+        let listener = EventListener::new(body.as_ref(), "scroll", move |_| schedule());
+        std::mem::forget(listener);
+    }
     let listener = {
         let schedule = schedule.clone();
         EventListener::new(&parent, "resize", move |_| schedule())
