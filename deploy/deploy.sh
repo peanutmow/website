@@ -1,6 +1,13 @@
 set -euo pipefail
 
-APP_DIR="$HOME/html"
+# Canonical Uberspace web root. In some shells $HOME resolves to /home/<user>
+# while the site actually lives under /var/www/virtual/<user>/html.
+USER_NAME="$(whoami)"
+if [ -d "/var/www/virtual/$USER_NAME/html" ]; then
+  APP_DIR="/var/www/virtual/$USER_NAME/html"
+else
+  APP_DIR="$HOME/html"
+fi
 SERVICE_NAME="alice-website"
 PORT=8080
 
@@ -16,13 +23,27 @@ echo "==> Building release binary..."
 cd "$APP_DIR"
 cargo build --release
 
-# 3. Install the systemd user service
-echo "==> Installing systemd user service..."
-mkdir -p "$HOME/.config/systemd/user"
-cp "$APP_DIR/deploy/alice-website.service" "$HOME/.config/systemd/user/$SERVICE_NAME.service"
-systemctl --user daemon-reload
-systemctl --user enable --now "$SERVICE_NAME"
-systemctl --user --no-pager status "$SERVICE_NAME"
+# 3. Install the supervisord service (Uberspace uses supervisord, NOT
+#    systemd user services — `systemctl --user` / linger don't exist there)
+echo "==> Installing supervisord service..."
+REAL_HOME="$(getent passwd "$USER_NAME" | cut -d: -f6)"
+[ -n "$REAL_HOME" ] || REAL_HOME="$HOME"
+mkdir -p "$REAL_HOME/etc/services.d"
+cat > "$REAL_HOME/etc/services.d/$SERVICE_NAME.ini" <<EOF
+[program:$SERVICE_NAME]
+command=$APP_DIR/target/release/alice-website
+directory=$APP_DIR
+startsecs=60
+autorestart=true
+redirect_stderr=true
+# The blog is a WriteFreely instance on this same host and is read over
+# loopback, so this port has to match `port` in the WriteFreely config.ini.
+environment=BLOG_FEED_BASE="http://127.0.0.1:8082",SITE_CANONICAL_REDIRECT="1"
+EOF
+supervisorctl reread
+supervisorctl update
+supervisorctl restart "$SERVICE_NAME" || supervisorctl start "$SERVICE_NAME"
+supervisorctl status "$SERVICE_NAME"
 
 # 4. Point the domain at the local port (reverse proxy)
 echo "==> Setting web backend to port $PORT..."
@@ -30,4 +51,4 @@ uberspace web backend set / --http --port "$PORT"
 
 echo ""
 echo "==> Done! Test with: curl -I https://$(hostname)"
-echo "    Logs: systemctl --user status $SERVICE_NAME -l"
+echo "    Logs: supervisorctl tail $SERVICE_NAME"

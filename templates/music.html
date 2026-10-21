@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    {% include "meta.html" %}
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/prose.css">
+    <link rel="stylesheet" href="/static/site-links.css">
+    <style>
+        .player {
+            margin: 2rem 0 1rem;
+        }
+        .player iframe {
+            display: block;
+            width: 100%;
+            border: 0;
+            border-radius: 12px;
+        }
+        .player-note {
+            font-size: 0.72rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.35);
+        }
+    </style>
+</head>
+<body>
+    <main class="prose">
+        <p class="eyebrow"><a href="/">&larr; {{ site.name }}</a></p>
+        <h1>Listening</h1>
+        <p class="lede">What kind of music Alice likes.</p>
+
+        {% if site.spotify_playlist %}
+        <div class="player">
+            <iframe
+                src="https://open.spotify.com/embed/playlist/{{ site.spotify_playlist }}?utm_source=oembed"
+                width="100%"
+                height="352"
+                frameborder="0"
+                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                title="Spotify playlist"></iframe>
+        </div>
+        <p class="player-note"><a href="https://open.spotify.com/playlist/{{ site.spotify_playlist }}" target="_blank" rel="noopener">Open in Spotify &#8599;</a></p>
+        {% endif %}
+
+        <footer>
+            {% include "site_footer.html" %}
+        </footer>
+    </main>
+</body>
+</html>

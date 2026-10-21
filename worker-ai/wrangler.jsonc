@@ -1,0 +1,31 @@
+{
+	// Cloudflare Worker for ai.alicemow.org — "Alice's tiny brain" chatbot.
+	// Deploy with:  npx wrangler deploy   (from this folder)
+	// Local dev:    npx wrangler dev      (needs a logged-in account — Workers AI runs remotely)
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "alice-ai",
+	"main": "src/index.js",
+	"compatibility_date": "2026-08-24",
+	"workers_dev": false,
+	// Serve the worker on the ai subdomain. Because the zone is on Cloudflare,
+	// no DNS record is needed — the route intercepts ai.alicemow.org at the edge.
+	"route": {
+		"pattern": "ai.alicemow.org/*",
+		"zone_name": "alicemow.org"
+	},
+	// Bind Workers AI so the worker can call env.AI.run(...)
+	"ai": {
+		"binding": "AI"
+	},
+	// Treat .html files as importable text modules (see src/index.js)
+	"rules": [
+		{
+			"type": "Text",
+			"globs": ["**/*.html"],
+			"fallthrough": true
+		}
+	],
+	"observability": {
+		"enabled": true
+	}
+}

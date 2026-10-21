@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    {% include "meta.html" %}
+    <link rel="stylesheet" href="/static/site-links.css">
+    {% if site.fediverse_creator %}
+    <!-- Mastodon 4.3+ credits this account as the page author on link previews,
+         so that sharing the blog sends Alice a notification. It is read from
+         <head> only, which is why it lives here and not in the post body. -->
+    <meta name="fediverse:creator" content="{{ site.fediverse_creator }}">
+    {% endif %}
+    <!-- Every link on this page goes to the blog itself, which is a different
+         origin and refuses to be framed. Without this, clicking a post would
+         navigate *this* frame into that refusal. -->
+    <base target="_blank">
+    <link rel="alternate" type="application/rss+xml" title="{{ site.name }}'s blog — {{ section.label }}" href="{{ section.feed }}">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --fs: 14px;
+            --dim: rgba(255,255,255,0.42);
+            --faint: rgba(255,255,255,0.2);
+            --line: rgba(255,255,255,0.14);
+            --glow: 0 0 4px rgba(255,255,255,0.3), 0 0 12px rgba(255,255,255,0.1);
+        }
+        html { height: 100%; background: #000; }
+        body {
+            min-height: 100%;
+            background: #000;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: var(--fs);
+            line-height: 1;
+            letter-spacing: 0;
+            tab-size: 1;
+            text-shadow: var(--glow);
+            overflow-x: hidden;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); }
+        ::selection { background: #fff; color: #000; text-shadow: none; }
+
+        .page-wrap { position: relative; z-index: 1; max-width: 88ch; margin: 0 auto; padding: 0 2ch 4em; }
+
+        #bg-water {
+            position: fixed;
+            inset: 0;
+            z-index: 0;
+            margin: 0;
+            padding: 0;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            white-space: pre;
+            overflow: hidden;
+            pointer-events: none;
+            user-select: none;
+            line-height: 1;
+            letter-spacing: 0;
+            tab-size: 1;
+            opacity: 0.14;
+            filter: blur(2.5px);
+            text-shadow: 0 0 6px rgba(255,255,255,0.5);
+        }
+
+        .page-header {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 2ch;
+            margin-bottom: 1em;
+        }
+        .page-header h1 { font-size: 1em; font-weight: 400; white-space: pre; text-transform: lowercase; }
+        .page-actions { display: flex; align-items: baseline; gap: 2ch; }
+        .pill { color: var(--dim); text-decoration: none; white-space: pre; transition: color 0.2s ease; }
+        .pill::before { content: '['; color: var(--faint); }
+        .pill::after { content: ']'; color: var(--faint); }
+        .pill:hover { color: #fff; }
+
+        .term-line { color: var(--dim); white-space: pre-wrap; margin-bottom: 1em; }
+        .term-line .user { color: var(--faint); }
+        .term-line .hint { color: rgba(255,255,255,0.18); margin-left: 2ch; white-space: pre; }
+
+        .post-nav { display: flex; flex-wrap: wrap; gap: 2ch; margin-bottom: 2em; }
+        .post-nav a { color: var(--dim); text-decoration: none; white-space: pre; text-transform: lowercase; transition: color 0.2s ease; }
+        .post-nav a::before { content: '['; color: var(--faint); }
+        .post-nav a::after { content: ']'; color: var(--faint); }
+        .post-nav a:hover, .post-nav a.is-current { color: #fff; }
+
+        .posts { display: flex; flex-direction: column; gap: 4em; }
+        .post { transition: opacity 0.16s ease; }
+        .post.tw-unloaded { opacity: 0; visibility: hidden; pointer-events: none; }
+        .post-title { font-size: 1em; font-weight: 400; line-height: 1; }
+        .post-title::before { content: '> '; color: var(--faint); }
+        .post-title a { color: inherit; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.4); text-underline-offset: 2px; }
+        .post-title a:hover { text-decoration-color: #fff; }
+        .post-meta { color: var(--dim); }
+        .post-meta a { color: inherit; text-decoration: none; }
+        .post-meta a:hover { color: #fff; }
+
+        .post-body { margin-top: 1em; text-align: justify; hyphens: auto; overflow-wrap: break-word; }
+        .post-body > * + * { margin-top: 1em; }
+        .post-body a { color: inherit; text-decoration: underline; text-decoration-color: rgba(255,255,255,0.4); text-underline-offset: 2px; }
+        .post-body a:hover { text-decoration-color: #fff; }
+        .post-body h1, .post-body h2, .post-body h3, .post-body h4, .post-body h5, .post-body h6 { font-size: 1em; font-weight: 400; line-height: 1; }
+        .post-body strong { font-weight: 700; }
+        .post-body em { font-style: italic; }
+        .post-body del { text-decoration: line-through; color: rgba(255,255,255,0.6); }
+        .post-body ul, .post-body ol { padding-left: 2ch; }
+        .post-body ul { list-style: none; }
+        .post-body li { list-style: none; }
+        .post-body ul > li::before { content: '- '; color: var(--faint); }
+        .post-body ol { counter-reset: item; }
+        .post-body ol > li { counter-increment: item; }
+        .post-body ol > li::before { content: counter(item) '. '; color: var(--faint); }
+        .post-body li > * + * { margin-top: 1em; }
+        .post-body blockquote { padding-left: 2ch; box-shadow: inset 2px 0 0 rgba(255,255,255,0.2); color: rgba(255,255,255,0.7); }
+        .post-body blockquote > * + * { margin-top: 1em; }
+        .post-body pre { overflow-x: auto; padding-left: 2ch; box-shadow: inset 2px 0 0 rgba(255,255,255,0.2); text-align: left; }
+        .post-body code { font-family: inherit; font-size: 1em; }
+        .post-body table { border-collapse: collapse; text-align: left; }
+        .post-body th, .post-body td { padding: 0 2ch 0 0; text-align: left; vertical-align: top; font-weight: 400; }
+        .post-body th { color: var(--dim); }
+        .post-body figcaption { color: var(--dim); }
+        .post-body img, .post-body picture { display: none; }
+        .post-body hr { border: 0; border-top: 1px dashed rgba(255,255,255,0.15); }
+
+        .empty { color: var(--dim); }
+        .empty::before { content: '> '; color: var(--faint); }
+
+        .tw-hidden { opacity: 0; }
+        .tw-shown { opacity: 1; transition: opacity 0.3s ease; }
+        .tw-caret {
+            display: inline-block;
+            width: 0.55em;
+            height: 1em;
+            background: #fff;
+            box-shadow: 0 0 8px rgba(255,255,255,0.55);
+            vertical-align: -0.1em;
+            animation: tw-blink 1.05s steps(1) infinite;
+        }
+        @keyframes tw-blink {
+            0%, 49% { opacity: 1; }
+            50%, 100% { opacity: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .tw-caret { animation: none; }
+        }
+    </style>
+</head>
+<body>
+    <pre id="bg-water" aria-hidden="true"></pre>
+    <div class="page-wrap">
+        <header class="page-header">
+            <h1 data-type data-speed="1.3">~/{{ section.label }}</h1>
+            <div class="page-actions">
+                {% if site.mastodon_url %}
+                <!-- Mastodon verifies a profile by finding a rel="me" link whose
+                     href matches the profile URL exactly, so this must not gain a
+                     trailing slash or any other difference. -->
+                <a class="pill" rel="me" href="{{ site.mastodon_url }}" data-type data-speed="0.7">mastodon</a>
+                {% endif %}
+                <a class="pill" href="{{ section.feed }}" data-type data-speed="0.7">rss</a>
+            </div>
+        </header>
+
+        <div class="term-line"><span class="user">~$</span> <span data-type data-speed="0.55">cat blog/{{ section.slug }}</span><span class="hint">[ click to print all ]</span></div>
+
+        <nav class="post-nav" id="post-nav">
+            {% for item in nav %}
+            <a href="{{ item.url }}" target="_self" data-type data-speed="0.8"{% if item.selected %} class="is-current" aria-current="page"{% endif %}>{{ item.label }}</a>
+            {% endfor %}
+        </nav>
+
+        {% if section.posts %}
+        <div class="posts">
+            {% for post in section.posts %}
+            <article class="post">
+                <h2 class="post-title" data-type data-speed="1.1">
+                    {% if post.url %}<a href="{{ post.url }}">{{ post.title }}</a>{% else %}{{ post.title }}{% endif %}
+                </h2>
+                {% if post.published %}
+                <p class="post-meta" data-type data-speed="0.75">
+                    <time datetime="{{ post.published }}">{{ post.published_label }}</time>
+                    {% if post.url %} · <a href="{{ post.url }}">permalink</a>{% endif %}
+                </p>
+                {% endif %}
+                <div class="post-body">{{ post.html|safe }}</div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="empty" data-type data-speed="0.6">Nothing published in {{ section.label }} yet.</p>
+        {% endif %}
+    </div>
+
+    <script src="/water-sim.js"></script>
+    <script>
+        (function () {
+            'use strict';
+
+            function watchFrame(sim) {
+                if (!sim || !sim.pause || !sim.resume) return;
+                var frame;
+                try {
+                    frame = window.frameElement;
+                    if (!frame || window.parent === window) return;
+                } catch (e) {
+                    return;
+                }
+                var host = window.parent;
+                var pending = false;
+
+                function sync() {
+                    pending = false;
+                    var box = frame.getBoundingClientRect();
+                    var onScreen = box.bottom > 0 && box.top < (host.innerHeight || 0);
+                    var landing = host.__pageWaterSim;
+                    if (onScreen) {
+                        sim.resume();
+                        if (landing && landing.pause) landing.pause();
+                    } else {
+                        sim.pause();
+                        if (landing && landing.resume) landing.resume();
+                    }
+                }
+
+                function schedule() {
+                    if (pending) return;
+                    pending = true;
+                    setTimeout(sync, 120);
+                }
+
+                try {
+                    host.addEventListener('scroll', schedule, { passive: true, capture: true });
+                    host.document.addEventListener('scroll', schedule, { passive: true, capture: true });
+                    host.addEventListener('resize', schedule);
+                } catch (e) {
+                    return;
+                }
+
+                function release() {
+                    var landing = host.__pageWaterSim;
+                    if (landing && landing.resume) landing.resume();
+                }
+                window.addEventListener('pagehide', release);
+                sync();
+            }
+
+            if (window.createWaterSim) {
+                var water = window.createWaterSim({
+                    mount: document.getElementById('bg-water'),
+                    greeting: '',
+                    buttons: [],
+                    text: false,
+                    typewriter: false,
+                    interactive: true,
+                    globalInput: true,
+                    easterEggs: false,
+                    pageHooks: false,
+                    size: function () { return { width: window.innerWidth, height: window.innerHeight }; }
+                });
+                if (water && water.stir) water.stir();
+                window.__blogWater = water;
+                watchFrame(water);
+            }
+
+            function fitGrid() {
+                var height = window.innerHeight || 700;
+                var rows = Math.max(10, Math.ceil(height / 14));
+                document.documentElement.style.setProperty('--fs', (height / rows) + 'px');
+            }
+            fitGrid();
+            window.addEventListener('resize', fitGrid);
+
+            var hint = document.querySelector('.term-line .hint');
+            var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            var queue = [];
+            var observer = null;
+            var caret = null;
+            var current = null;
+            var timer = null;
+            var done = false;
+
+            function speedOf(el, fallback) {
+                var value = parseFloat(el.getAttribute('data-speed'));
+                return isNaN(value) ? fallback : value;
+            }
+
+            function makeLine(el) {
+                var line = {
+                    el: el,
+                    nodes: [],
+                    index: 0,
+                    state: 0,
+                    visible: false,
+                    media: null,
+                    speed: speedOf(el, 0.34)
+                };
+                if (/^(IMG|HR|VIDEO)$/.test(el.tagName)) {
+                    line.media = el;
+                    el.classList.add('tw-hidden');
+                    return line;
+                }
+                var walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null);
+                var node;
+                while ((node = walker.nextNode())) {
+                    if (!node.nodeValue) continue;
+                    line.nodes.push({ node: node, text: node.nodeValue, at: 0 });
+                    node.nodeValue = '';
+                }
+                return line;
+            }
+
+            function collect() {
+                var elements = document.querySelectorAll('[data-type], .post-body > *');
+                for (var i = 0; i < elements.length; i++) {
+                    var el = elements[i];
+                    if (el.closest('.post')) continue;
+                    if (el.offsetParent === null) continue;
+                    var line = makeLine(el);
+                    el.__twLine = line;
+                    queue.push(line);
+                }
+                var posts = document.querySelectorAll('.post');
+                for (var j = 0; j < posts.length; j++) {
+                    if (posts[j].offsetParent === null) continue;
+                    var blob = {
+                        el: posts[j],
+                        nodes: [],
+                        index: 0,
+                        state: 0,
+                        visible: false,
+                        media: null,
+                        speed: 0,
+                        blob: true
+                    };
+                    posts[j].classList.add('tw-unloaded');
+                    posts[j].__twLine = blob;
+                    queue.push(blob);
+                }
+            }
+
+            function finishLine() {
+                var line = current;
+                if (!line) return;
+                if (caret && caret.parentNode) caret.parentNode.removeChild(caret);
+                if (line.media) {
+                    line.media.classList.remove('tw-hidden');
+                    line.media.classList.add('tw-shown');
+                }
+                line.state = 2;
+                current = null;
+                pump();
+            }
+
+            function flushCurrent() {
+                if (!current) return;
+                clearTimeout(timer);
+                var line = current;
+                if (line.blob) {
+                    line.el.classList.remove('tw-unloaded');
+                    finishLine();
+                    return;
+                }
+                for (var i = 0; i < line.nodes.length; i++) {
+                    var item = line.nodes[i];
+                    item.at = item.text.length;
+                    item.node.nodeValue = item.text;
+                }
+                finishLine();
+            }
+
+            function step() {
+                if (!current) return;
+                var line = current;
+                if (line.blob) {
+                    line.el.classList.remove('tw-unloaded');
+                    timer = setTimeout(finishLine, 160);
+                    return;
+                }
+                var burst = line.speed < 0.5 ? 2 : 1;
+                var item = null;
+                var ch = '';
+                for (var n = 0; n < burst; n++) {
+                    for (;;) {
+                        item = line.nodes[line.index];
+                        if (!item) return finishLine();
+                        if (item.at < item.text.length) break;
+                        line.index += 1;
+                    }
+                    ch = item.text.charAt(item.at);
+                    item.at += 1;
+                    while (item.at < item.text.length && /\s/.test(item.text.charAt(item.at))) item.at += 1;
+                    item.node.nodeValue = item.text.slice(0, item.at);
+                }
+
+                if (!caret) {
+                    caret = document.createElement('span');
+                    caret.className = 'tw-caret';
+                    caret.setAttribute('aria-hidden', 'true');
+                }
+                if (item.node.parentNode) item.node.parentNode.insertBefore(caret, item.node.nextSibling);
+
+                var delay = 10 * line.speed;
+                if (/\s/.test(ch)) delay *= 0.35;
+                else if (/[.,;:!?]/.test(ch)) delay *= 1.6;
+                timer = setTimeout(step, delay);
+            }
+
+            function pump() {
+                if (done || current) return;
+                for (var i = 0; i < queue.length; i++) {
+                    var line = queue[i];
+                    if (line.state === 2) continue;
+                    if (!line.visible) return;
+                    current = line;
+                    line.state = 1;
+                    step();
+                    return;
+                }
+                if (hint) hint.style.display = 'none';
+            }
+
+            function finishAll() {
+                if (done) return;
+                done = true;
+                clearTimeout(timer);
+                if (caret && caret.parentNode) caret.parentNode.removeChild(caret);
+                if (observer) observer.disconnect();
+                if (hint) hint.style.display = 'none';
+                for (var i = 0; i < queue.length; i++) {
+                    var line = queue[i];
+                    line.state = 2;
+                    if (line.blob) {
+                        line.el.classList.remove('tw-unloaded');
+                        continue;
+                    }
+                    if (line.media) {
+                        line.media.classList.remove('tw-hidden');
+                        line.media.classList.add('tw-shown');
+                        continue;
+                    }
+                    for (var j = 0; j < line.nodes.length; j++) {
+                        var item = line.nodes[j];
+                        if (item.node.nodeValue !== item.text) item.node.nodeValue = item.text;
+                    }
+                }
+                current = null;
+            }
+
+            function stripImages() {
+                var media = document.querySelectorAll('.post-body img, .post-body picture');
+                for (var i = 0; i < media.length; i++) {
+                    if (media[i].parentNode) media[i].parentNode.removeChild(media[i]);
+                }
+                var blocks = document.querySelectorAll('.post-body > *');
+                for (var j = 0; j < blocks.length; j++) {
+                    if (blocks[j].tagName === 'HR') continue;
+                    if (!blocks[j].textContent.trim() && !blocks[j].querySelector('img, video, iframe')) {
+                        if (blocks[j].parentNode) blocks[j].parentNode.removeChild(blocks[j]);
+                    }
+                }
+            }
+
+            stripImages();
+            collect();
+
+            if (!queue.length) return;
+
+            if (reduced || !('IntersectionObserver' in window)) {
+                for (var i = 0; i < queue.length; i++) queue[i].visible = true;
+                if (reduced) {
+                    finishAll();
+                } else {
+                    pump();
+                }
+                return;
+            }
+
+            // A huge top margin keeps lines from above the viewport eligible, so a
+            // restored scroll position can never leave the queue waiting forever.
+            observer = new IntersectionObserver(function (entries) {
+                for (var i = 0; i < entries.length; i++) {
+                    if (!entries[i].isIntersecting) continue;
+                    var line = entries[i].target.__twLine;
+                    if (line) line.visible = true;
+                    observer.unobserve(entries[i].target);
+                }
+                pump();
+            }, { rootMargin: '10000px 0px 180px 0px' });
+
+            for (var i = 0; i < queue.length; i++) observer.observe(queue[i].el);
+
+            window.addEventListener('scroll', function () {
+                if (!current) return;
+                var box = current.el.getBoundingClientRect();
+                if (box.bottom < 0) flushCurrent();
+            }, { passive: true });
+
+            document.addEventListener('click', finishAll, true);
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape') finishAll();
+            });
+            window.addEventListener('pagehide', finishAll);
+        })();
+    </script>
+    <footer class="site-footer">
+        {% include "site_footer.html" %}
+    </footer>
+</body>
+</html>

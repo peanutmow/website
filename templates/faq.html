@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    {% include "meta.html" %}
+    <script type="application/ld+json">{{ faq_json_ld | safe }}</script>
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/prose.css">
+    <link rel="stylesheet" href="/static/site-links.css">
+</head>
+<body>
+    <main class="prose">
+        <p class="eyebrow"><a href="/">&larr; {{ site.name }}</a></p>
+        <h1>Frequently asked questions</h1>
+        <p class="lede">About {{ site.full_name }}{% if site.handle %} ({{ site.handle }}){% endif %} and the work on this site.</p>
+
+        <div class="faq">
+            {% for item in faqs %}
+            <article>
+                <h2>{{ item.question }}</h2>
+                <p>{{ item.answer }}</p>
+                {% if item.links %}
+                <p class="links">{% for link in item.links %}<a href="{{ link.url }}" target="_blank" rel="noopener">{{ link.label }}</a>{% if not loop.last %} &middot; {% endif %}{% endfor %}</p>
+                {% endif %}
+            </article>
+            {% endfor %}
+        </div>
+
+        <footer>
+            {% include "site_footer.html" %}
+        </footer>
+    </main>
+</body>
+</html>

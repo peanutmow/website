@@ -4,7 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ title }}</title>
+    {% include "meta.html" %}
     <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/site-links.css">
+    <!-- Load the small preview immediately; the full-resolution artwork is swapped in after load -->
+    <link rel="preload" as="image" href="/assets/tree-preview.avif" fetchpriority="high">
+    <link rel="preload" as="image" href="/assets/treebranch-preview.avif">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root {
@@ -266,14 +271,14 @@
 <body>
     <div class="mossblob"></div>
     <div class="seam"></div>
-    <aside class="marginalia">alice — mmxxvi</aside>
+    <aside class="marginalia">{{ site.short }} — mmxxvi</aside>
 
     <aside class="tree-wrap">
-        <img class="tree" src="/assets/tree.avif" alt="an oak tree" draggable="false">
+        <img class="tree" src="/assets/tree-preview.avif" data-full="/assets/tree.avif?v=3" width="1080" height="1920" alt="an oak tree" draggable="false" fetchpriority="high" decoding="async">
     </aside>
 
     <aside class="branch-wrap">
-        <img class="branch" src="/assets/treebranch.avif" alt="" draggable="false">
+        <img class="branch" src="/assets/treebranch-preview.avif" data-full="/assets/treebranch.avif?v=3" width="1080" height="1920" alt="" draggable="false" decoding="async">
     </aside>
 
     <div class="layout">
@@ -296,11 +301,7 @@
             </div>
 
             {% for p in projects if p.section == 'featured' or p.section == 'work' %}
-            {% if p.url or p.href %}
-            <a class="proj{% if p.section == 'featured' %} proj--featured{% endif %}" href="{{ p.url or p.href }}" {% if p.url %}target="_blank" rel="noopener"{% endif %}>
-            {% else %}
-            <div class="proj{% if p.section == 'featured' %} proj--featured{% endif %}">
-            {% endif %}
+            <a class="proj{% if p.section == 'featured' %} proj--featured{% endif %}" href="/projects/{{ p.slug }}">
                 <span class="ghost">0{{ loop.index }}</span>
                 <div class="p-meta">
                     <span class="idx">[0{{ loop.index }}]</span>
@@ -308,16 +309,12 @@
                     {% elif p.status|lower == 'wip' %}<span class="st st--wip">◐ wip</span>
                     {% else %}<span class="st st--live">● live</span>{% endif %}
                     {% if p.section == 'featured' %}<span class="star">★</span>{% endif %}
-                    <span class="go"><span class="arr">{% if p.url %}↗{% else %}→{% endif %}</span> {% if p.url %}github{% elif p.href %}open{% endif %}</span>
+                    <span class="go"><span class="arr">→</span> read</span>
                 </div>
                 <h2 class="p-title">{{ p.title }}</h2>
                 <p class="p-blurb">{{ p.blurb }}</p>
                 <div class="p-tags">{% for t in p.tags %}<span>{{ t|lower }}</span>{% endfor %}</div>
-            {% if p.url or p.href %}
             </a>
-            {% else %}
-            </div>
-            {% endif %}
             {% endfor %}
         </section>
 
@@ -345,15 +342,32 @@
         {% endif %}
 
         <footer>
-            <p class="f-ask">want to build something weird together?</p>
+            <p class="f-ask">{% if site.professional %}want to build something together?{% else %}want to build something weird together?{% endif %}</p>
             <p class="f-links">
-                <a class="mail" href="mailto:alice@herkula.info">alice@herkula.info</a>
+                <a class="mail" href="mailto:{{ site.email }}">{{ site.email }}</a>
             </p>
-            <p class="f-note">poured concrete <span class="m">·</span> moss <span class="r">·</span> rust &mdash; alice, mmxxvi</p>
+            <p class="f-note">poured concrete <span class="m">·</span> moss <span class="r">·</span> rust &mdash; {{ site.short }}, mmxxvi</p>
             <p class="back"><a href="/">← return to interface</a></p>
+            {% include "site_footer.html" %}
         </footer>
     </div>
     </div>
+
+    <script>
+        /* Swap the preview for the full-resolution artwork once it is ready. */
+        (function () {
+            function upgrade() {
+                document.querySelectorAll('img[data-full]').forEach(function (img) {
+                    var full = new Image();
+                    full.decoding = 'async';
+                    full.onload = function () { img.src = full.src; };
+                    full.src = img.getAttribute('data-full');
+                });
+            }
+            if (document.readyState === 'complete') upgrade();
+            else window.addEventListener('load', upgrade);
+        })();
+    </script>
 
     <script>
         /* cursor parallax with built-in easing: on every mousemove we glide a

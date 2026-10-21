@@ -1,0 +1,30 @@
+.site-footer {
+    margin: 3rem auto 2rem;
+    padding: 1.25rem 1.5rem 0;
+    max-width: 72rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.site-links {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.4rem 1.1rem;
+    margin-top: 1.5rem;
+    font-family: 'Share Tech Mono', 'Courier New', monospace;
+    font-size: 0.68rem;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+}
+
+.site-links a {
+    color: rgba(255, 255, 255, 0.5);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    padding-bottom: 1px;
+}
+
+.site-links a:hover {
+    color: #fff;
+    border-bottom-color: rgba(255, 255, 255, 0.45);
+}

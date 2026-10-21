@@ -1,0 +1,25 @@
+# {{ site.full_name }}{% if site.handle %} ({{ site.handle }}){% endif %}
+
+> {{ site.bio }}
+
+{% if site.handle %}Alice is an artist and developer. This site is her portfolio and sandbox: interactive ASCII art, photography, writing, and software projects.{% else %}Dave Herkula is a developer who builds software and systems that hold up under real use. This site collects his projects and selected work.{% endif %}
+
+## Main
+
+- [Projects]({{ origin }}/projects): software and experiments, each with its own page, description and links.
+- [About]({{ origin }}/about): who {{ site.full_name }} is and what they build.
+- [FAQ]({{ origin }}/faq): answers about the work, projects, tools and contact details.
+- [Gallery]({{ origin }}/gallery): photography, 3D art and visual experiments.
+- [Socials]({{ origin }}/socials): accounts and contact links.
+{% if not site.professional %}- [Music]({{ origin }}/music): a Spotify playlist, playable on the page.
+{% endif %}
+{% if site.blogs %}{% for blog in site.blogs %}- [{{ blog.label }} blog]({{ blog.public_url }}): a federated collection published with WriteFreely.
+{% endfor %}{% endif %}
+## Optional
+
+{% if site.mastodon_url %}- [Mastodon]({{ site.mastodon_url }}): @{{ site.mastodon_handle }}
+{% endif %}{% if site.x_url %}- [X]({{ site.x_url }}): {{ site.x_handle }}
+{% endif %}- [GitHub]({{ site.github_url }}): {{ site.github_handle }}
+{% if site.discord_url %}- [Discord]({{ site.discord_url }}): {{ site.discord_handle }}
+{% endif %}{% if site.handle %}- [BunGPT](https://ai.alicemow.org/): a small AI chatbot running on Cloudflare Workers.
+{% endif %}

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="preload" as="image" href="/assets/Conejillo_de_indias.jpg">
+    <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; background: #050505; }
+        body {
+            font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif;
+            color: rgba(255,255,255,0.85);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .grid {
+            position: fixed; inset: 0; pointer-events: none;
+            background-image:
+                linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+            background-size: 48px 48px;
+        }
+        main {
+            position: relative; z-index: 1;
+            display: flex; flex-direction: column; align-items: center;
+            gap: 1.3rem; padding: 1.5rem;
+        }
+        figure { margin: 0; animation: fade 0.9s ease both; }
+        figure img {
+            display: block;
+            max-width: min(88vw, 640px);
+            max-height: 74vh;
+            width: auto;
+            border-radius: 14px;
+            border: 1px solid rgba(255,255,255,0.12);
+            box-shadow: 0 0 80px rgba(255,255,255,0.04), 0 30px 90px rgba(0,0,0,0.65);
+        }
+        figcaption {
+            margin-top: 0.9rem;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6rem;
+            letter-spacing: 7px;
+            text-transform: uppercase;
+            text-align: center;
+            color: rgba(255,255,255,0.28);
+            user-select: none;
+        }
+        .home {
+            position: fixed; top: 1.1rem; left: 1.3rem; z-index: 2;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.6rem; letter-spacing: 2px; text-transform: uppercase;
+            color: rgba(255,255,255,0.22);
+            text-decoration: none;
+            transition: color 0.2s ease;
+        }
+        .home:hover { color: rgba(255,255,255,0.7); }
+        @keyframes fade { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    </style>
+</head>
+<body>
+    <div class="grid"></div>
+    <a class="home" href="/">&larr; return to interface</a>
+    <main>
+        <figure>
+            <img src="/assets/Conejillo_de_indias.jpg" alt="Conejillo de indias" draggable="false">
+            <figcaption>conejillo de indias</figcaption>
+        </figure>
+    </main>
+</body>
+</html>

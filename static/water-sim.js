@@ -65,7 +65,10 @@
     let easterEggMode = '';     // 'blank', '42', 'cowsay', or ''
 
     // Typewriter effect for greeting
-    const GREETING = "Hi, I'm Alice";
+    // The page may set window.__SITE__.greeting so the greeting matches the
+    // active profile (Alice on the personal site, Dave on the professional
+    // one). Falls back to the personal greeting when the script is served raw.
+    const GREETING = (window.__SITE__ && window.__SITE__.greeting) || "Hi, I'm Alice";
     let greetingRevealed = 0;
     let greetingComplete = false;
 
@@ -236,7 +239,7 @@
         if (document.body.classList.contains('hide-ui-text')) return;
 
         const name   = GREETING;
-        const buttons = ['Socials', 'Gallery', 'Blog', 'Projects'];
+        const buttons = (window.__SITE__ && window.__SITE__.buttons) || ['Socials', 'Gallery', 'Blog', 'Projects'];
         const btnStr  = buttons.join('  ');
         const bio     = 'artist & developer';
 

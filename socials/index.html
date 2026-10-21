@@ -3,8 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Socials — Alice</title>
+    <title>Socials — {{ site.name }}</title>
+    {% include "meta.html" %}
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/site-links.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -25,7 +27,7 @@
         .body-bg {
             position: fixed;
             inset: 0;
-            background: url('../GlassBlock.png') center/cover no-repeat, rgba(255,255,255,0.015);
+            background: url('/assets/glassblock4k.avif') center/cover no-repeat, rgba(255,255,255,0.015);
             backdrop-filter: blur(1.5px);
             -webkit-backdrop-filter: blur(1.5px);
             will-change: transform;
@@ -132,17 +134,38 @@
         <div class="section">
             <div class="section-header">My Accounts</div>
             <div class="link-list">
-                <a href="https://x.com/Alice_mow" target="_blank" class="link-item">
+                {% if site.mastodon_url %}
+                <a href="{{ site.mastodon_url }}" target="_blank" rel="me noopener" class="link-item">
+                    <span class="tag">Mastodon</span>
+                    <span class="name">@{{ site.mastodon_handle }}</span>
+                </a>
+                {% endif %}
+                {% if site.x_url %}
+                <a href="{{ site.x_url }}" target="_blank" class="link-item">
                     <span class="tag">X</span>
-                    <span class="name">@Alice_mow</span>
+                    <span class="name">@{{ site.x_handle }}</span>
                 </a>
-                <a href="https://github.com/peanutmow" target="_blank" class="link-item">
+                {% endif %}
+                <a href="{{ site.github_url }}" target="_blank" class="link-item">
                     <span class="tag">GitHub</span>
-                    <span class="name">peanutmow</span>
+                    <span class="name">{{ site.github_handle }}</span>
                 </a>
-                <a href="https://discord.gg/sdTrfEHF" target="_blank" class="link-item">
+                {% if site.discord_url %}
+                <a href="{{ site.discord_url }}" target="_blank" class="link-item">
                     <span class="tag">Discord</span>
-                    <span class="name">alice_meower</span>
+                    <span class="name">{{ site.discord_handle }}</span>
+                </a>
+                {% endif %}
+            </div>
+        </div>
+
+        {% if not site.professional %}
+        <div class="section">
+            <div class="section-header">Experiments</div>
+            <div class="link-list" data-embed>
+                <a href="https://ai.alicemow.org/" data-name="ai.alicemow.org" class="link-item">
+                    <span class="tag">AI</span>
+                    <span class="name">alice-1b &mdash; talk to the tiny brain</span>
                 </a>
             </div>
         </div>
@@ -157,6 +180,10 @@
                 <a href="https://lovesick.wtf/" target="_blank" class="link-item">
                     <span class="tag">Link</span>
                     <span class="name">lovesick.wtf &mdash; Rachel</span>
+                </a>
+                <a href="https://pheebnest.nekoweb.org/" target="_blank" class="link-item">
+                    <span class="tag">Link</span>
+                    <span class="name">pheebnest.nekoweb.org &mdash; Phoebe</span>
                 </a>
             </div>
         </div>
@@ -186,38 +213,10 @@
                 </a>
             </div>
         </div>
+        {% endif %}
     </div>
 
     <script>
-        // ── Resolution-aware 4K image loader ──
-        (function() {
-            // Above 1080p? (1920x1080)
-            if (window.screen.width <= 1920 && window.screen.height <= 1080) return;
-
-            var bgEl = document.querySelector('.body-bg');
-            if (!bgEl) return;
-
-            var images = [
-                { path: '../GlassBlock4K.png',      prop: 'backgroundImage', value: "url('../GlassBlock4K.png'), rgba(255,255,255,0.015)" },
-                { path: '../GlassBlockNormal4K.png', prop: null }
-            ];
-
-            var loaded = 0;
-            images.forEach(function(item) {
-                var img = new Image();
-                img.onload = function() {
-                    loaded++;
-                    if (item.prop && loaded >= 1) {
-                        bgEl.style.backgroundImage = item.value;
-                        bgEl.style.backgroundSize = 'cover';
-                        bgEl.style.backgroundPosition = 'center';
-                        bgEl.style.backgroundRepeat = 'no-repeat';
-                    }
-                };
-                img.src = item.path;
-            });
-        })();
-
         // Forward mouse events to parent page so the water sim reacts
         (function() {
             if (!window.parent) return;
@@ -233,6 +232,7 @@
         })();
     </script>
 
+    {% if not site.professional %}
     <script>
         // ── Friends / Cool Sites links: go back to the ASCII main page ──
         // The main page opens them in an in-site window rendered as ASCII;
@@ -256,5 +256,9 @@
             });
         })();
     </script>
+    {% endif %}
+    <footer class="site-footer">
+        {% include "site_footer.html" %}
+    </footer>
 </body>
 </html>
