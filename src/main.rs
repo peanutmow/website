@@ -1,4 +1,5 @@
 use axum::{
+    body::{Body, Bytes},
     extract::{Extension, Path, Request, State},
     http::{header, HeaderMap, HeaderValue, StatusCode, Uri},
     middleware::{self, Next},
@@ -6,6 +7,9 @@ use axum::{
     routing::get,
     Router,
 };
+use futures_util::stream;
+use http_body::Frame;
+use http_body_util::StreamBody;
 use std::sync::Arc;
 use tower::Layer;
 use tower_http::compression::CompressionLayer;
@@ -178,6 +182,8 @@ async fn main() {
         // Fallback 404
         .fallback(not_found)
         .layer(CompressionLayer::new())
+        .route("/trailer", get(trailer_page))
+        .route("/trailer/", get(trailer_page))
         // Resolve the site identity (personal vs professional) for every request.
         .layer(middleware::from_fn(resolve_site))
         .with_state(state);
@@ -516,6 +522,37 @@ async fn conejillo_page(
     )
 }
 
+async fn trailer_page(
+    State(state): State<Arc<AppState>>,
+    Extension(site): Extension<Site>,
+) -> Response {
+    let body = state.tmpl.render(
+        "trailer.html",
+        &serde_json::json!({"title": "the last word", "site": site}),
+    );
+    trailer_response(body)
+}
+
+fn trailer_response(body: String) -> Response {
+    let mut trailers = HeaderMap::new();
+    trailers.insert("x-secret", HeaderValue::from_static("the last word"));
+    trailers.insert(
+        "server-timing",
+        HeaderValue::from_static("trailer;desc=\"the last word\""),
+    );
+    let frames = stream::iter([
+        Ok::<_, std::convert::Infallible>(Frame::data(Bytes::from(body))),
+        Ok(Frame::trailers(trailers)),
+    ]);
+    Response::builder()
+        .header(header::CONTENT_TYPE, "text/html; charset=utf-8")
+        .header(header::TRAILER, "x-secret, server-timing")
+        .header(header::VARY, "te")
+        .header(header::CACHE_CONTROL, "no-store")
+        .body(Body::new(StreamBody::new(frames)))
+        .unwrap()
+}
+
 // ─── Search engine files ──────────────────────────────────────────
 
 async fn robots_txt(
@@ -664,7 +701,7 @@ fn root_image(path: &str) -> Option<(String, &'static str)> {
 
 #[cfg(test)]
 mod tests {
-    use super::{is_hello_host, root_image, HELLO_HOST};
+    use super::{is_hello_host, root_image, trailer_response, HELLO_HOST};
     use axum::http::{header, HeaderMap};
 
     fn served(path: &str) -> Option<String> {
@@ -721,5 +758,43 @@ mod tests {
 
         headers.insert(header::HOST, "alicemow.org".parse().unwrap());
         assert!(!is_hello_host(&headers));
+    }
+
+    #[tokio::test]
+    async fn the_trailer_arrives_after_the_body() {
+        use http_body_util::BodyExt;
+
+        let response = trailer_response("<p>the body</p>".to_string());
+        let declared = response
+            .headers()
+            .get(header::TRAILER)
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+        assert_eq!(declared, "x-secret, server-timing");
+
+        let mut body = response.into_body();
+        let first = body.frame().await.unwrap().unwrap();
+        assert_eq!(
+            first.data_ref().unwrap().as_ref(),
+            b"<p>the body</p>".as_slice()
+        );
+
+        let last = body.frame().await.unwrap().unwrap();
+        let trailers = last.trailers_ref().unwrap();
+        for name in declared.split(',') {
+            assert_ne!(trailers.get(name.trim()), None, "{name} was not sent");
+        }
+        assert_eq!(
+            trailers.get("x-secret").unwrap().to_str().unwrap(),
+            "the last word"
+        );
+        assert_eq!(
+            trailers.get("server-timing").unwrap().to_str().unwrap(),
+            "trailer;desc=\"the last word\""
+        );
+
+        assert!(body.frame().await.is_none());
     }
 }

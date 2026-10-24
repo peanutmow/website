@@ -34,6 +34,11 @@ const TEMPLATES: &[(&str, &str, &str)] = &[
         include_str!("../templates/redherring.html"),
     ),
     (
+        "trailer.html",
+        "templates/trailer.html",
+        include_str!("../templates/trailer.html"),
+    ),
+    (
         "conejillo.html",
         "templates/conejillo.html",
         include_str!("../templates/conejillo.html"),

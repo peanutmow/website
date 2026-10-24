@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>{{ title }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; background: #000; }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            padding: 2rem;
+            font-family: 'Courier New', 'Share Tech Mono', monospace;
+            text-align: center;
+            user-select: none;
+        }
+        .body-line { color: rgba(255,255,255,0.18); font-size: 0.7rem; letter-spacing: 3px; text-transform: uppercase; }
+        .hint { max-width: 34rem; color: rgba(255,255,255,0.3); font-size: 0.62rem; letter-spacing: 1.5px; line-height: 2; }
+        code { color: rgba(255,255,255,0.65); }
+    </style>
+</head>
+<body>
+    <p class="body-line">the body</p>
+    <p class="hint">
+        this page has a trailer: <code>x-secret</code>. it is sent after the body, which is why
+        you have never seen it. most clients drop it, and many servers never ask.
+        <code>curl --raw -H 'TE: trailers' &lt;this url&gt;</code> prints the last line of the
+        chunked stream.
+    </p>
+</body>
+</html>
