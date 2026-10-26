@@ -95,6 +95,7 @@ jobs:
             --exclude=/.git/ --exclude=/.github/ --exclude=/.deploy/ \
             --exclude=/target/ --exclude=node_modules/ --exclude=__pycache__/ \
             --exclude='*.md' --exclude=/alice-website --exclude='/alice-website.*' \
+            --exclude=/static/audio/music/ \
             --exclude='*.tmp' \
             -e "$RSYNC_SSH" \
             ./ "$SFTP_USERNAME@$SFTP_HOST:$APP_DIR/"
