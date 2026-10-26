@@ -14,19 +14,7 @@
 <body>
     <audio id="rh-audio" src="/assets/WEBSITE.mp3" autoplay preload="auto"></audio>
     <p class="msg">there is nothing here.</p>
-    <script>
-        (function () {
-            'use strict';
-            var audio = document.getElementById('rh-audio');
-            function play() {
-                var p = audio.play();
-                if (p && p.catch) p.catch(function () {});
-            }
-            play();
-            document.addEventListener('click', play);
-            document.addEventListener('keydown', play);
-            document.addEventListener('touchstart', play, { passive: true });
-        })();
-    </script>
+    <script src="/static/app.js" defer></script>
+
 </body>
 </html>

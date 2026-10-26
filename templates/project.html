@@ -286,7 +286,7 @@
     <aside class="marginalia" aria-hidden="true">{{ project.slug }} &mdash; mmxxvi</aside>
 
     <aside class="tree-wrap">
-        <img class="tree" src="/assets/tree-preview.avif" data-full="/assets/tree.avif?v=3" width="1080" height="1920" alt="" draggable="false" fetchpriority="high" decoding="async">
+        <img class="tree" src="/assets/tree.avif?v=3" width="1080" height="1920" alt="" draggable="false" fetchpriority="high" decoding="async">
     </aside>
 
     <div class="layout">
@@ -371,64 +371,9 @@
     </div>
     </div>
 
-    <script>
-        (function () {
-            function upgrade() {
-                document.querySelectorAll('img[data-full]').forEach(function (img) {
-                    var full = new Image();
-                    full.decoding = 'async';
-                    full.onload = function () { img.src = full.src; };
-                    full.src = img.getAttribute('data-full');
-                });
-            }
-            if (document.readyState === 'complete') upgrade();
-            else window.addEventListener('load', upgrade);
-        })();
-    </script>
-
-    <script>
-        (function () {
-            var link = document.querySelector('.back a');
-            if (!link) return;
-            link.addEventListener('click', function (e) {
-                e.preventDefault();
-                window.location.href = link.getAttribute('href') || '/projects';
-            });
-        })();
-    </script>
-
     {% if project.slug == 'ascii-render' %}
-    <script src="/static/bunny-mesh.js"></script>
-    <script src="/static/bunny.js"></script>
-    <script>
-        (function () {
-            var pre = document.getElementById('specimen-pre');
-            if (!pre || !window.AsciiBunny) return;
-            var ax = 0.08, ay = -0.15;
-            function draw() {
-                var fs = parseFloat(window.getComputedStyle(pre).fontSize) || 10;
-                var cols = Math.max(24, Math.min(58, Math.floor((pre.clientWidth || 600) / (fs * 0.6))));
-                var rows = Math.max(12, Math.round(cols * 0.6 / 1.18));
-                pre.textContent = window.AsciiBunny.render({
-                    cols: cols,
-                    rows: rows,
-                    angleX: ax,
-                    angleY: ay,
-                    ramp: ' .,-:~;=+*#%@',
-                    invert: false
-                }).join('\n');
-            }
-            pre.addEventListener('mousemove', function (e) {
-                var rect = pre.getBoundingClientRect();
-                ay = -0.15 + ((e.clientX - rect.left) / rect.width - 0.5) * 2.2;
-                ax = 0.08 + ((e.clientY - rect.top) / rect.height - 0.5) * 1.1;
-                draw();
-            });
-            draw();
-            if (document.fonts && document.fonts.ready) document.fonts.ready.then(draw);
-            window.addEventListener('resize', draw);
-        })();
-    </script>
+    <script src="/static/bunny.js?v=2"></script>
+    <script src="/static/app.js" defer></script>
     {% endif %}
 
     <footer class="site-footer">

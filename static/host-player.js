@@ -207,6 +207,40 @@
         ascii.classList.add('is-on');
     }
 
+    const contentFrame = document.getElementById('content-frame');
+    const socialsPanel = document.getElementById('socials-inline');
+    const musicButton = document.querySelector('.btn[data-music]');
+
+    function openMusic() {
+        if (!frame.getAttribute('src')) frame.setAttribute('src', '/music?embed=1');
+        frame.hidden = false;
+        if (contentFrame) contentFrame.style.display = 'none';
+        if (socialsPanel) socialsPanel.classList.remove('visible');
+        setPage('music');
+        if (contentPanel) contentPanel.scrollIntoView({ behavior: 'smooth' });
+        if (window.__pageWaterSim) window.__pageWaterSim.stir();
+    }
+
+    window.__openContentPage = function (name) {
+        if (name === 'music') openMusic();
+    };
+
+    if (musicButton) {
+        musicButton.addEventListener('click', function (event) {
+            event.preventDefault();
+            openMusic();
+        });
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll('.btn[data-page]'), function (button) {
+        button.addEventListener('click', function () {
+            frame.hidden = true;
+            const next = button.getAttribute('data-page');
+            if (next !== 'socials' && contentFrame) contentFrame.style.display = '';
+            setPage(next);
+        });
+    });
+
     window.__hostPlayer = {
         setPage: setPage,
         refresh: update

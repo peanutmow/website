@@ -1,6 +1,6 @@
 use axum::{
     extract::{Extension, Path, Request, State},
-    http::{header, HeaderValue, StatusCode, Uri},
+    http::{header, HeaderMap, HeaderValue, StatusCode, Uri},
     middleware::{self, Next},
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
@@ -25,6 +25,21 @@ mod templates;
 mod tide;
 
 use site::Site;
+
+const HELLO_HOST: &str = "q.m.x.b.r.t.v.k.p.d.h.n.w.c.l.s.f.j.y.z.a.e.i.o.u.g.alicemow.org";
+
+const HELLO_HTML: &str = r#"<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>hello</title>
+</head>
+<body>
+<p>hello</p>
+</body>
+</html>
+"#;
 
 pub struct AppState {
     pub tmpl: templates::TemplateEngine,
@@ -95,7 +110,14 @@ async fn main() {
         )
         .nest_service(
             "/static",
-            cached(ServeDir::new("static"), "public, max-age=3600"),
+            cached(
+                ServeDir::new("static"),
+                if cfg!(debug_assertions) {
+                    "no-cache"
+                } else {
+                    "public, max-age=3600"
+                },
+            ),
         )
         .nest_service(
             "/assets",
@@ -103,7 +125,36 @@ async fn main() {
         )
         .nest_service(
             "/wasm",
-            cached(ServeDir::new("wasm-sim/pkg"), "public, max-age=86400"),
+            cached(
+                ServeDir::new("wasm-sim/pkg"),
+                if cfg!(debug_assertions) {
+                    "no-cache"
+                } else {
+                    "public, max-age=86400"
+                },
+            ),
+        )
+        .nest_service(
+            "/wasm-bunny",
+            cached(
+                ServeDir::new("wasm-bunny/pkg"),
+                if cfg!(debug_assertions) {
+                    "no-cache"
+                } else {
+                    "public, max-age=86400"
+                },
+            ),
+        )
+        .nest_service(
+            "/wasm-app",
+            cached(
+                ServeDir::new("wasm-app/pkg"),
+                if cfg!(debug_assertions) {
+                    "no-cache"
+                } else {
+                    "public, max-age=86400"
+                },
+            ),
         )
         // Root-level static files
         .route(
@@ -156,6 +207,9 @@ async fn main() {
 /// Attach the identity (personal vs professional) to every request so handlers
 /// can render the matching profile. See [`site::detect`].
 async fn resolve_site(mut req: Request, next: Next) -> Response {
+    if is_hello_host(req.headers()) {
+        return Html(HELLO_HTML).into_response();
+    }
     let path_and_query = req
         .uri()
         .path_and_query()
@@ -169,6 +223,14 @@ async fn resolve_site(mut req: Request, next: Next) -> Response {
     req.extensions_mut().insert(site);
     req.extensions_mut().insert(origin);
     next.run(req).await
+}
+
+fn is_hello_host(headers: &HeaderMap) -> bool {
+    let Some(value) = headers.get(header::HOST).and_then(|v| v.to_str().ok()) else {
+        return false;
+    };
+    let host = value.split(':').next().unwrap_or(value).trim_end_matches('.');
+    host.eq_ignore_ascii_case(HELLO_HOST)
 }
 
 // ─── SSR Handlers ──────────────────────────────────────────────────
@@ -314,14 +376,21 @@ async fn gallery_content_page(
     State(state): State<Arc<AppState>>,
     Extension(site): Extension<Site>,
     Extension(origin): Extension<site::Origin>,
+    uri: Uri,
 ) -> Response {
     let meta = embed::gallery(&site, &origin.0);
+    let gallery = gallery::data();
+    let embed = uri
+        .query()
+        .map(|query| query.split('&').any(|part| part == "embed=1"))
+        .unwrap_or(false);
     state.tmpl.render_response(
         "content_gallery.html",
         &serde_json::json!({
             "site": site,
             "meta": meta,
-            "photos_json": gallery::photos_json(),
+            "gallery": gallery.as_ref(),
+            "embed": embed,
         }),
     )
 }
@@ -413,7 +482,14 @@ async fn serve_file(path: &str, mime: &str) -> Response {
     match tokio::fs::read(path).await {
         Ok(data) => Response::builder()
             .header("Content-Type", mime)
-            .header("Cache-Control", "public, max-age=3600")
+            .header(
+                "Cache-Control",
+                if cfg!(debug_assertions) {
+                    "no-cache"
+                } else {
+                    "public, max-age=3600"
+                },
+            )
             .body(axum::body::Body::from(data))
             .unwrap(),
         Err(_) => StatusCode::NOT_FOUND.into_response(),
@@ -657,8 +733,8 @@ fn root_image(path: &str) -> Option<(String, &'static str)> {
 
 #[cfg(test)]
 mod tests {
-    use super::{page_404, query_seed, root_image};
-    use axum::http::header;
+    use super::{is_hello_host, page_404, query_seed, root_image, HELLO_HOST};
+    use axum::http::{header, HeaderMap};
 
     fn served(path: &str) -> Option<String> {
         root_image(path).map(|(file, _)| file)
@@ -720,5 +796,24 @@ mod tests {
         assert_eq!(query_seed("seed="), None);
         assert_eq!(query_seed("seed=abc"), None);
         assert_eq!(query_seed(""), None);
+    }
+
+    #[test]
+    fn hello_host_is_exact() {
+        let mut headers = HeaderMap::new();
+        headers.insert(header::HOST, HELLO_HOST.parse().unwrap());
+        assert!(is_hello_host(&headers));
+
+        headers.insert(header::HOST, format!("{HELLO_HOST}:8080").parse().unwrap());
+        assert!(is_hello_host(&headers));
+
+        headers.insert(header::HOST, format!("{HELLO_HOST}.").parse().unwrap());
+        assert!(is_hello_host(&headers));
+
+        headers.insert(header::HOST, HELLO_HOST.to_ascii_uppercase().parse().unwrap());
+        assert!(is_hello_host(&headers));
+
+        headers.insert(header::HOST, "alicemow.org".parse().unwrap());
+        assert!(!is_hello_host(&headers));
     }
 }

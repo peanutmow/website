@@ -148,6 +148,25 @@ mod tests {
     use super::*;
     use crate::site::Site;
 
+    #[test]
+    fn templates_have_no_executable_inline_scripts() {
+        for &(_, path, text) in TEMPLATES {
+            for line in text.lines() {
+                let Some(index) = line.find("<script") else {
+                    continue;
+                };
+                let rest = &line[index..];
+                if rest.starts_with("<script src=")
+                    || rest.contains("type=\"application/ld+json\"")
+                    || rest.contains("type=\"application/json\"")
+                {
+                    continue;
+                }
+                panic!("{path}: executable inline script remains: {line}");
+            }
+        }
+    }
+
     fn home(site: Site) -> String {
         TemplateEngine::new().render(
             "index.html",
@@ -191,7 +210,8 @@ mod tests {
         for site in [Site::personal(), Site::professional()] {
             let html = home(site);
             assert!(html.contains("data-page=\"how\""));
-            assert!(html.contains("'How'"));
+            assert!(html.contains("data-buttons=\"Socials|Gallery|"));
+            assert!(html.contains("|How\""));
         }
     }
 
@@ -335,7 +355,7 @@ mod tests {
             &serde_json::json!({
                 "site": site,
                 "meta": crate::embed::gallery(&site, "https://example.test"),
-                "photos_json": crate::gallery::photos_json(),
+                "gallery": crate::gallery::data().as_ref(),
             }),
         )
     }

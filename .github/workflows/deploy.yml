@@ -38,6 +38,32 @@ jobs:
               sudo apt-get install -y --no-install-recommends sshpass rsync
             }
 
+      - name: Test Rust (server and wasm cores)
+        run: |
+          cargo test --locked
+          cargo test --manifest-path wasm-sim/Cargo.toml
+          cargo test --manifest-path wasm-bunny/Cargo.toml
+
+      - name: Build wasm client cores
+        run: |
+          set -euo pipefail
+          rustup target add wasm32-unknown-unknown
+          command -v wasm-pack >/dev/null 2>&1 || \
+            curl --proto '=https' --tlsv1.2 -sSf https://rustwasm.github.io/wasm-pack/installer/init.sh | sh -s -- -y
+          sudo apt-get install -y --no-install-recommends binaryen || true
+          wasm-pack --version
+          rustc --version
+          for crate in wasm-sim wasm-bunny wasm-app; do
+            if ! output=$(wasm-pack build "$crate" --target web --release 2>&1); then
+              printf '%s\n' "$output"
+              message=$(printf '%s\n' "$output" | tail -n 20 | tr '\n' ' ')
+              message=${message//%/%25}
+              echo "::error title=wasm build failed ($crate)::$message"
+              exit 1
+            fi
+            printf '%s\n' "$output"
+          done
+
       # Everything that does not need the compiled binary runs here, in the
       # background, while Rust builds: the Flickr crawl and the incremental
       # rsync of the site files. The deploy step then only ships the binary
