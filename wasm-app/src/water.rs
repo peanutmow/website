@@ -911,6 +911,28 @@ fn build_api(state: Shared) -> JsValue {
 
     let closure = {
         let state = state.clone();
+        let closure = Closure::<dyn Fn(JsValue)>::new(move |bins: JsValue| {
+            let values = js_sys::Uint8Array::new(&bins).to_vec();
+            state.borrow_mut().sim.set_spectrum(&values);
+        });
+        set(&api, "spectrum", closure.as_ref());
+        closure
+    };
+    closure.forget();
+
+    let closure = {
+        let state = state.clone();
+        let closure = Closure::<dyn Fn(bool)>::new(move |visible: bool| {
+            state.borrow_mut().sim.set_spectrum_visible(visible);
+            render(&state);
+        });
+        set(&api, "spectrumVisible", closure.as_ref());
+        closure
+    };
+    closure.forget();
+
+    let closure = {
+        let state = state.clone();
         let closure = Closure::<dyn Fn() -> JsValue>::new(move || {
             let water = state.borrow();
             let grid = js_sys::Object::new();

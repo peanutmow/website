@@ -23,7 +23,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/inspect.css">
     <link rel="stylesheet" href="/static/selawik.css?v=1">
-    <link rel="stylesheet" href="/static/host-player.css?v=1">
+    <link rel="stylesheet" href="/static/host-player.css?v=2">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         :root { --accent: #e0e0e0; --bg-color: #0a0a0a; }
@@ -266,7 +266,6 @@
         </div>
     </div>
     <pre id="ascii-water" aria-hidden="true" data-greeting="{{ site.greeting }}" data-buttons="{% if site.blogs %}Socials|Gallery|Music|Blog|Projects|How{% else %}Socials|Gallery|Projects|How{% endif %}"></pre>
-    {% if not site.professional %}<pre id="ascii-spectrum" aria-hidden="true"></pre>{% endif %}
     <noscript>
         <div class="no-js">
             <h2>{{ site.full_name }}{% if site.handle %} — {{ site.handle }}{% endif %}</h2>
@@ -391,7 +390,7 @@
     </div>
     {% endif %}
 
-    <script src="/static/host-player.js?v=4"></script>
+    <script src="/static/host-player.js?v=5"></script>
     <script src="/static/inspect.js?v=2"></script>
     <script src="/static/app.js"></script>
 </body>

@@ -1,38 +1,9 @@
-#ascii-spectrum {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 2;
-    margin: 0;
-    padding: 8px 0 0;
-    font-family: 'Courier New', monospace;
-    font-size: 10px;
-    line-height: 1;
-    letter-spacing: 0;
-    white-space: pre;
-    text-align: center;
-    color: rgba(232, 255, 248, 0.5);
-    text-shadow: 0 0 8px rgba(255, 255, 255, 0.12);
-    pointer-events: none;
-    user-select: none;
-    opacity: 0;
-    overflow: hidden;
-    transition: opacity 0.45s ease;
-    -webkit-mask-image: linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%);
-    mask-image: linear-gradient(to bottom, #000 0%, #000 70%, transparent 100%);
-}
-
-#ascii-spectrum.is-on {
-    opacity: 1;
-}
-
 #host-player {
     position: fixed;
     left: 50%;
     bottom: 14px;
     transform: translateX(-50%);
-    z-index: 300;
+    z-index: 930;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -224,11 +195,6 @@
 }
 
 @media (max-width: 700px) {
-    #ascii-spectrum {
-        padding-top: 4px;
-        font-size: 8px;
-    }
-
     #host-player {
         bottom: 8px;
         width: calc(100% - 12px);

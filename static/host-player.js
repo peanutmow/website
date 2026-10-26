@@ -15,14 +15,12 @@
     const expandBtn = document.getElementById('hp-expand');
     const playIcon = document.getElementById('hp-play-icon');
     const pauseIcon = document.getElementById('hp-pause-icon');
-    const ascii = document.getElementById('ascii-spectrum');
     const contentPanel = document.getElementById('content-panel');
     const reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    let page = null;
     let dragging = false;
     let lastSpectrum = 0;
-    let clearTimer = 0;
+    let spectrumOn = false;
 
     function control() {
         try {
@@ -57,9 +55,15 @@
         seekEl.style.setProperty('--p', Math.max(0, Math.min(100, percent)) + '%');
     }
 
+    function visiblePanel() {
+        if (!contentPanel) return false;
+        return contentPanel.getBoundingClientRect().top < window.innerHeight * 0.5;
+    }
+
     function update() {
         const state = readState();
-        const show = !!state && state.loaded && page !== 'music';
+        const expanded = !frame.hidden && visiblePanel();
+        const show = !!state && state.loaded && !expanded;
         bar.hidden = !show;
         if (!state) return;
 
@@ -79,8 +83,7 @@
         }
     }
 
-    function setPage(next) {
-        page = next;
+    function setPage() {
         update();
     }
 
@@ -145,66 +148,41 @@
 
     function spectrumFrame() {
         window.requestAnimationFrame(spectrumFrame);
-        if (!ascii || document.hidden) return;
+        if (document.hidden) return;
 
         const minGap = reducedMotion ? 110 : 42;
         const now = performance.now();
         if (now - lastSpectrum < minGap) return;
         lastSpectrum = now;
 
+        const sim = window.__pageWaterSim;
+        if (!sim || typeof sim.spectrum !== 'function') return;
+
         const state = readState();
         const ui = control();
-        const panelTop = contentPanel ? contentPanel.getBoundingClientRect().top : window.innerHeight;
-        const on = !!(state && state.playing && panelTop > window.innerHeight * 0.5);
+        const on = !!(state && state.playing && !visiblePanel());
 
         if (!on) {
-            if (ascii.classList.contains('is-on')) {
-                ascii.classList.remove('is-on');
-                window.clearTimeout(clearTimer);
-                clearTimer = window.setTimeout(function () {
-                    if (!ascii.classList.contains('is-on')) ascii.textContent = '';
-                }, 500);
+            if (spectrumOn) {
+                sim.spectrumVisible(false);
+                spectrumOn = false;
             }
             return;
         }
 
         let data = null;
         try {
-            data = ui.spectrum();
+            data = ui ? ui.spectrum() : null;
         } catch (error) {
             data = null;
         }
         if (!data || !data.length) return;
 
-        const width = window.innerWidth;
-        const mobile = width <= 700;
-        const charWidth = mobile ? 4.82 : 6.02;
-        const cols = Math.max(32, Math.min(170, Math.floor(width / charWidth)));
-        const rows = mobile ? 6 : 8;
-        const usable = Math.max(1, Math.floor(data.length * 0.64));
-        const ramp = ["'", ':', '-', '=', '+', '*', '#', '%', '@'];
-        const lines = [];
-
-        for (let row = 0; row < rows; row++) {
-            let line = '';
-            for (let col = 0; col < cols; col++) {
-                const position = col / cols;
-                const bin = Math.min(usable - 1, Math.floor(Math.pow(position, 1.5) * usable));
-                const level = Math.pow(data[bin] / 255, 1.3);
-                const height = level * rows;
-                if (row < height) {
-                    const depth = height <= 1 ? 0 : row / (height - 1);
-                    const index = Math.min(ramp.length - 1, Math.floor(depth * (ramp.length - 1)));
-                    line += ramp[index];
-                } else {
-                    line += ' ';
-                }
-            }
-            lines.push(line);
+        if (!spectrumOn) {
+            sim.spectrumVisible(true);
+            spectrumOn = true;
         }
-
-        ascii.textContent = lines.join('\n');
-        ascii.classList.add('is-on');
+        sim.spectrum(data);
     }
 
     const contentFrame = document.getElementById('content-frame');

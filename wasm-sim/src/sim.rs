@@ -59,6 +59,8 @@ pub struct Sim {
     egg_overlays: Vec<Overlay>,
     egg_mode: EggMode,
     key_buffer: Vec<char>,
+    spectrum: Vec<u8>,
+    spectrum_on: bool,
     rng: Rng,
     layout: Option<Layout>,
 }
@@ -111,6 +113,8 @@ impl Sim {
             egg_overlays: Vec::new(),
             egg_mode: EggMode::None,
             key_buffer: Vec::new(),
+            spectrum: Vec::new(),
+            spectrum_on: false,
             rng: Rng::new(seed),
             layout: None,
         }
@@ -167,6 +171,21 @@ impl Sim {
 
     pub fn ramp(&self) -> &'static str {
         crate::render::RAMP
+    }
+
+    pub fn set_spectrum(&mut self, bins: &[u8]) {
+        if self.spectrum.len() == bins.len() {
+            self.spectrum.copy_from_slice(bins);
+        } else {
+            self.spectrum = bins.to_vec();
+        }
+    }
+
+    pub fn set_spectrum_visible(&mut self, visible: bool) {
+        self.spectrum_on = visible;
+        if !visible {
+            self.spectrum.clear();
+        }
     }
 
     pub fn pointer_move(&mut self, gx: f64, gy: f64) {
@@ -278,6 +297,10 @@ impl Sim {
         let cols = self.fluid.cols as i64;
         let rows = self.fluid.rows as i64;
 
+        if self.spectrum_on {
+            self.push_spectrum(cols, rows);
+        }
+
         let name_row = (rows as f64 * 0.84).floor() as i64;
         let name_col = ((cols - name.len() as i64) as f64 / 2.0).floor() as i64;
         let reveal = self.greeting_revealed.min(name.len());
@@ -334,6 +357,48 @@ impl Sim {
             buttons: self.buttons.clone(),
             greeting: self.greeting.iter().collect(),
         });
+    }
+
+    fn push_spectrum(&mut self, cols: i64, rows: i64) {
+        if self.spectrum.is_empty() || cols <= 0 || rows <= 0 {
+            return;
+        }
+        let ramp: Vec<char> = crate::render::RAMP.chars().skip(1).collect();
+        if ramp.is_empty() {
+            return;
+        }
+        let band = ((rows as f64 * 0.09).round() as i64).clamp(1, 8).min(rows);
+        let width = ((cols as f64 * 0.64).round() as i64).clamp(1, cols);
+        let start = (cols - width) / 2;
+        let bins = self.spectrum.len();
+
+        for x in 0..width {
+            let position = (x + 1) as f64 / width as f64;
+            let bin = ((position.powf(1.5) * bins as f64).floor() as usize).min(bins - 1);
+            let level = (self.spectrum[bin] as f64 / 255.0).powf(1.3);
+            let height = level * band as f64;
+            if height < 0.5 {
+                continue;
+            }
+            for row in 0..band {
+                let distance = (band - 1 - row) as f64;
+                if distance >= height {
+                    continue;
+                }
+                let depth = if height <= 1.0 {
+                    1.0
+                } else {
+                    1.0 - distance / height
+                };
+                let index = ((depth * (ramp.len() - 1) as f64).floor() as usize).min(ramp.len() - 1);
+                self.overlays.push(Overlay {
+                    row,
+                    col: start + x,
+                    ch: ramp[index],
+                    frames: 0,
+                });
+            }
+        }
     }
 
     pub fn typewriter_start(&mut self) {
