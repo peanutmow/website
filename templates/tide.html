@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex">
+    <title>{{ title }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        html, body { width: 100%; min-height: 100%; background: #000; }
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            min-height: 100vh;
+            padding: 2rem 1rem;
+            font-family: 'Courier New', 'Share Tech Mono', monospace;
+            user-select: none;
+        }
+        .label {
+            color: rgba(255,255,255,0.24);
+            font-size: 0.62rem;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            text-align: center;
+            line-height: 2.2;
+        }
+        .sea {
+            color: rgba(255,255,255,0.78);
+            font-size: clamp(4px, 1.7vw, 14px);
+            line-height: 1;
+            letter-spacing: 0;
+            white-space: pre;
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: hidden;
+            text-shadow: 0 0 6px rgba(255,255,255,0.08);
+        }
+        .foot {
+            color: rgba(255,255,255,0.16);
+            font-size: 0.6rem;
+            letter-spacing: 2px;
+            text-align: center;
+            line-height: 2;
+        }
+        .foot a {
+            color: rgba(255,255,255,0.34);
+            text-decoration: none;
+            border-bottom: 1px solid rgba(255,255,255,0.12);
+        }
+    </style>
+</head>
+<body>
+    <p class="label">the tide for {{ date }}<br>tomorrow this sea is gone</p>
+    <pre class="sea">{{ tide|e }}</pre>
+    <p class="foot">seed {{ seed }} · <a href="/undertow?seed={{ seed }}">keep it</a></p>
+</body>
+</html>

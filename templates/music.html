@@ -6,48 +6,173 @@
     <title>{{ title }}</title>
     {% include "meta.html" %}
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/selawik.css?v=1">
     <link rel="stylesheet" href="/static/prose.css">
     <link rel="stylesheet" href="/static/site-links.css">
-    <style>
-        .player {
-            margin: 2rem 0 1rem;
-        }
-        .player iframe {
-            display: block;
-            width: 100%;
-            border: 0;
-            border-radius: 12px;
-        }
-        .player-note {
-            font-size: 0.72rem;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.35);
-        }
-    </style>
+    <link rel="stylesheet" href="/static/music.css?v=8">
 </head>
-<body>
+<body class="music-page">
     <main class="prose">
         <p class="eyebrow"><a href="/">&larr; {{ site.name }}</a></p>
         <h1>Listening</h1>
-        <p class="lede">What kind of music Alice likes.</p>
+        <p class="lede">{% if track_count %}A small jukebox of the songs {{ site.name }} keeps coming back to.{% else %}A small jukebox, waiting for its first track.{% endif %}</p>
 
-        {% if site.spotify_playlist %}
-        <div class="player">
-            <iframe
-                src="https://open.spotify.com/embed/playlist/{{ site.spotify_playlist }}?utm_source=oembed"
-                width="100%"
-                height="352"
-                frameborder="0"
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                title="Spotify playlist"></iframe>
-        </div>
-        <p class="player-note"><a href="https://open.spotify.com/playlist/{{ site.spotify_playlist }}" target="_blank" rel="noopener">Open in Spotify &#8599;</a></p>
-        {% endif %}
+        <section class="xmms-desk eq-open pl-open" id="xmms" aria-label="Music player">
+            <div class="xmms-window xmms-main" id="xmms-main">
+                <div class="xmms-title" id="xmms-titlebar">
+                    <span class="xmms-led" aria-hidden="true"></span>
+                    <span class="xmms-disc" aria-hidden="true"></span>
+                    <span class="xmms-title-text">XM<u>M</u>S</span>
+                    <span class="xmms-title-tools">
+                        <button type="button" class="xmms-chrome-btn" id="xmms-shade" aria-expanded="true" aria-label="Windowshade" title="Windowshade (M)">_</button>
+                    </span>
+                </div>
+
+                <div class="xmms-menu" aria-hidden="true">
+                    <span>-</span><span>O</span><span>A</span><span>I</span><span>D</span><span>V</span><span>P</span><span>L</span>
+                    <span class="xmms-menu-spacer"></span>
+                    <span class="xmms-menu-version">v1.2.11</span>
+                </div>
+
+                <div class="xmms-lcd">
+                    <div class="xmms-time-wrap">
+                        <button type="button" class="xmms-time" id="xmms-time" aria-label="Time elapsed, click for remaining">0:00</button>
+                        <span class="xmms-status-word" id="xmms-status">STOP</span>
+                    </div>
+                    <canvas class="xmms-vis" id="xmms-vis" width="240" height="56" role="button" tabindex="0" aria-label="Visualiser mode"></canvas>
+                </div>
+
+                <div class="xmms-marquee" id="xmms-marquee" aria-hidden="true"><span id="xmms-marquee-text">xmms 1.2 &mdash; no track loaded</span></div>
+
+                <div class="xmms-readout" aria-hidden="true">
+                    <span id="xmms-duration">--:--</span>
+                    <span id="xmms-kbps">-- kbps</span>
+                    <span id="xmms-rate">-- khz</span>
+                    <span id="xmms-mode">stereo</span>
+                    <span id="xmms-counter">0/0</span>
+                </div>
+
+                <div class="xmms-slide">
+                    <label class="xmms-slide-label" for="xmms-seek">pos</label>
+                    <input type="range" class="xmms-range" id="xmms-seek" min="0" max="1000" step="1" value="0" aria-label="Seek">
+                </div>
+
+                <div class="xmms-slide-row">
+                    <div class="xmms-slide">
+                        <label class="xmms-slide-label" for="xmms-volume">vol</label>
+                        <input type="range" class="xmms-range" id="xmms-volume" min="0" max="100" step="1" value="70" aria-label="Volume">
+                    </div>
+                    <div class="xmms-slide">
+                        <label class="xmms-slide-label" for="xmms-balance">bal</label>
+                        <input type="range" class="xmms-range" id="xmms-balance" min="-50" max="50" step="1" value="0" aria-label="Balance">
+                    </div>
+                </div>
+
+                <div class="xmms-transport">
+                    <div class="xmms-transport-main">
+                        <button type="button" class="xmms-tbtn" id="xmms-prev" aria-label="Previous track" title="Previous (Z)">
+                            <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false"><rect x="1.5" y="1.5" width="2" height="9" fill="currentColor"/><path d="M10.5 1.5v9L4 6z" fill="currentColor"/></svg>
+                        </button>
+                        <button type="button" class="xmms-tbtn" id="xmms-play" aria-label="Play" title="Play (X)">
+                            <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false"><path d="M2.5 1.5v9L10.5 6z" fill="currentColor"/></svg>
+                        </button>
+                        <button type="button" class="xmms-tbtn" id="xmms-pause" aria-label="Pause" title="Pause (C)">
+                            <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false"><rect x="3" y="1.5" width="2" height="9" fill="currentColor"/><rect x="7" y="1.5" width="2" height="9" fill="currentColor"/></svg>
+                        </button>
+                        <button type="button" class="xmms-tbtn" id="xmms-stop" aria-label="Stop" title="Stop (V)">
+                            <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false"><rect x="2.5" y="2.5" width="7" height="7" fill="currentColor"/></svg>
+                        </button>
+                        <button type="button" class="xmms-tbtn" id="xmms-next" aria-label="Next track" title="Next (B)">
+                            <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false"><rect x="8.5" y="1.5" width="2" height="9" fill="currentColor"/><path d="M1.5 1.5v9L8 6z" fill="currentColor"/></svg>
+                        </button>
+                        <button type="button" class="xmms-tbtn" id="xmms-eject" aria-label="Eject" title="Eject">
+                            <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false"><path d="M6 1.5 10.5 6h-9z" fill="currentColor"/><rect x="2" y="8" width="8" height="2" fill="currentColor"/></svg>
+                        </button>
+                    </div>
+                    <div class="xmms-transport-side">
+                        <button type="button" class="xmms-tbtn" id="xmms-shuffle" aria-label="Shuffle" aria-pressed="false" title="Shuffle (S)">
+                            <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false"><path d="M1.5 3.5h1.6l4.8 5h2M1.5 8.5h1.6l4.8-5h2" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M8.6 1.6 10.5 3.5 8.6 5.4M8.6 6.6 10.5 8.5 8.6 10.4" fill="none" stroke="currentColor" stroke-width="1.1"/></svg>
+                        </button>
+                        <button type="button" class="xmms-tbtn" id="xmms-repeat" aria-label="Repeat one" aria-pressed="false" title="Repeat (R)">
+                            <svg viewBox="0 0 12 12" aria-hidden="true" focusable="false"><path d="M2.5 4.5v-1h7v3M9.5 7.5v1h-7v-3" fill="none" stroke="currentColor" stroke-width="1.1"/><path d="M7.6 1.6 9.5 3.5 7.6 5.4M4.4 6.6 2.5 8.5 4.4 10.4" fill="none" stroke="currentColor" stroke-width="1.1"/></svg>
+                        </button>
+                        <button type="button" class="xmms-tbtn xmms-tbtn-text" id="xmms-eq-btn" aria-label="Equaliser" aria-pressed="true" title="Equaliser (E)">eq</button>
+                        <button type="button" class="xmms-tbtn xmms-tbtn-text" id="xmms-pl-btn" aria-label="Playlist" aria-pressed="true" title="Playlist (L)">pl</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="xmms-window xmms-eq" id="xmms-eq">
+                <div class="xmms-title">
+                    <span class="xmms-title-text">XM<u>M</u>S equaliser</span>
+                    <span class="xmms-title-tools">
+                        <button type="button" class="xmms-chrome-btn" id="xmms-eq-close" aria-label="Close equaliser">x</button>
+                    </span>
+                </div>
+                <div class="xmms-eq-sliders">
+                    <label class="xmms-eq-band">
+                        <input type="range" min="-12" max="12" step="1" value="0" data-band="pre" aria-label="Preamp">
+                        <span>pre</span>
+                    </label>
+                    <label class="xmms-eq-band"><input type="range" min="-12" max="12" step="1" value="0" data-band="0" aria-label="60 Hz"><span>60</span></label>
+                    <label class="xmms-eq-band"><input type="range" min="-12" max="12" step="1" value="0" data-band="1" aria-label="170 Hz"><span>170</span></label>
+                    <label class="xmms-eq-band"><input type="range" min="-12" max="12" step="1" value="0" data-band="2" aria-label="310 Hz"><span>310</span></label>
+                    <label class="xmms-eq-band"><input type="range" min="-12" max="12" step="1" value="0" data-band="3" aria-label="600 Hz"><span>600</span></label>
+                    <label class="xmms-eq-band"><input type="range" min="-12" max="12" step="1" value="0" data-band="4" aria-label="1 kHz"><span>1k</span></label>
+                    <label class="xmms-eq-band"><input type="range" min="-12" max="12" step="1" value="0" data-band="5" aria-label="3 kHz"><span>3k</span></label>
+                    <label class="xmms-eq-band"><input type="range" min="-12" max="12" step="1" value="0" data-band="6" aria-label="6 kHz"><span>6k</span></label>
+                    <label class="xmms-eq-band"><input type="range" min="-12" max="12" step="1" value="0" data-band="7" aria-label="12 kHz"><span>12k</span></label>
+                    <label class="xmms-eq-band"><input type="range" min="-12" max="12" step="1" value="0" data-band="8" aria-label="14 kHz"><span>14k</span></label>
+                    <label class="xmms-eq-band"><input type="range" min="-12" max="12" step="1" value="0" data-band="9" aria-label="16 kHz"><span>16k</span></label>
+                </div>
+                <div class="xmms-eq-foot">
+                    <button type="button" class="xmms-small-btn" id="xmms-eq-toggle" aria-pressed="true">on</button>
+                    <button type="button" class="xmms-small-btn" id="xmms-eq-preset" title="Cycle presets">flat</button>
+                </div>
+            </div>
+
+            <div class="xmms-window xmms-pl" id="xmms-pl">
+                <div class="xmms-title">
+                    <span class="xmms-title-text">XM<u>M</u>S playlist</span>
+                    <span class="xmms-title-tools">
+                        <button type="button" class="xmms-chrome-btn" id="xmms-pl-close" aria-label="Close playlist">x</button>
+                    </span>
+                </div>
+                <div class="xmms-pl-head" aria-hidden="true">
+                    <span>#</span><span>title</span><span>time</span><span></span>
+                </div>
+                <ul class="xmms-pl-list" id="xmms-pl-list" aria-label="Playlist"></ul>
+                <div class="xmms-pl-foot">
+                    <span id="xmms-pl-count">0 tracks</span>
+                    <span class="xmms-pl-buttons">
+                        <button type="button" class="xmms-small-btn" id="xmms-add" title="Play files from this device">add</button>
+                        <button type="button" class="xmms-small-btn" id="xmms-remove" title="Remove the selected track for this visit">rem</button>
+                        <button type="button" class="xmms-small-btn" id="xmms-sort" title="Sort by file, artist or title">file</button>
+                    </span>
+                </div>
+                <input type="file" id="xmms-file" accept="audio/*,.mp3,.m4a,.aac,.ogg,.oga,.opus,.flac,.wav" multiple hidden>
+            </div>
+
+            <div class="xmms-deskfoot" aria-hidden="true">
+                <span class="xmms-deskcell" id="xmms-status-count">0 tracks</span>
+                <span class="xmms-deskcell" id="xmms-status-total">--:-- total</span>
+                <span class="xmms-deskcell xmms-deskcell-grow">xmplayer 1.2.11</span>
+            </div>
+        </section>
+
+        <p class="player-note"><span class="player-prompt">shortcuts</span> &middot; space play/pause &middot; &larr; &rarr; seek &middot; z b prev/next &middot; m windowshade</p>
+        <p class="sr-only" id="xmms-live" aria-live="polite"></p>
+
+        <noscript>
+            <p class="player-note">The player needs JavaScript.</p>
+        </noscript>
 
         <footer>
             {% include "site_footer.html" %}
         </footer>
     </main>
+
+    <script type="application/json" id="music-tracks">{{ tracks_json | safe }}</script>
+    <script src="/static/music.js?v=4" defer></script>
 </body>
 </html>

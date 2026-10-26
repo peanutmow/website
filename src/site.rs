@@ -95,7 +95,6 @@ pub struct Site {
     /// switcher and the feed links, because the professional mirror must not
     /// point recruiters at personal and political writing.
     pub blogs: &'static [Blog],
-    pub spotify_playlist: Option<&'static str>,
     /// True for the professional mirror: hides easter eggs, novelty pages and
     /// the "Friends" / "Cool Sites" link lists.
     pub professional: bool,
@@ -150,7 +149,6 @@ impl Site {
             discord_handle: Some("alice_meower"),
             discord_user_id: Some("462513388195545093"),
             blogs: PERSONAL_BLOGS,
-            spotify_playlist: Some("4GcHDrtPr1Ok3PGVWHx5Jq"),
             professional: false,
         }
     }
@@ -176,7 +174,6 @@ impl Site {
             discord_handle: None,
             discord_user_id: None,
             blogs: &[],
-            spotify_playlist: None,
             professional: true,
         }
     }

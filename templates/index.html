@@ -21,6 +21,8 @@
     -->
     {% endif %}
     <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600&family=PT+Serif:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/selawik.css?v=1">
+    <link rel="stylesheet" href="/static/host-player.css?v=1">
     <link rel="stylesheet" href="/static/inspect.css">
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -46,7 +48,8 @@
         .no-js a { color: rgba(255,255,255,0.6); text-decoration: none; border-bottom: 1px solid rgba(255,255,255,0.15); padding-bottom: 2px; }
         .no-js a:hover { color: #fff; border-color: rgba(255,255,255,0.6); }
         #content-panel { position: relative; z-index: 50; margin-top: 100vh; min-height: 100vh; width: 100%; padding: 1.5rem; display: flex; flex-direction: column; }
-        #content-frame { flex: 1; width: 100%; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; background: transparent; min-height: 0; }
+        #content-frame, #music-frame { flex: 1; width: 100%; border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; background: transparent; min-height: 0; }
+        #music-frame[hidden] { display: none; }
         #socials-inline { display: none; flex: 1; width: 100%; border-radius: 8px; background: url('/assets/glassblock4k-preview.avif') center/cover no-repeat, rgba(255,255,255,0.015); backdrop-filter: blur(1.5px); -webkit-backdrop-filter: blur(1.5px); will-change: transform; transform: translateZ(0); padding: 2rem; overflow-y: auto; color: #fff; font-family: 'Geist', 'Helvetica Neue', Arial, sans-serif; }
         #socials-inline.visible { display: block; }
         #socials-inline .si-inner { max-width: 560px; margin: 0 auto; }
@@ -263,6 +266,7 @@
         </div>
     </div>
     <pre id="ascii-water" aria-hidden="true"></pre>
+    {% if not site.professional %}<pre id="ascii-spectrum" aria-hidden="true"></pre>{% endif %}
     <noscript>
         <div class="no-js">
             <h2>{{ site.full_name }}{% if site.handle %} — {{ site.handle }}{% endif %}</h2>
@@ -333,6 +337,7 @@
         </div>
         </div>
         <iframe id="content-frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>
+        {% if not site.professional %}<iframe id="music-frame" title="Music player" hidden sandbox="allow-scripts allow-same-origin allow-forms allow-popups" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"></iframe>{% endif %}
     </div>
 
     {% if not site.professional %}
@@ -359,8 +364,36 @@
 
     <script>window.__SITE__ = { greeting: {{ site.greeting|tojson }}, buttons: {% if site.blogs %}['Socials', 'Gallery', 'Music', 'Blog', 'Projects', 'How']{% else %}['Socials', 'Gallery', 'Projects', 'How']{% endif %} };</script>    </div>
 
+    {% if not site.professional %}
+    <div id="host-player" hidden>
+        <span class="hp-led" aria-hidden="true"></span>
+        <div class="hp-info">
+            <span class="hp-title" id="hp-title">no track</span>
+            <span class="hp-artist" id="hp-artist"></span>
+        </div>
+        <span class="hp-clock" id="hp-clock">0:00 / 0:00</span>
+        <div class="hp-controls">
+            <button type="button" class="hp-btn" id="hp-prev" aria-label="Previous track" title="Previous track">
+                <svg viewBox="0 0 12 12" aria-hidden="true"><rect x="1.5" y="1.5" width="2" height="9" fill="currentColor"/><path d="M10.5 1.5v9L4 6z" fill="currentColor"/></svg>
+            </button>
+            <button type="button" class="hp-btn" id="hp-toggle" aria-label="Play" title="Play">
+                <svg id="hp-play-icon" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 1.5v9L10.5 6z" fill="currentColor"/></svg>
+                <svg id="hp-pause-icon" viewBox="0 0 12 12" aria-hidden="true" hidden><rect x="3" y="1.5" width="2" height="9" fill="currentColor"/><rect x="7" y="1.5" width="2" height="9" fill="currentColor"/></svg>
+            </button>
+            <button type="button" class="hp-btn" id="hp-next" aria-label="Next track" title="Next track">
+                <svg viewBox="0 0 12 12" aria-hidden="true"><rect x="8.5" y="1.5" width="2" height="9" fill="currentColor"/><path d="M1.5 1.5v9L8 6z" fill="currentColor"/></svg>
+            </button>
+        </div>
+        <input type="range" class="hp-seek" id="hp-seek" min="0" max="1000" step="1" value="0" aria-label="Seek">
+        <button type="button" class="hp-btn" id="hp-expand" aria-label="Open the music player" title="Open the music player">
+            <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 2h4M2 2v4M10 10H6M10 10V6" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>
+        </button>
+    </div>
+    {% endif %}
+
     <script src="/water-sim.js?v=2"></script>
     <script src="/static/inspect.js"></script>
+    <script src="/static/host-player.js?v=3"></script>
     <script>
         (function() { 'use strict';
             var overlay = document.getElementById('ui-overlay');
@@ -440,7 +473,10 @@
     </script>
     <script>
         (function() {
-            var contentPanel = document.getElementById('content-panel'), contentFrame = document.getElementById('content-frame'), socialsInline = document.getElementById('socials-inline');
+            var contentPanel = document.getElementById('content-panel'),
+                contentFrame = document.getElementById('content-frame'),
+                musicFrame = document.getElementById('music-frame'),
+                socialsInline = document.getElementById('socials-inline');
             var pages = { gallery: { url: '/gallery', label: 'Gallery' }, projects: { url: '/projects', label: 'Projects' }, socials: {} };
             {% if site.blogs %}pages.blog = { url: '/blog', label: 'Blog' };{% endif %}
             {% if not site.professional %}pages.music = { url: '/music', label: 'Music' };{% endif %}
@@ -464,26 +500,57 @@
                 full.src = '/assets/glassblock4k.avif?v=3';
             }
 
+            var musicLoaded = false;
+
+            function notify(page) {
+                if (window.__hostPlayer && window.__hostPlayer.setPage) window.__hostPlayer.setPage(page);
+            }
+
+            function openPage(page) {
+                // The guide is a mode, not a content page: it does not
+                // scroll to the frame below the fold.
+                if (page === 'how') { if (window.openInspect) window.openInspect(); return; }
+
+                if (page === 'socials') {
+                    socialsInline.classList.add('visible');
+                    contentFrame.style.display = 'none';
+                    contentFrame.src = '';
+                    if (musicFrame) musicFrame.hidden = true;
+                    upgradeSocials();
+                } else if (page === 'music' && musicFrame) {
+                    socialsInline.classList.remove('visible');
+                    contentFrame.style.display = 'none';
+                    musicFrame.hidden = false;
+                    if (!musicLoaded) {
+                        musicFrame.src = pages.music.url;
+                        musicLoaded = true;
+                    }
+                } else {
+                    socialsInline.classList.remove('visible');
+                    contentFrame.style.display = '';
+                    if (musicFrame) musicFrame.hidden = true;
+                    var info = pages[page];
+                    if (info) {
+                        warm(page);
+                        if (info.url) contentFrame.src = info.url;
+                    }
+                }
+
+                notify(page);
+                if (window.__pageWaterSim) window.__pageWaterSim.stir();
+                if (document.body.scrollTo) document.body.scrollTo({ top: contentPanel.offsetTop, behavior: 'auto' });
+                else window.scrollTo(0, contentPanel.offsetTop);
+            }
+
+            window.__openContentPage = openPage;
+
             document.querySelectorAll('.btn[data-page]').forEach(function(btn) {
                 btn.addEventListener('pointerenter', function() { warm(this.getAttribute('data-page')); });
                 btn.addEventListener('focus', function() { warm(this.getAttribute('data-page')); });
                 btn.addEventListener('touchstart', function() { warm(this.getAttribute('data-page')); }, { passive: true });
                 btn.addEventListener('click', function(e) {
-                    e.preventDefault(); var page = this.getAttribute('data-page');
-                    // The guide is a mode, not a content page: it does not
-                    // scroll to the frame below the fold.
-                    if (page === 'how') { if (window.openInspect) window.openInspect(); return; }
-                    if (page === 'socials') { socialsInline.classList.add('visible'); contentFrame.style.display = 'none'; contentFrame.src = ''; upgradeSocials(); }
-                    else {
-                        socialsInline.classList.remove('visible'); contentFrame.style.display = '';
-                        var info = pages[page];
-                        if (info) {
-                            warm(page);
-                            if (info.url) contentFrame.src = info.url;
-                        }
-                    }
-                    if (window.__pageWaterSim) window.__pageWaterSim.stir();
-                    contentPanel.scrollIntoView({ behavior: 'smooth' });
+                    e.preventDefault();
+                    openPage(this.getAttribute('data-page'));
                 });
             });
         })();

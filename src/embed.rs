@@ -336,11 +336,12 @@ pub fn socials(site: &Site, origin: &str) -> Meta {
     )
 }
 
-pub fn music(site: &Site, origin: &str) -> Meta {
-    let playlist = site
-        .spotify_playlist
-        .map(|id| format!("https://open.spotify.com/playlist/{id}"))
-        .unwrap_or_else(|| format!("{origin}/"));
+pub fn music(site: &Site, origin: &str, tracks: usize) -> Meta {
+    let subtitle = match tracks {
+        0 => "the playlist is empty, for now".to_string(),
+        1 => "1 track in a small xmms-style player".to_string(),
+        count => format!("{count} tracks in a small xmms-style player"),
+    };
 
     let component = json!({
         "component": {
@@ -349,12 +350,11 @@ pub fn music(site: &Site, origin: &str) -> Meta {
             "components": [
                 {
                     "type": 10,
-                    "content": format!("# Listening — {}\n-# a playlist kept on Spotify", site.full_name)
+                    "content": format!("# Listening — {}\n-# {subtitle}", site.full_name)
                 },
                 {
                     "type": 1,
                     "components": [
-                        link_button(playlist, "Spotify"),
                         link_button(format!("{origin}/"), "Home")
                     ]
                 }
@@ -368,7 +368,7 @@ pub fn music(site: &Site, origin: &str) -> Meta {
         Page {
             path: "/music",
             title: format!("Music — {}", site.name),
-            description: "A playlist kept on Spotify, played right here. Full tracks need a Spotify account."
+            description: "A small xmms-style music player, with a playlist, equaliser and spectrum analyser."
                 .to_string(),
             og_type: "website",
         },
@@ -761,7 +761,7 @@ mod tests {
             pages.push(("blog".to_string(), blog(site, ORIGIN, &section(5))));
         }
         if !site.professional {
-            pages.push(("music".to_string(), music(site, ORIGIN)));
+            pages.push(("music".to_string(), music(site, ORIGIN, 3)));
         }
         pages
     }
