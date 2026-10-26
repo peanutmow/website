@@ -314,7 +314,7 @@ GET /projects    field notes
 GET /projects/*  one page per thing
 GET /gallery     photographs
 GET /socials     accounts and links
-GET /music       a playlist kept on spotify
+GET /music       xmms-style player
 GET /blog        self-hosted writefreely
 GET /about       one page, no cards
 GET /faq         actual answers"#.to_string(),
