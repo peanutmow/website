@@ -53,6 +53,10 @@ npm-debug.log*
 # Generated / cache files
 *.wasm
 
+# Personal audio library (never commit or publish)
+static/audio/music/*
+!static/audio/music/.gitkeep
+
 # Cloudflare / Wrangler local state (auth cache, account info, tmp)
 .wrangler/
 node_modules/
