@@ -1,0 +1,28 @@
+{
+  "order": [],
+  "tracks": {
+    "Eisbaer.mp3": {
+      "title": "Eisbär",
+      "duration": 277,
+      "soundcloud": "https://soundcloud.com/grauzoneofficial/eisbaer-1"
+    },
+    "Happy Zombies (Paul Kalkbrenner Remix).mp3": {
+      "duration": 424,
+      "soundcloud": "https://soundcloud.com/lexykpaul/happy-zombies-paulkalkbrenn"
+    },
+    "LCD Soundsystem - Tribulations.mp3": {
+      "duration": 238,
+      "soundcloud": "https://soundcloud.com/lcd-soundsystem/tribulations"
+    },
+    "Lexy & K-Paul - Freak (Official Video).mp3": {
+      "artist": "Lexy & K-Paul",
+      "title": "Freak",
+      "duration": 231,
+      "soundcloud": "https://soundcloud.com/k-paul/lexy-k-paul-freak-k-paul-remix"
+    },
+    "Schall (Greb Levah Remix).mp3": {
+      "duration": 163,
+      "soundcloud": "https://soundcloud.com/thomas-schumacher/schall-greb-levah-remix"
+    }
+  }
+}
